@@ -1,0 +1,6 @@
+.env
+llm_cache.sqlite*
+data/
+results/*.jsonl
+__pycache__/
+.pytest_cache/
