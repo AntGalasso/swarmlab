@@ -126,25 +126,37 @@ class FakeTransport:
         return "READY", 5, 1
 
 
+
 def test_cache_hits_and_crn_salt():
     with tempfile.TemporaryDirectory() as d:
         cache = SQLiteLLMCache(os.path.join(d, "c.sqlite"))
         tr = FakeTransport()
         be = LLMBackend("m", cache, tr, temperature=0.0, max_tokens=8)
-        req = [("sys", "user", "salt-A")] * 3
-        out = be.generate(req)
-        assert out == ["READY"] * 3
-        # identical key requested concurrently may hit the API more than once; a second pass must be all cache
-        before = tr.calls
-        be.generate(req)
-        assert tr.calls == before
-        be.generate([("sys", "user", "salt-B")])
-        assert tr.calls == before + 1  # different CRN salt -> different key
+
+        try:
+            req = [("sys", "user", "salt-A")] * 3
+            out = be.generate(req)
+            assert out == ["READY"] * 3
+
+            # Identical key requested concurrently may hit the API more than once;
+            # a second pass must be all cache.
+            before = tr.calls
+            be.generate(req)
+            assert tr.calls == before
+
+            be.generate([("sys", "user", "salt-B")])
+            assert tr.calls == before + 1  # Different CRN salt -> different key
+
+        finally:
+            be.close()
+            cache.close()
+
 
 
 def test_smoke_test_with_fake_transport(tmp_path):
     ok = run_connectivity_smoke_test(db_path=str(tmp_path / "s.sqlite"), transport=FakeTransport())
     assert ok
+
 
 
 def test_retry_then_fail():
@@ -153,6 +165,13 @@ def test_retry_then_fail():
             raise RuntimeError("down")
 
     with tempfile.TemporaryDirectory() as d:
-        be = LLMBackend("m", SQLiteLLMCache(os.path.join(d, "c.sqlite")), Boom(), retries=0)
-        with pytest.raises(RuntimeError):
-            be.generate([("s", "u", "x")])
+        cache = SQLiteLLMCache(os.path.join(d, "c.sqlite"))
+
+        try:
+            be = LLMBackend("m", cache, Boom(), retries=0)
+
+            with pytest.raises(RuntimeError):
+                be.generate([("s", "u", "x")])
+
+        finally:
+            cache.close()

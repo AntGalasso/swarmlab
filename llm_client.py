@@ -1,3 +1,4 @@
+
 """llm_client.py -- PRE-EXISTING SCAFFOLDING (written before the Swarm Alignment Hackathon kickoff).
 
 Async OpenRouter client + deterministic SQLite cache (common random numbers across policy arms).
@@ -86,6 +87,12 @@ class SQLiteLLMCache:
             "completion_tokens": self.completion_tokens,
         }
 
+    def close(self) -> None:
+        """Close the SQLite connection and release database resources."""
+        if self.conn is not None:
+            self.conn.close()
+            self.conn = None
+
 
 # --------------------------------------------------------------------------------- transports
 def _api_key() -> Optional[str]:
@@ -153,6 +160,10 @@ class LLMBackend:
     def generate(self, reqs: Sequence[Tuple[str, str, str]], temperature: Optional[float] = None) -> List[str]:
         """reqs: list of (system, user, crn_salt). Returns texts in the same order."""
         return self._loop.run_until_complete(self._batch(reqs, temperature))
+    def close(self) -> None:
+        """Close the event loop owned by this backend."""
+        if not self._loop.is_closed():
+            self._loop.close()
 
 
 def make_llm_policy(model: str, cache: SQLiteLLMCache, max_concurrency: int = 40, temperature: float = 0.7,
@@ -167,36 +178,39 @@ def run_connectivity_smoke_test(db_path: str = "llm_cache.sqlite", transport: Op
         print("No OPENROUTER_API_KEY / OPENAI_API_KEY found (.env). Cannot run the smoke test.")
         return False
     cache = SQLiteLLMCache(db_path)
-    system, user = "Reply with the single word READY.", "Ping."
-    rows, all_ok = [], True
-    for label, models in (("primary", [PRIMARY_MODEL, FALLBACK_MODEL]), ("H4", [H4_MODEL])):
-        used, first, lat1 = None, "", 0.0
-        for slug in models:
-            backend = make_llm_policy(slug, cache, temperature=0.0, max_tokens=8, transport=transport)
-            try:
-                t0 = time.perf_counter()
-                first = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
-                lat1 = (time.perf_counter() - t0) * 1000
-                used = slug
-                break
-            except Exception as e:  # slug unavailable -> try the fallback
-                print(f"[{label}] {slug} failed: {e!s:.120}")
-        if used is None:
-            rows.append((label, models[0], "-", float("nan"), float("nan"), "FAIL"))
-            all_ok = False
-            continue
-        backend = make_llm_policy(used, cache, temperature=0.0, max_tokens=8, transport=transport)
-        t0 = time.perf_counter()
-        second = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
-        lat2 = (time.perf_counter() - t0) * 1000
-        ok = (second == first) and (lat2 < 50.0)
-        all_ok &= ok
-        rows.append((label, used, first[:20].replace("\n", " "), lat1, lat2, "PASS" if ok else "FAIL"))
-    print(f"\n{'Arm':<8}{'Model slug':<34}{'Output':<22}{'Live ms':>9}{'Cache ms':>10}  Exact match")
-    for a, m, o, l1, l2, s in rows:
-        print(f"{a:<8}{m:<34}{o:<22}{l1:>9.0f}{l2:>10.2f}  {s}")
-    print("cache stats:", cache.stats())
-    return all_ok
+    try:
+        system, user = "Reply with the single word READY.", "Ping."
+        rows, all_ok = [], True
+        for label, models in (("primary", [PRIMARY_MODEL, FALLBACK_MODEL]), ("H4", [H4_MODEL])):
+            used, first, lat1 = None, "", 0.0
+            for slug in models:
+                backend = make_llm_policy(slug, cache, temperature=0.0, max_tokens=8, transport=transport)
+                try:
+                    t0 = time.perf_counter()
+                    first = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
+                    lat1 = (time.perf_counter() - t0) * 1000
+                    used = slug
+                    break
+                except Exception as e:  # slug unavailable -> try the fallback
+                    print(f"[{label}] {slug} failed: {e!s:.120}")
+            if used is None:
+                rows.append((label, models[0], "-", float("nan"), float("nan"), "FAIL"))
+                all_ok = False
+                continue
+            backend = make_llm_policy(used, cache, temperature=0.0, max_tokens=8, transport=transport)
+            t0 = time.perf_counter()
+            second = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
+            lat2 = (time.perf_counter() - t0) * 1000
+            ok = (second == first) and (lat2 < 50.0)
+            all_ok &= ok
+            rows.append((label, used, first[:20].replace("\n", " "), lat1, lat2, "PASS" if ok else "FAIL"))
+        print(f"\n{'Arm':<8}{'Model slug':<34}{'Output':<22}{'Live ms':>9}{'Cache ms':>10}  Exact match")
+        for a, m, o, l1, l2, s in rows:
+            print(f"{a:<8}{m:<34}{o:<22}{l1:>9.0f}{l2:>10.2f}  {s}")
+        print("cache stats:", cache.stats())
+        return all_ok
+    finally:
+        cache.close()
 
 
 if __name__ == "__main__":
