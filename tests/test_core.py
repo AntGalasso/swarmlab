@@ -482,3 +482,15 @@ def test_retry_then_fail():
 
         finally:
             cache.close()
+
+
+def test_cache_rejects_use_after_close(tmp_path):
+    """Regression: get()/put() after close() must raise a clear RuntimeError, not AttributeError."""
+    cache = SQLiteLLMCache(db_path=str(tmp_path / "closed.sqlite"))
+    cache.put("k1", "model-x", "hello", 3, 2)
+    assert cache.get("k1") == "hello"
+    cache.close()
+    with pytest.raises(RuntimeError):
+        cache.get("k1")
+    with pytest.raises(RuntimeError):
+        cache.put("k2", "model-x", "hello2", 3, 2)
