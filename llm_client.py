@@ -65,7 +65,16 @@ class SQLiteLLMCache:
         payload = json.dumps([model, messages, round(float(temperature), 4), crn_salt], sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
+    def _ensure_open(self) -> None:
+        """Raise a clear error if the cache was closed (instead of a cryptic AttributeError)."""
+        if self.conn is None:
+            raise RuntimeError(
+                "SQLiteLLMCache: cache is closed (close() was called); "
+                "create a new SQLiteLLMCache instance to keep using the cache."
+            )
+
     def get(self, key: str) -> Optional[str]:
+        self._ensure_open()
         row = self.conn.execute("SELECT text FROM cache WHERE k=?", (key,)).fetchone()
         if row is not None:
             self.hits += 1
@@ -73,6 +82,7 @@ class SQLiteLLMCache:
         return None
 
     def put(self, key: str, model: str, text: str, pt: int, ct: int) -> None:
+        self._ensure_open()
         self.conn.execute("INSERT OR REPLACE INTO cache VALUES (?,?,?,?,?)", (key, model, text, pt, ct))
         self.conn.commit()
         self.live_calls += 1
