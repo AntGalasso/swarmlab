@@ -1,0 +1,206 @@
+(.venv) PS C:\Users\Antonio\Desktop\dev tools\hacklaton\swign alinment\projects off screen\swarmlab_v3> python swarmlab.py --mode mock --scaling-sweep --seeds 20
+Targeted scaling sweep: N=[12, 24, 36] small_world, seeds=1..20, policies=['no_defense', 'score_only', 'centrality_only', 'risk_aware', 'risk_aware_tiered'] (budget rules: prop K=round(0.25N), fixed K=3)
+  100/600 episodes  (0s)
+  200/600 episodes  (0s)
+  300/600 episodes  (1s)
+  400/600 episodes  (1s)
+  500/600 episodes  (1s)
+  600/600 episodes  (2s)
+
+== scaling summary (AUC_ever / MAE)
+  N=12  K=prop  no_defense:0.725/42.13  score_only:0.428/15.73  centrality_only:0.383/16.09  risk_aware:0.383/18.63  risk_aware_tiered:0.267/12.35
+  N=12  K=   3  no_defense:0.725/42.13  score_only:0.428/15.73  centrality_only:0.383/16.09  risk_aware:0.383/18.63  risk_aware_tiered:0.267/12.35
+  N=24  K=prop  no_defense:0.580/32.37  score_only:0.313/10.78  centrality_only:0.214/10.96  risk_aware:0.042/2.96  risk_aware_tiered:0.042/2.95
+  N=24  K=   3  no_defense:0.580/32.37  score_only:0.450/21.36  centrality_only:0.368/18.09  risk_aware:0.338/17.33  risk_aware_tiered:0.265/13.33
+  N=36  K=prop  no_defense:0.528/29.38  score_only:0.273/8.61  centrality_only:0.175/10.20  risk_aware:0.044/3.66  risk_aware_tiered:0.033/3.19
+  N=36  K=   3  no_defense:0.528/29.38  score_only:0.383/18.97  centrality_only:0.366/18.84  risk_aware:0.221/11.69  risk_aware_tiered:0.186/9.56
+(.venv) PS C:\Users\Antonio\Desktop\dev tools\hacklaton\swign alinment\projects off screen\swarmlab_v3> python stats_check.py --file results/per_seed_main.csv
+>> python stats_check.py --file results/per_seed_heldout.csv
+>> python make_figures.py
+file=results/per_seed_main.csv  split=main  seeds=1..30  rows=2400
+Sign convention: mean_diff = a - b on a DAMAGE metric; negative = a better. rrb>0 = a lower more often.
+
+H1 (window timing, decoy regime): significant pair on 4 topologies -> supported=True
+  chain       fixed_early_vs_fixed_mid dAUC=-0.116 CI[-0.151,-0.081] p_raw=2.05e-05 p_holm=3.96e-05 rrb=+0.92
+  chain       fixed_mid_vs_fixed_late dAUC=-0.068 CI[-0.088,-0.047] p_raw=1.98e-05 p_holm=3.96e-05 rrb=+0.98
+  chain       fixed_early_vs_fixed_late dAUC=-0.184 CI[-0.219,-0.147] p_raw=2.84e-06 p_holm=8.51e-06 rrb=+1.00
+  small_world fixed_early_vs_fixed_mid dAUC=-0.414 CI[-0.507,-0.326] p_raw=1.73e-06 p_holm=5.16e-06 rrb=+1.00
+  small_world fixed_mid_vs_fixed_late dAUC=-0.015 CI[-0.025,-0.007] p_raw=0.000979 p_holm=0.000979 rrb=+1.00
+  small_world fixed_early_vs_fixed_late dAUC=-0.429 CI[-0.520,-0.344] p_raw=1.72e-06 p_holm=5.16e-06 rrb=+1.00
+  star_hub    fixed_early_vs_fixed_mid dAUC=-0.447 CI[-0.543,-0.348] p_raw=1.73e-06 p_holm=5.18e-06 rrb=+1.00
+  star_hub    fixed_mid_vs_fixed_late dAUC=-0.025 CI[-0.044,-0.009] p_raw=0.00488 p_holm=0.00488 rrb=+0.87
+  star_hub    fixed_early_vs_fixed_late dAUC=-0.472 CI[-0.563,-0.377] p_raw=1.73e-06 p_holm=5.18e-06 rrb=+1.00
+  star_leaf   fixed_early_vs_fixed_mid dAUC=-0.171 CI[-0.259,-0.079] p_raw=0.00261 p_holm=0.00261 rrb=+0.68
+  star_leaf   fixed_mid_vs_fixed_late dAUC=-0.130 CI[-0.177,-0.084] p_raw=0.000106 p_holm=0.000212 rrb=+0.97
+  star_leaf   fixed_early_vs_fixed_late dAUC=-0.302 CI[-0.373,-0.226] p_raw=1.92e-06 p_holm=5.75e-06 rrb=+1.00
+
+H2 (decoy degradation): 5/8 significant -> supported=True
+  chain:score_only             +AUC=+0.020 CI[-0.005,+0.044] p_raw=0.124 p_holm=0.124 -
+  chain:fixed_early            +AUC=+0.044 CI[+0.012,+0.084] p_raw=0.0215 p_holm=0.0645 -
+  small_world:score_only       +AUC=-0.054 CI[-0.116,+0.004] p_raw=0.0284 p_holm=0.0645 -
+  small_world:fixed_early      +AUC=+0.162 CI[+0.092,+0.238] p_raw=0.00122 p_holm=0.00855 DEGRADED
+  star_hub:score_only          +AUC=+0.053 CI[+0.022,+0.088] p_raw=0.00391 p_holm=0.0195 DEGRADED
+  star_hub:fixed_early         +AUC=+0.140 CI[+0.072,+0.222] p_raw=0.00171 p_holm=0.0103 DEGRADED
+  star_leaf:score_only         +AUC=+0.077 CI[+0.030,+0.131] p_raw=0.0064 p_holm=0.0256 DEGRADED
+  star_leaf:fixed_early        +AUC=+0.147 CI[+0.083,+0.212] p_raw=0.000803 p_holm=0.00643 DEGRADED
+
+H3 (regime=decoy, margin_MAE=0.05) -- strict Pareto & non-inferiority
+  challenger=risk_aware: 10/24 utility outcomes, dominance_rate=0.42 (strict=6, noninferior=4, containment_only=7, utility_loss=1, null=6) -> supported=False
+    topology     rival                dAUC     p_raw    p_holm     dMAE  CIhi_MAE     p_raw    p_holm  label
+    chain        score_only         -0.103  0.000104  0.000208    -1.32      0.40     0.543         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    chain        centrality_only    -0.137  1.38e-05  4.15e-05    -7.37     -5.68  1.02e-07  6.15e-07  STRICT_PARETO_WIN
+    chain        random_capped      -0.190  4.69e-06  1.88e-05    -6.84     -4.85  2.05e-07  1.02e-06  STRICT_PARETO_WIN
+    chain        fixed_early        -0.043    0.0137    0.0137    -1.97     -0.22     0.193     0.578  SAFETY_WIN_UTILITY_NONINFERIOR
+    chain        fixed_mid          -0.159  2.81e-06  1.41e-05     0.37      1.75     0.516         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    chain        fixed_late         -0.227  1.91e-06  1.15e-05    -6.18     -4.51  2.55e-07  1.02e-06  STRICT_PARETO_WIN
+    small_world  score_only         -0.126    0.0162    0.0486    -0.85      4.11     0.952         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    small_world  centrality_only    -0.081      0.15     0.301    -2.19      3.13      0.49         1  NO_SIGNIFICANT_DIFFERENCE
+    small_world  random_capped      -0.299  1.19e-05  4.77e-05   -11.48     -6.31  0.000418   0.00209  STRICT_PARETO_WIN
+    small_world  fixed_early         0.030       0.5       0.5     1.74      4.33     0.438         1  NO_SIGNIFICANT_DIFFERENCE
+    small_world  fixed_mid          -0.384  1.73e-06  1.04e-05    -8.26     -3.51    0.0164    0.0657  SAFETY_WIN_UTILITY_NONINFERIOR
+    small_world  fixed_late         -0.399  1.73e-06  1.04e-05   -19.10    -14.43  1.86e-09  1.12e-08  STRICT_PARETO_WIN
+    star_hub     score_only         -0.307  3.69e-06  1.11e-05     0.80      1.26  0.000952   0.00571  UTILITY_LOSS
+    star_hub     centrality_only     0.094    0.0312    0.0312     0.31      0.85     0.596         1  NO_SIGNIFICANT_DIFFERENCE
+    star_hub     random_capped      -0.551  1.73e-06  1.03e-05    -1.04     -0.38   0.00871    0.0435  STRICT_PARETO_WIN
+    star_hub     fixed_early        -0.122    0.0156    0.0312    -0.19      0.03     0.312     0.938  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_hub     fixed_mid          -0.570  1.72e-06  1.03e-05    -0.01      0.71     0.919         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_hub     fixed_late         -0.595  1.72e-06  1.03e-05    -0.81     -0.17    0.0405     0.162  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_leaf    score_only         -0.041     0.245     0.491    -0.04      0.90     0.382         1  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    centrality_only     0.189  0.000437   0.00175    -1.26     -0.19    0.0384     0.231  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    random_capped      -0.231  3.11e-05  0.000155    -0.88      0.16     0.171     0.853  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_leaf    fixed_early         0.008         1         1     0.12      0.34      0.25         1  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    fixed_mid          -0.163   0.00453    0.0136     0.33      1.19     0.516         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_leaf    fixed_late         -0.293  1.92e-06  1.15e-05    -0.62      0.34     0.339         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+  challenger=risk_aware_tiered: 19/28 utility outcomes, dominance_rate=0.68 (strict=17, noninferior=2, containment_only=3, utility_loss=0, null=6) -> supported=True
+    topology     rival                dAUC     p_raw    p_holm     dMAE  CIhi_MAE     p_raw    p_holm  label
+    chain        score_only         -0.067    0.0282    0.0563    -0.77      1.30     0.556         1  NO_SIGNIFICANT_DIFFERENCE
+    chain        centrality_only    -0.101   5.1e-05  0.000204    -6.82     -4.81  4.71e-07   3.3e-06  STRICT_PARETO_WIN
+    chain        random_capped      -0.153  2.26e-05  0.000113    -6.29     -3.95  3.05e-05  0.000152  STRICT_PARETO_WIN
+    chain        fixed_early        -0.007     0.879     0.879    -1.42      0.99     0.309         1  NO_SIGNIFICANT_DIFFERENCE
+    chain        fixed_mid          -0.123  1.63e-05   9.8e-05     0.92      2.66     0.349         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    chain        fixed_late         -0.191  1.73e-06  1.21e-05    -5.63     -3.56  2.37e-05  0.000142  STRICT_PARETO_WIN
+    chain        risk_aware          0.036    0.0119    0.0358     0.55      2.16     0.935         1  NO_SIGNIFICANT_DIFFERENCE
+    small_world  score_only         -0.222  0.000134  0.000538    -5.98     -1.89    0.0145    0.0291  STRICT_PARETO_WIN
+    small_world  centrality_only    -0.177  0.000479   0.00131    -7.32     -2.98   0.00403    0.0121  STRICT_PARETO_WIN
+    small_world  random_capped      -0.394  3.16e-06  1.58e-05   -16.61    -12.31  4.71e-07  2.83e-06  STRICT_PARETO_WIN
+    small_world  fixed_early        -0.066    0.0437    0.0437    -3.39     -0.16    0.0234    0.0291  STRICT_PARETO_WIN
+    small_world  fixed_mid          -0.480  1.73e-06  1.21e-05   -13.39     -9.46  9.98e-07  4.99e-06  STRICT_PARETO_WIN
+    small_world  fixed_late         -0.495  1.73e-06  1.21e-05   -24.23    -20.53  1.86e-09   1.3e-08  STRICT_PARETO_WIN
+    small_world  risk_aware         -0.096  0.000437   0.00131    -5.13     -3.15   0.00017   0.00068  STRICT_PARETO_WIN
+    star_hub     score_only         -0.337  1.64e-06  1.15e-05     0.62      1.12    0.0384     0.125  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_hub     centrality_only     0.064    0.0312    0.0625     0.13      0.62     0.984         1  NO_SIGNIFICANT_DIFFERENCE
+    star_hub     random_capped      -0.581  1.73e-06  1.15e-05    -1.22     -0.59   0.00219    0.0153  STRICT_PARETO_WIN
+    star_hub     fixed_early        -0.153  0.000244  0.000732    -0.37     -0.12    0.0166    0.0986  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_hub     fixed_mid          -0.600  1.72e-06  1.15e-05    -0.19      0.52      0.67         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_hub     fixed_late         -0.625  1.72e-06  1.15e-05    -0.98     -0.36    0.0164    0.0986  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_hub     risk_aware         -0.031    0.0312    0.0625    -0.18     -0.05    0.0312     0.125  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    score_only         -0.165   0.00116   0.00232    -1.34     -0.39    0.0449    0.0496  STRICT_PARETO_WIN
+    star_leaf    centrality_only     0.065  0.000244  0.000977    -2.56     -1.83  9.98e-07  6.99e-06  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    random_capped      -0.355  3.51e-06  2.11e-05    -2.18     -1.30  0.000111  0.000663  STRICT_PARETO_WIN
+    star_leaf    fixed_early        -0.116   0.00146   0.00232    -1.18     -0.51   0.00237    0.0071  STRICT_PARETO_WIN
+    star_leaf    fixed_mid          -0.287  7.03e-05  0.000351    -0.97     -0.15    0.0248    0.0496  STRICT_PARETO_WIN
+    star_leaf    fixed_late         -0.417  1.92e-06  1.34e-05    -1.92     -1.10  0.000256   0.00103  STRICT_PARETO_WIN
+    star_leaf    risk_aware         -0.124  0.000488   0.00146    -1.30     -0.67  0.000189  0.000943  STRICT_PARETO_WIN
+
+wrote results/stats_report_main.json
+file=results/per_seed_heldout.csv  split=heldout  seeds=31..60  rows=2400
+Sign convention: mean_diff = a - b on a DAMAGE metric; negative = a better. rrb>0 = a lower more often.
+
+H1 (window timing, decoy regime): significant pair on 4 topologies -> supported=True
+  chain       fixed_early_vs_fixed_mid dAUC=-0.062 CI[-0.111,-0.014] p_raw=0.0254 p_holm=0.0254 rrb=+0.49
+  chain       fixed_mid_vs_fixed_late dAUC=-0.059 CI[-0.081,-0.038] p_raw=8.81e-05 p_holm=0.000176 rrb=+1.00
+  chain       fixed_early_vs_fixed_late dAUC=-0.122 CI[-0.165,-0.076] p_raw=4.4e-05 p_holm=0.000132 rrb=+0.90
+  small_world fixed_early_vs_fixed_mid dAUC=-0.413 CI[-0.500,-0.330] p_raw=2.6e-06 p_holm=5.2e-06 rrb=+0.98
+  small_world fixed_mid_vs_fixed_late dAUC=-0.024 CI[-0.046,-0.009] p_raw=0.000973 p_holm=0.000973 rrb=+1.00
+  small_world fixed_early_vs_fixed_late dAUC=-0.437 CI[-0.516,-0.359] p_raw=1.73e-06 p_holm=5.2e-06 rrb=+1.00
+  star_hub    fixed_early_vs_fixed_mid dAUC=-0.373 CI[-0.469,-0.277] p_raw=2.35e-06 p_holm=5.18e-06 rrb=+0.99
+  star_hub    fixed_mid_vs_fixed_late dAUC=-0.026 CI[-0.045,-0.011] p_raw=0.00391 p_holm=0.00391 rrb=+0.96
+  star_hub    fixed_early_vs_fixed_late dAUC=-0.399 CI[-0.489,-0.311] p_raw=1.73e-06 p_holm=5.18e-06 rrb=+1.00
+  star_leaf   fixed_early_vs_fixed_mid dAUC=-0.139 CI[-0.242,-0.047] p_raw=0.0355 p_holm=0.0355 rrb=+0.46
+  star_leaf   fixed_mid_vs_fixed_late dAUC=-0.136 CI[-0.185,-0.088] p_raw=9.14e-05 p_holm=0.000183 rrb=+0.95
+  star_leaf   fixed_early_vs_fixed_late dAUC=-0.275 CI[-0.361,-0.199] p_raw=3.16e-06 p_holm=9.48e-06 rrb=+0.99
+
+H2 (decoy degradation): 4/8 significant -> supported=True
+  chain:score_only             +AUC=+0.033 CI[+0.005,+0.063] p_raw=0.0605 p_holm=0.121 -
+  chain:fixed_early            +AUC=+0.063 CI[+0.028,+0.101] p_raw=0.00342 p_holm=0.0205 DEGRADED
+  small_world:score_only       +AUC=-0.064 CI[-0.128,-0.004] p_raw=0.0278 p_holm=0.102 -
+  small_world:fixed_early      +AUC=+0.137 CI[+0.051,+0.218] p_raw=0.00631 p_holm=0.0315 DEGRADED
+  star_hub:score_only          +AUC=+0.052 CI[+0.009,+0.097] p_raw=0.0254 p_holm=0.102 -
+  star_hub:fixed_early         +AUC=+0.220 CI[+0.138,+0.306] p_raw=0.000339 p_holm=0.00271 DEGRADED
+  star_leaf:score_only         +AUC=+0.028 CI[-0.021,+0.080] p_raw=0.278 p_holm=0.278 -
+  star_leaf:fixed_early        +AUC=+0.177 CI[+0.109,+0.248] p_raw=0.000652 p_holm=0.00456 DEGRADED
+
+H3 (regime=decoy, margin_MAE=0.05) -- strict Pareto & non-inferiority
+  challenger=risk_aware: 10/24 utility outcomes, dominance_rate=0.42 (strict=7, noninferior=3, containment_only=8, utility_loss=0, null=6) -> supported=False
+    topology     rival                dAUC     p_raw    p_holm     dMAE  CIhi_MAE     p_raw    p_holm  label
+    chain        score_only         -0.072  0.000244  0.000732    -0.58      1.09     0.452     0.452  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    chain        centrality_only    -0.097  0.000522   0.00104    -4.70     -1.97   0.00113   0.00453  STRICT_PARETO_WIN
+    chain        random_capped      -0.151   4.7e-06  2.35e-05    -4.86     -2.78  0.000313   0.00188  STRICT_PARETO_WIN
+    chain        fixed_early        -0.059   0.00391   0.00391    -2.83     -1.06    0.0208    0.0624  SAFETY_WIN_UTILITY_NONINFERIOR
+    chain        fixed_mid          -0.122  5.53e-05  0.000221     1.29      3.17    0.0523     0.105  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    chain        fixed_late         -0.181  2.54e-06  1.53e-05    -3.70     -1.79  0.000798   0.00399  STRICT_PARETO_WIN
+    small_world  score_only         -0.194  0.000727   0.00218    -4.16      0.72      0.44      0.88  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    small_world  centrality_only    -0.104    0.0551      0.11    -3.74      1.00     0.109     0.328  NO_SIGNIFICANT_DIFFERENCE
+    small_world  random_capped      -0.398  1.73e-06  1.04e-05   -16.93    -12.95  3.54e-08  1.77e-07  STRICT_PARETO_WIN
+    small_world  fixed_early        -0.019       0.5       0.5    -0.92      0.25     0.625      0.88  NO_SIGNIFICANT_DIFFERENCE
+    small_world  fixed_mid          -0.431  2.35e-06  1.04e-05   -11.36     -6.68  0.000137   0.00055  STRICT_PARETO_WIN
+    small_world  fixed_late         -0.456  1.73e-06  1.04e-05   -21.73    -17.59  3.73e-09  2.24e-08  STRICT_PARETO_WIN
+    star_hub     score_only         -0.376  1.65e-06  9.91e-06     0.25      0.75     0.164     0.493  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_hub     centrality_only     0.044      0.25      0.25    -0.06      0.03     0.792         1  NO_SIGNIFICANT_DIFFERENCE
+    star_hub     random_capped      -0.603  1.72e-06  9.91e-06    -0.90     -0.29    0.0137    0.0683  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_hub     fixed_early        -0.252  0.000431  0.000862    -0.50     -0.06    0.0507     0.203  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_hub     fixed_mid          -0.625   1.9e-06  9.91e-06    -0.24      0.54     0.598         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_hub     fixed_late         -0.651  1.72e-06  9.91e-06    -1.10     -0.51   0.00256    0.0154  STRICT_PARETO_WIN
+    star_leaf    score_only         -0.018     0.579     0.579     0.76      1.82    0.0767     0.384  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    centrality_only     0.151  0.000244   0.00122    -1.00     -0.00    0.0293     0.176  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    random_capped      -0.213  0.000913   0.00365    -0.60      0.50     0.428         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_leaf    fixed_early        -0.035      0.25       0.5    -0.16      0.05     0.625         1  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    fixed_mid          -0.175   0.00851    0.0255     0.52      1.60     0.371         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_leaf    fixed_late         -0.310  3.16e-06   1.9e-05    -0.43      0.57      0.49         1  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+  challenger=risk_aware_tiered: 18/28 utility outcomes, dominance_rate=0.64 (strict=16, noninferior=2, containment_only=4, utility_loss=0, null=6) -> supported=True
+    topology     rival                dAUC     p_raw    p_holm     dMAE  CIhi_MAE     p_raw    p_holm  label
+    chain        score_only         -0.049    0.0551      0.11    -0.18      1.69     0.626         1  NO_SIGNIFICANT_DIFFERENCE
+    chain        centrality_only    -0.073  0.000976    0.0039    -4.29     -2.02   0.00104   0.00623  STRICT_PARETO_WIN
+    chain        random_capped      -0.127  1.76e-05  0.000106    -4.46     -2.35  0.000283   0.00198  STRICT_PARETO_WIN
+    chain        fixed_early        -0.035     0.185     0.185    -2.43     -0.03     0.129     0.388  NO_SIGNIFICANT_DIFFERENCE
+    chain        fixed_mid          -0.098  0.000414   0.00207     1.70      3.39    0.0449      0.18  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    chain        fixed_late         -0.157  3.49e-06  2.44e-05    -3.29     -1.39   0.00578    0.0289  STRICT_PARETO_WIN
+    chain        risk_aware          0.024    0.0312    0.0938     0.40      1.87     0.952         1  NO_SIGNIFICANT_DIFFERENCE
+    small_world  score_only         -0.277  6.42e-05  0.000257    -8.56     -4.26  0.000872   0.00174  STRICT_PARETO_WIN
+    small_world  centrality_only    -0.186  0.000514  0.000514    -8.13     -4.08  0.000555   0.00166  STRICT_PARETO_WIN
+    small_world  random_capped      -0.480  1.73e-06  1.21e-05   -21.33    -18.12  3.73e-09  2.24e-08  STRICT_PARETO_WIN
+    small_world  fixed_early        -0.101  0.000122  0.000366    -5.32     -2.75   0.00113   0.00174  STRICT_PARETO_WIN
+    small_world  fixed_mid          -0.513  1.92e-06  1.21e-05   -15.76    -12.31   1.3e-07  6.52e-07  STRICT_PARETO_WIN
+    small_world  fixed_late         -0.538  1.73e-06  1.21e-05   -26.13    -23.04  1.86e-09   1.3e-08  STRICT_PARETO_WIN
+    small_world  risk_aware         -0.082  0.000244  0.000488    -4.40     -2.40  7.06e-05  0.000282  STRICT_PARETO_WIN
+    star_hub     score_only         -0.397  1.65e-06  1.16e-05     0.16      0.71     0.428     0.832  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_hub     centrality_only     0.023      0.25       0.5    -0.16      0.00     0.193      0.58  NO_SIGNIFICANT_DIFFERENCE
+    star_hub     random_capped      -0.624  1.72e-06  1.16e-05    -0.99     -0.40   0.00538    0.0323  STRICT_PARETO_WIN
+    star_hub     fixed_early        -0.273   0.00013  0.000391    -0.59     -0.14    0.0141    0.0703  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_hub     fixed_mid          -0.646  1.72e-06  1.16e-05    -0.34      0.47     0.416     0.832  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_hub     fixed_late         -0.672  1.72e-06  1.16e-05    -1.19     -0.63   0.00113   0.00792  STRICT_PARETO_WIN
+    star_hub     risk_aware         -0.021      0.25       0.5    -0.09     -0.00     0.125       0.5  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    score_only         -0.114    0.0475    0.0475    -0.49      0.36     0.952     0.952  CONTAINMENT_GAIN_UTILITY_UNBOUNDED
+    star_leaf    centrality_only     0.056  0.000488   0.00195    -2.25     -1.77  1.86e-09   1.3e-08  NO_SIGNIFICANT_DIFFERENCE
+    star_leaf    random_capped      -0.308  3.98e-05  0.000239    -1.85     -0.99  0.000608   0.00304  STRICT_PARETO_WIN
+    star_leaf    fixed_early        -0.131  0.000976   0.00195    -1.41     -0.78   0.00172   0.00687  STRICT_PARETO_WIN
+    star_leaf    fixed_mid          -0.270  0.000121  0.000603    -0.72      0.03     0.198     0.396  SAFETY_WIN_UTILITY_NONINFERIOR
+    star_leaf    fixed_late         -0.406  3.16e-06  2.21e-05    -1.68     -1.02  5.59e-05  0.000336  STRICT_PARETO_WIN
+    star_leaf    risk_aware         -0.095  0.000488   0.00195    -1.25     -0.64   0.00444    0.0133  STRICT_PARETO_WIN
+
+wrote results/stats_report_heldout.json
+wrote results/figures\fig1_pareto_safety_utility.pdf
+wrote results/figures\fig2_budget_exhaustion_dynamics.pdf
+wrote results/figures\fig3_scaling_curve.pdf
+(.venv) PS C:\Users\Antonio\Desktop\dev tools\hacklaton\swign alinment\projects off screen\swarmlab_v3> python swarmlab.py --budget --seeds 30 --price-in 0.06 --price-out 0.06
+{
+  "episodes": 2400,
+  "worst_case_calls": 345600,
+  "lower_bound_calls_perfect_prefix_sharing": 34560,
+  "worst_case_tokens_in": 89856000,
+  "worst_case_tokens_out": 13824000,
+  "worst_case_usd": 6.22,
+  "lower_bound_usd": 0.62
+}
+(.venv) PS C:\Users\Antonio\Desktop\dev tools\hacklaton\swign alinment\projects off screen\swarmlab_v3> ^C
+(.venv) PS C:\Users\Antonio\Desktop\dev tools\hacklaton\swign alinment\projects off screen\swarmlab_v3> 

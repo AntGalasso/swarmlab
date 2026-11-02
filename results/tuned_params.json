@@ -1,0 +1,24 @@
+{
+  "fixed_early": {
+    "tau_p": 0.5
+  },
+  "fixed_mid": {
+    "tau_p": 0.5
+  },
+  "fixed_late": {
+    "tau_p": 0.5
+  },
+  "score_only": {
+    "tau_p": 0.5
+  },
+  "centrality_only": {},
+  "risk_aware": {
+    "tau_R": 0.5,
+    "lam": 0.25
+  },
+  "risk_aware_tiered": {
+    "tau_quar": 2.0,
+    "lam": 0.25,
+    "tau_san": 0.35
+  }
+}
