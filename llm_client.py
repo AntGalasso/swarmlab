@@ -106,12 +106,19 @@ def make_openrouter_transport() -> Transport:
     key = _api_key()
     if not key:
         raise RuntimeError("Missing OPENROUTER_API_KEY (or OPENAI_API_KEY). Put it in .env, never in the code.")
-    client = AsyncOpenAI(base_url=OPENROUTER_BASE_URL, api_key=key)
+    # Bounded request timeout: a stalled upstream provider must not wedge a smoke test or a sprint run.
+    # SDK-level retries are disabled because LLMBackend owns the retry/backoff policy.
+    client = AsyncOpenAI(base_url=OPENROUTER_BASE_URL, api_key=key, timeout=60.0, max_retries=0)
 
     async def transport(model: str, messages: Messages, temperature: float, max_tokens: int):
         r = await client.chat.completions.create(
             model=model, messages=messages, temperature=temperature, max_tokens=max_tokens
         )
+        choices = getattr(r, "choices", None)
+        if not choices:
+            extra = getattr(r, "model_extra", None) or {}
+            err = extra.get("error") or getattr(r, "error", None)
+            raise RuntimeError(f"OpenRouter returned no choices (upstream error: {str(err)[:200]})")
         text = (r.choices[0].message.content or "").strip()
         u = getattr(r, "usage", None)
         return text, int(getattr(u, "prompt_tokens", 0) or 0), int(getattr(u, "completion_tokens", 0) or 0)
@@ -184,7 +191,9 @@ def run_connectivity_smoke_test(db_path: str = "llm_cache.sqlite", transport: Op
         for label, models in (("primary", [PRIMARY_MODEL, FALLBACK_MODEL]), ("H4", [H4_MODEL])):
             used, first, lat1 = None, "", 0.0
             for slug in models:
-                backend = make_llm_policy(slug, cache, temperature=0.0, max_tokens=8, transport=transport)
+                # Probe, not resilience test: fail fast (one attempt) and fall back to the next slug.
+                backend = LLMBackend(slug, cache, transport, max_concurrency=1, temperature=0.0,
+                                     max_tokens=8, retries=0)
                 try:
                     t0 = time.perf_counter()
                     first = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
@@ -197,7 +206,8 @@ def run_connectivity_smoke_test(db_path: str = "llm_cache.sqlite", transport: Op
                 rows.append((label, models[0], "-", float("nan"), float("nan"), "FAIL"))
                 all_ok = False
                 continue
-            backend = make_llm_policy(used, cache, temperature=0.0, max_tokens=8, transport=transport)
+            backend = LLMBackend(used, cache, transport, max_concurrency=1, temperature=0.0,
+                                 max_tokens=8, retries=0)
             t0 = time.perf_counter()
             second = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
             lat2 = (time.perf_counter() - t0) * 1000
