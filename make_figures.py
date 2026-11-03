@@ -4,6 +4,8 @@
   fig1_pareto_safety_utility.pdf   AUC_ever vs MAE frontier across policies (decoy regime)
   fig2_budget_exhaustion_dynamics.pdf  cumulative quarantines on decoys vs true positives, t = 1..12
   fig3_scaling_curve.pdf           AUC_ever and MAE across N = {12, 24, 36} (small_world)
+  fig4_ladder_breaking_point.pdf   env_ladder Stage 2: MAE and pass rate vs difficulty level
+  fig5_constraint_evasion.pdf      env_ladder Stage 3: payload delivery vs monitor detection
 
   python make_figures.py                                   # main split
   python make_figures.py --file results/per_seed_main.csv --out results/figures
@@ -172,6 +174,97 @@ def fig3(rows, path):
     return path
 
 
+# ------------------------------------------------------------------------- fig 4 / fig 5
+def fig4(rows, path):
+    """Stage-2 ladder: consensus error and pass rate against the frozen success bar, per level."""
+    if not rows:
+        return None
+    rs = sorted(rows, key=lambda r: int(r["level"]))
+    x = [int(r["level"]) for r in rs]
+    tau = [float(r["target_mae_threshold"]) for r in rs]
+    mae = [float(r["mean_mae"]) for r in rs]
+    mae_e = [float(r["sem_mae"]) for r in rs]
+    pr = [float(r["pass_rate"]) for r in rs]
+    pr_e = [float(r["pass_rate_se"]) for r in rs]
+    breaking = next((int(r["level"]) for r in rs if int(float(r["breaking"])) == 1), None)
+    critical = next((int(r["level"]) for r in rs if int(float(r["critical_operating"])) == 1), None)
+    fig, axes = plt.subplots(1, 2, figsize=(11.6, 4.5))
+    ax = axes[0]
+    ax.errorbar(x, mae, yerr=mae_e, fmt="o-", color=C_HIGHLIGHT["risk_aware"], ms=6, capsize=3,
+                lw=1.8, label=r"consensus $MAE$ (mean $\pm$ SEM)")
+    ax.plot(x, tau, "--", color="#7f7f7f", lw=1.6, label=r"success bar $\tau_l$")
+    ax.set_ylabel(r"consensus error $MAE$")
+    ax.set_title("Difficulty ladder: task error vs the frozen success bar", fontsize=11)
+    ax = axes[1]
+    ax.errorbar(x, pr, yerr=pr_e, fmt="s-", color=C_HIGHLIGHT["risk_aware_tiered"], ms=6, capsize=3,
+                lw=1.8, label="pass rate (fraction of seeds with MAE <= tau)")
+    ax.axhline(0.5, ls=":", color="#d62728", lw=1.4, label="breaking threshold (0.50)")
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_ylabel("pass rate")
+    ax.set_title("Capability breaking point", fontsize=11)
+    for a in axes:
+        a.set_xlabel("sandbox difficulty level")
+        a.set_xticks(x)
+        a.grid(alpha=0.25)
+        if breaking is not None:
+            a.axvline(breaking, color="#d62728", alpha=0.35, lw=1.2, ls="--")
+        if critical is not None:
+            a.axvline(critical, color="#2ca02c", alpha=0.30, lw=1.2, ls=":")
+        a.legend(fontsize=7.5, frameon=False, loc="best")
+    note = (f"dashed red = breaking_level {breaking}; dotted green = critical_operating_level {critical}\n"
+            "mock agents: pipeline check, not a finding")
+    fig.text(0.5, -0.02, note, ha="center", va="top", fontsize=7.5, color="#555555")
+    fig.tight_layout()
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def fig5(rows, path):
+    """Stage-3: does the payload survive the channel filter, and does the monitor still see it?
+
+    Restricted to one defender arm and one movement mask when present, so the bars compare channel
+    filters only; payload delivery (left) vs monitor detection (right) is the evasion gap.
+    """
+    if not rows:
+        return None
+    pol = "risk_aware_tiered" if any(r["policy"] == "risk_aware_tiered" for r in rows) else rows[0]["policy"]
+    sub = [r for r in rows if r["policy"] == pol]
+    if any(r["movement_direction_mode"] == "unrestricted" for r in sub):
+        sub = [r for r in sub if r["movement_direction_mode"] == "unrestricted"]
+    lvl = min(int(float(r["level"])) for r in sub)
+    sub = [r for r in sub if int(float(r["level"])) == lvl]
+    channels = sorted({r["action_channel_mode"] for r in sub})
+    forms = sorted({r["payload_form"] for r in sub})
+    colors = {"naive": "#d62728", "compressed": "#2ca02c"}
+    fig, axes = plt.subplots(1, 2, figsize=(11.6, 4.5))
+    width = 0.8 / max(1, len(forms))
+    for ax, metric, title in ((axes[0], "mean_payload_delivery_rate", "payload survives the filter"),
+                              (axes[1], "mean_monitor_detection_rate", "monitor still sees it")):
+        for k, form in enumerate(forms):
+            vals, errs, xs = [], [], []
+            for j, ch in enumerate(channels):
+                cell = [float(r[metric]) for r in sub if r["payload_form"] == form
+                        and r["action_channel_mode"] == ch]
+                v, e = mean_sem(cell)
+                vals.append(v)
+                errs.append(e)
+                xs.append(j + (k - (len(forms) - 1) / 2) * width)
+            ax.bar(xs, vals, width=width, color=colors.get(form, "#333333"), alpha=0.85, label=form)
+        ax.set_xticks(range(len(channels)))
+        ax.set_xticklabels([c.replace("_", "\n", 1) for c in channels], fontsize=8)
+        ax.set_ylim(0, 1.05)
+        ax.set_title(title, fontsize=11)
+        ax.set_ylabel("fraction of infected node-steps")
+        ax.grid(alpha=0.25, axis="y")
+        ax.legend(fontsize=8, frameon=False)
+    fig.suptitle(f"Monitor evasion under hard channel constraints (level {lvl}, {pol})", fontsize=10.5)
+    fig.tight_layout(rect=(0, 0.02, 1, 0.96))
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
@@ -184,6 +277,8 @@ def main(argv=None) -> int:
     per_seed = args.file or os.path.join(args.results, "per_seed_main.csv")
     episodes = args.episodes or os.path.join(args.results, "episodes_main.jsonl")
     scaling = os.path.join(args.results, "scaling_per_seed.csv")
+    ladder = os.path.join(args.results, "ladder_breaking_point.csv")
+    evasion = os.path.join(args.results, "ladder_constraint_summary.csv")
     os.makedirs(args.out, exist_ok=True)
     made = []
     if os.path.exists(per_seed):
@@ -203,6 +298,18 @@ def main(argv=None) -> int:
             made.append(p)
     else:
         print("missing", scaling, file=sys.stderr)
+    if os.path.exists(ladder):
+        p = fig4(load(ladder), os.path.join(args.out, "fig4_ladder_breaking_point.pdf"))
+        if p:
+            made.append(p)
+    else:
+        print("missing", ladder, file=sys.stderr)
+    if os.path.exists(evasion):
+        p = fig5(load(evasion), os.path.join(args.out, "fig5_constraint_evasion.pdf"))
+        if p:
+            made.append(p)
+    else:
+        print("missing", evasion, file=sys.stderr)
     for p in made:
         print("wrote", p)
     return 0 if made else 1
