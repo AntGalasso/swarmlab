@@ -1,7 +1,14 @@
 
 """llm_client.py -- PRE-EXISTING SCAFFOLDING (written before the Swarm Alignment Hackathon kickoff).
 
-Async OpenRouter client + deterministic SQLite cache (common random numbers across policy arms).
+Async LLM client with two selectable providers + deterministic SQLite cache (common random numbers
+across policy arms). Provider is chosen with the SWARMLAB_PROVIDER env var:
+
+  * SWARMLAB_PROVIDER=openrouter (default) -> AsyncOpenAI at OpenRouter, key OPENROUTER_API_KEY
+    (or OPENAI_API_KEY). Model slugs: the OpenRouter catalog (qwen/..., openai/...).
+  * SWARMLAB_PROVIDER=adaption -> Adaption Labs Responses API via the official `adaption` SDK
+    (pip install adaption), key ADAPTION_API_KEY (pt_live_...). Model slugs: the Adaption catalog
+    (deepseek-v4-flash, qwen3.8-27b, gemma-4-31b-it, ...; see docs.adaptionlabs.ai).
 
 COMPLIANCE GUARDRAIL
   * The ONLY live call this file makes by itself is run_connectivity_smoke_test(), which sends the
@@ -105,17 +112,23 @@ class SQLiteLLMCache:
 
 
 # --------------------------------------------------------------------------------- transports
+def _provider() -> str:
+    """Selected LLM provider: $SWARMLAB_PROVIDER ('openrouter' default, 'adaption')."""
+    return os.getenv("SWARMLAB_PROVIDER", "openrouter").strip().lower()
+
+
 def _api_key() -> Optional[str]:
+    if _provider() == "adaption":
+        return os.getenv("ADAPTION_API_KEY")
     return os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
 
 
 def make_openrouter_transport() -> Transport:
     """Real transport (AsyncOpenAI pointed at OpenRouter). Imported lazily so offline tests need no key."""
-    from openai import AsyncOpenAI
-
     key = _api_key()
     if not key:
         raise RuntimeError("Missing OPENROUTER_API_KEY (or OPENAI_API_KEY). Put it in .env, never in the code.")
+    from openai import AsyncOpenAI
     # Bounded request timeout: a stalled upstream provider must not wedge a smoke test or a sprint run.
     # SDK-level retries are disabled because LLMBackend owns the retry/backoff policy.
     client = AsyncOpenAI(base_url=OPENROUTER_BASE_URL, api_key=key, timeout=60.0, max_retries=0)
@@ -134,6 +147,60 @@ def make_openrouter_transport() -> Transport:
         return text, int(getattr(u, "prompt_tokens", 0) or 0), int(getattr(u, "completion_tokens", 0) or 0)
 
     return transport
+
+
+def make_adaption_transport() -> Transport:
+    """Adaption Labs transport: Responses API via the official `adaption` SDK.
+
+    System prompt maps to `instructions`, the remaining messages to `input`, and the reply is read
+    from `output_text` (usage: input_tokens/output_tokens). AsyncAdaption is used when the SDK ships
+    it; otherwise the sync client is wrapped in asyncio.to_thread. Imported lazily so offline tests
+    need no SDK and no key.
+    """
+    key = os.getenv("ADAPTION_API_KEY")
+    if not key:
+        raise RuntimeError("Missing ADAPTION_API_KEY. Put it in .env, never in the code.")
+
+    try:  # SDK >= 0.18 mirrors openai-python, so AsyncAdaption is expected to exist
+        from adaption import AsyncAdaption
+
+        client = AsyncAdaption(api_key=key, timeout=60.0, max_retries=0)
+
+        async def _create(**kwargs):
+            return await client.responses.create(**kwargs)
+    except ImportError:  # fall back to the sync client; LLMBackend calls us from its own loop
+        from adaption import Adaption
+
+        sync_client = Adaption(api_key=key, timeout=60.0, max_retries=0)
+
+        async def _create(**kwargs):
+            return await asyncio.to_thread(sync_client.responses.create, **kwargs)
+
+    async def transport(model: str, messages: Messages, temperature: float, max_tokens: int):
+        system = "\n".join(m["content"] for m in messages if m["role"] == "system")
+        rest = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
+        kwargs = {"model": model, "input": rest, "temperature": temperature,
+                  "max_output_tokens": int(max_tokens)}
+        if system:
+            kwargs["instructions"] = system
+        r = await _create(**kwargs)
+        text = (getattr(r, "output_text", "") or "").strip()
+        u = getattr(r, "usage", None)
+        pt = int(getattr(u, "input_tokens", 0) or getattr(u, "prompt_tokens", 0) or 0)
+        ct = int(getattr(u, "output_tokens", 0) or getattr(u, "completion_tokens", 0) or 0)
+        return text, pt, ct
+
+    return transport
+
+
+def make_default_transport() -> Transport:
+    """Dispatch on $SWARMLAB_PROVIDER so runs switch provider without touching swarmlab.py."""
+    provider = _provider()
+    if provider == "openrouter":
+        return make_openrouter_transport()
+    if provider == "adaption":
+        return make_adaption_transport()
+    raise RuntimeError(f"Unknown SWARMLAB_PROVIDER={provider!r} (expected 'openrouter' or 'adaption').")
 
 
 # ------------------------------------------------------------------------------------ backend
@@ -156,7 +223,7 @@ class LLMBackend:
         if hit is not None:
             return hit
         if self.transport is None:
-            self.transport = make_openrouter_transport()
+            self.transport = make_default_transport()
         assert self._sem is not None
         last: Optional[Exception] = None
         async with self._sem:
@@ -177,6 +244,7 @@ class LLMBackend:
     def generate(self, reqs: Sequence[Tuple[str, str, str]], temperature: Optional[float] = None) -> List[str]:
         """reqs: list of (system, user, crn_salt). Returns texts in the same order."""
         return self._loop.run_until_complete(self._batch(reqs, temperature))
+
     def close(self) -> None:
         """Close the event loop owned by this backend."""
         if not self._loop.is_closed():
@@ -192,7 +260,7 @@ def make_llm_policy(model: str, cache: SQLiteLLMCache, max_concurrency: int = 40
 def run_connectivity_smoke_test(db_path: str = "llm_cache.sqlite", transport: Optional[Transport] = None) -> bool:
     """The ONLY live call permitted before kickoff: 'Reply with the single word READY.' / 'Ping.'"""
     if transport is None and not _api_key():
-        print("No OPENROUTER_API_KEY / OPENAI_API_KEY found (.env). Cannot run the smoke test.")
+        print(f"No API key found for provider {_provider()!r} (.env). Cannot run the smoke test.")
         return False
     cache = SQLiteLLMCache(db_path)
     try:
