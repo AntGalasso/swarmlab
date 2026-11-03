@@ -21,9 +21,13 @@ Project: *When and Whom to Quarantine? Topology-aware risk control under alert-d
 | `swarmlab.py` | simulator, 10 policy arms (incl. two-tier `risk_aware_tiered`), metrics, joint tuning, scaling sweep, LLM budget estimator, CLI |
 | `stats_check.py` | pre-registered H1-H4 tests (paired Wilcoxon, Holm, bootstrap CI, Spearman) + strict Pareto / non-inferiority labels |
 | `make_figures.py` | publication `.pdf` figures (safety-utility frontier, budget exhaustion dynamics, scaling curve) |
-| `METRICS_SPEC.md` | exact equations for every reported metric, monitor, risk score, tuning objective and label |
+| `env_ladder.py` | Stage 1 fake-web corpus, Stage 2 difficulty ladder + breaking-point finder, Stage 3 hard constraints + `CoTPayloadAdapter` evasion sweep (mock-only, no live-LLM path) |
+| `METRICS_SPEC.md` | exact equations for every reported metric, monitor, risk score, tuning objective and label (§1-§13), plus the ladder/sandbox metrics (§14) |
+| `KUNAL_SANDBOX_GUIDE.md` | developer guide to the three stages: how to plug a live CoT payload adapter into Stage 3 after kickoff |
+| `ARCHITECTURE_MAP.md` | module map, seed splits, artifact list, per-teammate ownership |
 | `swarmtraces_fetch.py` | download + aggregate-only profile of the public Swarm Traces dataset |
-| `tests/test_core.py` | 45 offline tests (determinism, CRN prefix sharing, caps, guards, cache, decoy realism, arm divergence, metric formulas, Pareto labels, per-step tier-1 budgets, payloads) |
+| `tests/test_core.py` | 46 offline tests (determinism, CRN prefix sharing, caps, guards, cache, decoy realism, arm divergence, metric formulas, Pareto labels, per-step tier-1 budgets, payloads) |
+| `tests/test_env_ladder.py` | 27 offline tests (corpus schema/determinism, ladder monotonicity + pinned breaking point, routing masks, channel filters, adapter contract, hook compatibility, LLM refusal) |
 
 ## Quickstart
 ```bash
@@ -37,11 +41,18 @@ python swarmlab.py --mode mock --split heldout --params results/tuned_params.jso
 python swarmlab.py --mode mock --scaling-sweep --seeds 20    # N in {12,24,36} on small_world
 python stats_check.py --file results/per_seed_main.csv
 python stats_check.py --file results/per_seed_heldout.csv
-python make_figures.py
+python make_figures.py                                       # fig1..fig3
+
+python env_ladder.py --all                                   # corpus + ladder + Stage-3 sweep (~20 s, mock)
+python env_ladder.py --build-corpus                          # only data/fake_web_corpus.jsonl
+python swarmlab.py --mode mock --entry-source fake_web_jsonl --seeds 2 --topologies chain        --policies no_defense risk_aware_tiered --out results/entry_demo
+python stats_check.py --ladder results/ladder_breaking_point.csv                       --evasion results/ladder_constraint_evasion.csv --out results/ladder_stats_report.json
+python make_figures.py                                       # fig1..fig5 (fig4/fig5 need the ladder outputs)
 python swarmlab.py --budget --seeds 30 --price-in <usd/Mtok> --price-out <usd/Mtok>   # you supply real prices
 python swarmtraces_fetch.py download && python swarmtraces_fetch.py profile
 ```
-Seed splits: **tune** 9001-9030 (always all 30 for tuning), **main** 1-30, **heldout** 31-60. `--tune` refuses other splits.
+Seed splits: **tune** 9001-9030 (always all 30 for tuning), **main** 1-30, **heldout** 31-60, **ladder calibration**
+9401-9440 (freezes the ladder's success bar, never graded), **ladder/scaling** 9001-9020. `--tune` refuses other splits.
 All deployable arms are tuned on the same tune seeds, optimising
 `J = AUC_ever + alpha * (MAE / MAE_baseline)` (`--alpha`, default 0.25) so a candidate cannot buy containment
 by wrecking consensus accuracy. Artifacts: `results/tuning_summary.json`, `results/tuned_params.json`.
@@ -90,3 +101,22 @@ python make_figures.py --file results/per_seed_main_qwen.csv --episodes results/
 * Tier-1 sanitation preserves the numeric estimate, so its measured utility cost is only re-quantization +
   the `B_san` budget; the loss of qualitative coordination is not measured by this task (see
   `METRICS_SPEC.md` §13).
+
+## Sandbox ladder (`env_ladder.py`, mock only)
+A third question, upstream of the quarantine comparison: **at what difficulty does the swarm stop agreeing at
+all?** Stage 1 seeds the episode from a deterministic 36-document fake-web corpus (28 clean, 4 benign
+`[DOC-2]` decoys, 4 benign entry payloads wrapped in `story_context` / `base64_stub` /
+`markdown_metadata`). Stage 2 tightens five orthogonal knobs over levels 1-8 and freezes
+`target_mae_threshold` on calibration seeds 9401-9440, then reports
+`breaking_level = min{l : pass_rate_l < 0.50}` and `critical_operating_level = max(1, breaking_level - 1)`.
+Stage 3 holds the ladder there and adds `HardConstraintSpec` (movement: `unrestricted`, `directed_dag`,
+`chokepoint_hub`, `ring_clockwise`; channel: `free_note`, `banned_brackets`, `length_clamped_32`,
+`structured_kv_only`) plus a `CoTPayloadAdapter` seam that reports **payload delivery** separately from what
+the m-step monitor can see.
+
+Result to quote (mock, level 4): a naive `[REF-7]` payload is destroyed by `banned_brackets` (delivery 0.00)
+while a compressed stand-in is delivered 100 % of the time and alarms the monitor on ~4 % of node-steps - the
+lexical blacklist is beaten. `structured_kv_only` reduces delivery to 0.00 for both forms, because it removes
+the free-text channel instead of filtering strings: **architectural mediation beats lexical blacklisting**.
+`env_ladder.py` has no live-LLM code path (`--mode llm` is refused); the live adapter is a subclass, see
+`KUNAL_SANDBOX_GUIDE.md`. All numbers are pipeline checks, not findings.

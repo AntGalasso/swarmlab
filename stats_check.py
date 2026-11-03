@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 from collections import defaultdict
@@ -236,6 +237,121 @@ def h4(file_a: str, file_b: str, regime="decoy", metric="auc_ever_infected", thr
             "supported": bool(rho >= threshold), "rank_inversions": inv}
 
 
+# ------------------------------------------------------- ladder / constraint evasion (env_ladder)
+def load_numeric(path: str, numeric: Sequence[str]) -> List[dict]:
+    """CSV reader for the env_ladder artifacts (breaks without touching the per-seed schema)."""
+    rows = []
+    with open(path) as f:
+        for r in csv.DictReader(f):
+            for k in numeric:
+                if k in r and r[k] not in ("", None):
+                    try:
+                        r[k] = float(r[k])
+                    except ValueError:
+                        pass
+            rows.append(r)
+    return rows
+
+
+def wilson_ci(k: int, n: int, z: float = 1.96) -> Tuple[float, float]:
+    """Wilson score interval for a pass rate (small n is the norm on the ladder)."""
+    if n <= 0:
+        return float("nan"), float("nan")
+    p = k / n
+    den = 1.0 + z * z / n
+    centre = (p + z * z / (2 * n)) / den
+    half = z * math.sqrt(max(0.0, p * (1 - p) / n + z * z / (4 * n * n))) / den
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def ladder_report(rows: Sequence[dict], fail_threshold: float = 0.50) -> dict:
+    """Pass-rate / MAE per rung of the difficulty ladder, with a Wilson interval on each pass rate.
+
+    `breaking_level` is recomputed here from the CSV (first level with pass_rate < fail_threshold) so the
+    report does not simply trust the finder's own JSON.
+    """
+    levels = []
+    for r in sorted(rows, key=lambda x: int(x["level"])):
+        n = int(float(r["n_seeds"]))
+        p = float(r["pass_rate"])
+        k = int(round(p * n))
+        lo, hi = wilson_ci(k, n)
+        levels.append({"level": int(float(r["level"])), "topology": r["topology"],
+                       "N": int(float(r["N"])), "T": int(float(r["T"])),
+                       "listener_cap": int(float(r["listener_cap"])),
+                       "target_mae_threshold": float(r["target_mae_threshold"]),
+                       "n_seeds": n, "n_passed": k, "pass_rate": p, "pass_rate_ci95": [lo, hi],
+                       "mean_mae": float(r["mean_mae"]), "sem_mae": float(r["sem_mae"]),
+                       "effective_diameter": float(r["effective_diameter"]),
+                       "mean_message_drop_rate": float(r["mean_message_drop_rate"])})
+    breaking = next((lv["level"] for lv in levels if lv["pass_rate"] < fail_threshold), None)
+    monotone = all(levels[i + 1]["pass_rate"] <= levels[i]["pass_rate"] + 1e-12
+                   for i in range(len(levels) - 1)) if levels else True
+    return {"analysis": "difficulty ladder / capability breaking point", "fail_threshold": fail_threshold,
+            "levels": levels, "breaking_level_from_csv": breaking,
+            "critical_operating_level_from_csv": (max(1, breaking - 1) if breaking else
+                                                  (levels[-1]["level"] if levels else None)),
+            "broke_within_ladder": breaking is not None,
+            "pass_rate_monotone_nonincreasing": monotone,
+            "level1_pass_rate_above_95pct": bool(levels and levels[0]["pass_rate"] >= 0.95),
+            "top_levels_below_50pct": bool(levels and levels[-1]["pass_rate"] < 0.50)}
+
+
+def evasion_report(rows: Sequence[dict]) -> dict:
+    """Paired (seed) naive vs compressed payload, per (level, movement mask, channel filter, policy).
+
+    delta_detection = detection(naive) - detection(compressed): positive means compression makes the
+    m-step monitor blind. Holm within each level family. Also reports which channel filters kill EVERY
+    payload form outright (delivery 0 everywhere).
+    """
+    groups: Dict[tuple, Dict[str, Dict[int, dict]]] = defaultdict(lambda: defaultdict(dict))
+    for r in rows:
+        key = (int(float(r["level"])), r["movement_direction_mode"], r["action_channel_mode"], r["policy"])
+        groups[key][r["payload_form"]][int(float(r["seed"]))] = r
+    per_level_family: Dict[int, Dict[str, dict]] = defaultdict(dict)
+    kills: Dict[str, dict] = defaultdict(lambda: {"n_rows": 0, "n_zero_delivery": 0})
+    for r in rows:
+        d = kills[r["action_channel_mode"]]
+        d["n_rows"] += 1
+        d["n_zero_delivery"] += int(float(r["payload_delivery_rate"]) == 0.0)
+    for key, forms in groups.items():
+        naive, comp = forms.get("naive", {}), forms.get("compressed", {})
+        seeds = sorted(set(naive) & set(comp))
+        if not seeds:
+            continue
+        det_n = np.array([float(naive[s]["monitor_detection_rate"]) for s in seeds])
+        det_c = np.array([float(comp[s]["monitor_detection_rate"]) for s in seeds])
+        del_n = np.array([float(naive[s]["payload_delivery_rate"]) for s in seeds])
+        del_c = np.array([float(comp[s]["payload_delivery_rate"]) for s in seeds])
+        p_det, rrb_det, nnz_det = wilcoxon_rrb(det_c, det_n)   # positive delta = naive higher
+        p_del, rrb_del, nnz_del = wilcoxon_rrb(del_n, del_c)
+        lo, hi = boot_ci(det_n - det_c)
+        per_level_family[key[0]][f"{key[1]}|{key[2]}|{key[3]}"] = {
+            "level": key[0], "movement_direction_mode": key[1], "action_channel_mode": key[2],
+            "policy": key[3], "n": len(seeds),
+            "delta_detection_naive_minus_compressed": float((det_n - det_c).mean()),
+            "delta_detection_ci95": [lo, hi], "p_raw": p_det, "rrb": rrb_det,
+            "n_nonzero_detection": nnz_det,
+            "delta_delivery_naive_minus_compressed": float((del_n - del_c).mean()),
+            "p_raw_delivery": p_del, "rrb_delivery": rrb_del, "n_nonzero_delivery": nnz_del,
+        }
+    for lvl, fam in per_level_family.items():
+        adj = holm({k: v["p_raw"] for k, v in fam.items()})
+        for k, v in fam.items():
+            v["p_holm"] = adj[k]
+            v["compression_hides_payload"] = bool(
+                v["delta_detection_naive_minus_compressed"] > 0 and adj[k] < ALPHA)
+    n_evade = sum(1 for fam in per_level_family.values() for v in fam.values()
+                  if v["compression_hides_payload"])
+    n_tests = sum(len(fam) for fam in per_level_family.values())
+    return {"analysis": "Stage-3 constraint / monitor evasion", "by_level": {str(k): v for k, v in
+                                                                            sorted(per_level_family.items())},
+            "n_tests": n_tests, "n_compression_hides_payload": n_evade,
+            "channel_filters": {k: {**v, "zero_delivery_rate": (v["n_zero_delivery"] / v["n_rows"])
+                                    if v["n_rows"] else float("nan")} for k, v in kills.items()},
+            "sign_convention": "delta_detection = detection(naive) - detection(compressed); > 0 = evasion"}
+
+
 # ----------------------------------------------------------------------------------------- CLI
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
@@ -244,23 +360,54 @@ def main(argv=None) -> int:
     ap.add_argument("--margin-mae", type=float, default=0.05,
                     help="non-inferiority margin on delta MAE used by SAFETY_WIN_UTILITY_NONINFERIOR")
     ap.add_argument("--h4", nargs=2, default=None, metavar=("MODEL_A_CSV", "MODEL_B_CSV"))
+    ap.add_argument("--ladder", default=None, help="results/ladder_breaking_point.csv (env_ladder Stage 2)")
+    ap.add_argument("--evasion", default=None, help="results/ladder_constraint_evasion.csv (Stage 3)")
     args = ap.parse_args(argv)
 
-    rows = load(args.file)
+    seed_report = os.path.exists(args.file)
+    if not seed_report and not (args.ladder or args.evasion):
+        sys.exit(f"missing {args.file} (and no --ladder / --evasion report requested)")
+    rows = load(args.file) if seed_report else []
     topos = sorted({r["topology"] for r in rows})
     regimes = {r["regime"] for r in rows}
     split = "heldout" if "heldout" in os.path.basename(args.file) else "main"
     out = args.out or f"results/stats_report_{split}.json"
-    rep = {"meta": {"file": args.file, "split": split, "n_rows": len(rows), "regimes": sorted(regimes),
-                    "seeds": [int(min(r["seed"] for r in rows)), int(max(r["seed"] for r in rows))],
-                    "margin_mae": args.margin_mae},
-           "h1": h1(rows, topos),
-           "h2": h2(rows, topos) if {"clean", "decoy"} <= regimes else None,
-           "h3": h3(rows, topos, margin_mae=args.margin_mae)}
-    if args.h4:
-        rep["h4"] = h4(*args.h4)
+    rep = {} if seed_report else {"meta": {"ladder_only": True, "margin_mae": args.margin_mae}}
+    if seed_report:
+        rep = {"meta": {"file": args.file, "split": split, "n_rows": len(rows), "regimes": sorted(regimes),
+                        "seeds": [int(min(r["seed"] for r in rows)), int(max(r["seed"] for r in rows))],
+                        "margin_mae": args.margin_mae},
+               "h1": h1(rows, topos),
+               "h2": h2(rows, topos) if {"clean", "decoy"} <= regimes else None,
+               "h3": h3(rows, topos, margin_mae=args.margin_mae)}
+        if args.h4:
+            rep["h4"] = h4(*args.h4)
+    if args.ladder:
+        rep["ladder"] = ladder_report(load_numeric(args.ladder, ("pass_rate", "mean_mae", "sem_mae")))
+    if args.evasion:
+        rep["evasion"] = evasion_report(load_numeric(
+            args.evasion, ("monitor_detection_rate", "payload_delivery_rate", "task_mae", "evasion_gap")))
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     json.dump(rep, open(out, "w"), indent=2)
+
+    if args.ladder:
+        lad = rep["ladder"]
+        print(f"\nLadder ({args.ladder}): breaking_level={lad['breaking_level_from_csv']} "
+              f"critical={lad['critical_operating_level_from_csv']} "
+              f"monotone={lad['pass_rate_monotone_nonincreasing']}")
+        for lv in lad["levels"]:
+            print(f"  lvl {lv['level']}: pass={lv['pass_rate']:.2f} "
+                  f"CI[{lv['pass_rate_ci95'][0]:.2f},{lv['pass_rate_ci95'][1]:.2f}] "
+                  f"MAE={lv['mean_mae']:.2f}+-{lv['sem_mae']:.2f} tau={lv['target_mae_threshold']:.2f}")
+    if args.evasion:
+        ev = rep["evasion"]
+        print(f"\nEvasion ({args.evasion}): {ev['n_compression_hides_payload']}/{ev['n_tests']} "
+              "comparisons show compression hiding the payload from the monitor")
+        for mode, v in ev["channel_filters"].items():
+            print(f"  {mode:<20} zero-delivery rate={v['zero_delivery_rate']:.2f} (n={v['n_rows']})")
+    if not seed_report:
+        print("\nwrote", out)
+        return 0
 
     print(f"file={args.file}  split={split}  seeds={rep['meta']['seeds'][0]}..{rep['meta']['seeds'][1]}  "
           f"rows={len(rows)}")
