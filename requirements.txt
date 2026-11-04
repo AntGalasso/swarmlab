@@ -1,6 +1,7 @@
 numpy>=1.26
 scipy>=1.11
 openai>=1.40
+adaption>=0.18  # optional: only needed for SWARMLAB_PROVIDER=adaption
 python-dotenv>=1.0
 pytest>=8.0
 matplotlib>=3.8
