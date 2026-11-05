@@ -1,0 +1,53 @@
+# ruff 0.17.3 (pinned in pyproject.toml). Run it with scripts/check_static.py, or `ruff check` from the repository root.
+#
+# Scope: our code only. `include` limits a bare `ruff check` to bazt_lab/, scripts/ and the architecture test, and
+# `extend-exclude` with `force-exclude` keeps the upstream files (swarmlab.py, bazt/, env_ladder.py, llm_client.py,
+# live_cot_adapter.py, stats_check.py, make_figures.py, swarmtraces_fetch.py, their tests, vendor/G-safeguard) out even
+# when an editor or a hook names them on the command line.
+#
+# The rules look for bugs and hygiene, not formatting: pyflakes, bugbear, bandit, pylint errors and warnings, and a
+# few cheap families that catch real mistakes (implicit string concatenation in lists, shadowed builtins, mutable
+# defaults, zip() without strict=, missing __init__.py). Style-only rules and line length are not enforced.
+target-version = "py311"
+line-length = 120
+include = ["bazt_lab/**/*.py", "scripts/**/*.py", "tests/test_architecture_bazt_lab.py"]
+force-exclude = true
+extend-exclude = [
+    "swarmlab.py", "bazt", "env_ladder.py", "llm_client.py", "live_cot_adapter.py", "stats_check.py",
+    "make_figures.py", "swarmtraces_fetch.py", "vendor",
+    "tests/bazt_testkit.py", "tests/test_core.py", "tests/test_bazt_*.py", "tests/test_env_ladder.py",
+    "tests/test_kunal_adapters.py",
+]
+
+[lint]
+select = [
+    "F",                                  # pyflakes: unused or undefined names, bad format strings
+    "E4", "E7", "E9",                     # imports, statements (E702 `a; b`, E711 `== None`, E731), syntax errors
+    "W6",                                 # invalid escape sequences
+    "B",                                  # bugbear: mutable defaults, zip(strict=), loop variables, bare excepts
+    "A",                                  # shadowed builtins
+    "C4",                                 # comprehensions
+    "PIE", "ISC", "T10", "PERF",
+    "PLE", "PLW",                         # pylint errors and warnings
+    "RUF",                                # ruff's own: unused noqa, ambiguous unicode, mutable class attributes
+    "S",                                  # bandit: pickle, eval, weak hashes, unsafe yaml, requests without timeout
+    "SIM",
+    "INP",                                # a directory of modules without __init__.py
+    "I",                                  # import order
+    "UP",                                 # old syntax that py311 replaces
+]
+ignore = [
+    "UP006", "UP007", "UP035", "UP045",   # typing.List / Optional: valid on 3.11 and used by core's contracts
+    "C408",                               # dict(a=1) is how rows are written here
+    "S603", "S607",                       # subprocess with a fixed argv list (git, ruff, python) is intended
+    "SIM108", "SIM300",                   # a ternary is not always clearer; `assert 0 == x` reads fine
+    "RUF005", "RUF022", "RUF059",         # list concatenation, __all__ order, unused unpacked names: style
+]
+
+[lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106"]  # assert is the test; test credentials are fake
+"tests/**" = ["S101", "S105", "S106", "INP001"]   # the repository's top-level tests are not a package
+"scripts/**" = ["INP001"]                 # scripts are run by path, not imported as a package
+
+[lint.isort]
+known-first-party = ["bazt_lab"]

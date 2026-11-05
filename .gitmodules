@@ -1,0 +1,3 @@
+[submodule "vendor/G-safeguard"]
+	path = vendor/G-safeguard
+	url = https://github.com/wslong20/G-safeguard

@@ -2,8 +2,13 @@
 llm_cache.sqlite*
 data/
 results/*.jsonl
+results/experiments/
 __pycache__/
+*.pyc
 .pytest_cache/
+.ruff_cache/
 .venv/
 wandb/
-results/experiments/
+# dataset and model caches
+.cache/
+hf_cache/

@@ -44,12 +44,17 @@ class EpisodeContext:
     arm: str
     unit_ids: tuple                          # length B, for checkpointing and logging
     arm_stream: Callable[[str, int], torch.Generator]   # (namespace, b) -> arm-specific generator
+    platform: str = ""                       # "mock" | "llm": lets an arm pick platform-specific settings
+    timing_schedule: Optional[Tensor] = None   # bool [B, T]: rounds a matched-timing control may act (0-based);
+                                             # None for every other arm
+    cell: Optional[Mapping] = None           # {"attack", "task"} of the batch's units (LLM side; the GNN arm picks
+                                             # its trained family from it); None where not supplied
 
 
 @dataclass
 class Observation:
     """What a defender may see at round t. Ground truth (infection, attackers) is NEVER here."""
-    t: int                                   # 1..T
+    t: int                                   # 1..T, counted over the whole episode (LLM: the seed run, D54)
     T: int
     active: Tensor                           # bool [B, N]: not isolated
     attempts: Tensor                         # bool [B, N, N]: deliveries the agents try this round
@@ -63,6 +68,10 @@ class Observation:
                                              # False where content was altered in transit (AiTM)
     oracle: Optional[Callable[[], Tensor]] = None   # bool [B, N] infected now; supplied ONLY to arms whose
                                              # ArmSpec.needs_truth is True (oracle allocation)
+    round_in_conversation: Optional[int] = None   # LLM side: 1-based round inside the current conversation
+                                             # (t and T always count the whole episode = seed run, D54); None on the mock
+    texts: Optional[List[List[str]]] = None   # [B][N] text each agent wrote this round (LLM side only;
+                                             # delivered or not); None on the mock side
 
 
 @dataclass

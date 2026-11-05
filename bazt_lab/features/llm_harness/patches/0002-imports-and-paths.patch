@@ -1,0 +1,300 @@
+diff --git a/MA/gen_memory_attack_data.py b/MA/gen_memory_attack_data.py
+--- a/MA/gen_memory_attack_data.py
++++ b/MA/gen_memory_attack_data.py
+@@ -1,5 +1,4 @@
+ import json
+-from utils import get_tool_dict 
+ 
+ 
+ def format_examples(dataset, idx):
+diff --git a/MA/utils.py b/MA/utils.py
+--- a/MA/utils.py
++++ b/MA/utils.py
+@@ -1,10 +1,8 @@
+ import json
+ import re
+-from nltk import ngrams
+ from collections import Counter
+ import numpy as np
+ import random
+-from sentence_transformers import SentenceTransformer
+ 
+ 
+ def transform_tool_format_gpt(tool):
+@@ -114,7 +112,7 @@ def detect_overly_long_sequences(text):
+ 
+ def detect_repetitive_language(text, n_gram = 8, n_rep = 10):
+     words = text.split()
+-    n_grams = list(ngrams(words, n_gram))
++    n_grams = list(zip(*(words[i:] for i in range(n_gram))))
+     frequency = Counter(n_grams)
+     if len(frequency) == 0:
+         return False
+@@ -287,6 +285,7 @@ def get_adj_matrix(graph_type, n):
+ 
+ 
+ def get_sentence_embedding(sentence):
++    from sentence_transformers import SentenceTransformer
+     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+     embeddings = model.encode(sentence)
+     return embeddings
+\ No newline at end of file
+diff --git a/PI/agents.py b/PI/agents.py
+--- a/PI/agents.py
++++ b/PI/agents.py
+@@ -7,8 +7,6 @@ import random
+ from openai import OpenAI, AsyncOpenAI
+ import torch
+ from typing import Literal
+-from model import MyGAT
+-from sentence_transformers import SentenceTransformer
+ 
+ 
+ def llm_invoke(prompt, model_type: str): 
+diff --git a/PI/agents_for_gsm8k.py b/PI/agents_for_gsm8k.py
+--- a/PI/agents_for_gsm8k.py
++++ b/PI/agents_for_gsm8k.py
+@@ -7,8 +7,6 @@ import random
+ from openai import OpenAI, AsyncOpenAI
+ import torch
+ from typing import Literal
+-from model import MyGAT
+-from sentence_transformers import SentenceTransformer
+ 
+ 
+ def llm_invoke(prompt, model_type: str): 
+diff --git a/PI/gen_graph.py b/PI/gen_graph.py
+--- a/PI/gen_graph.py
++++ b/PI/gen_graph.py
+@@ -6,7 +6,6 @@ import json
+ import pickle
+ import asyncio
+ from typing import Literal
+-from sentence_transformers import SentenceTransformer
+ from torch.utils.data.dataset import Dataset
+ from tqdm import tqdm
+ from gen_csqa import gen_csqa_datasets
+diff --git a/PI/gen_graph_for_gsm8k.py b/PI/gen_graph_for_gsm8k.py
+--- a/PI/gen_graph_for_gsm8k.py
++++ b/PI/gen_graph_for_gsm8k.py
+@@ -6,12 +6,10 @@ import json
+ import pickle
+ import asyncio
+ from typing import Literal
+-from sentence_transformers import SentenceTransformer
+ from torch.utils.data.dataset import Dataset
+ from tqdm import tqdm
+ from gen_csqa import gen_csqa_datasets
+ from gen_mmlu import gen_mmlu_datasets
+-from gen_gsm8k import gen_gsm8k_dataset
+ 
+ def generate_directed_graph_dataset(num_nodes, sparsity, num_graphs):
+     """
+@@ -85,6 +83,7 @@ def generate_initial_data(ag_data, qa_data):
+ 
+ 
+ async def generate_graph_dataset(args): 
++    from gen_gsm8k import gen_gsm8k_dataset
+     if args.dataset == "csqa": 
+         qa_dataset = gen_csqa_datasets(args.dataset_path, phase=args.phase)
+     elif args.dataset == "mmlu":
+diff --git a/PI/utils.py b/PI/utils.py
+--- a/PI/utils.py
++++ b/PI/utils.py
+@@ -1,8 +1,8 @@
+ import numpy as np
+ import random
+-from sentence_transformers import SentenceTransformer
+ 
+ def get_sentence_embedding(sentence):
++    from sentence_transformers import SentenceTransformer
+     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+     embeddings = model.encode(sentence)
+     return embeddings
+diff --git a/TA/agents.py b/TA/agents.py
+--- a/TA/agents.py
++++ b/TA/agents.py
+@@ -8,7 +8,6 @@ from openai import OpenAI, AsyncOpenAI
+ import torch
+ from typing import Literal
+ # from model import MyGAT
+-from sentence_transformers import SentenceTransformer
+ from agent_prompts import USER_PROMPT, ATTACKER_PROMPT
+ 
+ def llm_invoke(prompt, model_type: str): 
+@@ -88,7 +87,7 @@ class AgentGraph:
+         if idx not in self.attacker_idxes: 
+             prompt = normal_prompt.format(available_tool_descriptions = available_tool_descriptions, input = user_instruction, available_tool_names = available_tool_names, agent_scratchpad = agent_scratchpad)
+         else: 
+-            prompt = attacker_prompt.format(agent_scratchpad)
++            prompt = attacker_prompt.format(input_text=agent_scratchpad)
+ 
+         response = self.agents[idx].chat(prompt)
+         return idx, response
+@@ -196,7 +195,7 @@ class AgentGraphWithDefense:
+         if idx not in self.attacker_idxes: 
+             prompt = normal_prompt.format(available_tool_descriptions = available_tool_descriptions, input = user_instruction, available_tool_names = available_tool_names, agent_scratchpad = agent_scratchpad)
+         else: 
+-            prompt = attacker_prompt.format(agent_scratchpad)
++            prompt = attacker_prompt.format(input_text=agent_scratchpad)
+ 
+         response = self.agents[idx].chat(prompt)
+         return idx, response
+diff --git a/TA/gen_graph.py b/TA/gen_graph.py
+--- a/TA/gen_graph.py
++++ b/TA/gen_graph.py
+@@ -3,7 +3,6 @@ import json
+ import pickle
+ import asyncio
+ from typing import Literal
+-from sentence_transformers import SentenceTransformer
+ from torch.utils.data.dataset import Dataset
+ from tqdm import tqdm
+ import numpy as np 
+diff --git a/TA/main_defense_for_different_topology.py b/TA/main_defense_for_different_topology.py
+--- a/TA/main_defense_for_different_topology.py
++++ b/TA/main_defense_for_different_topology.py
+@@ -6,7 +6,7 @@ import json
+ import random
+ import numpy as np
+ import torch
+-from gen_graph import get_sentence_embedding
++from utils import get_sentence_embedding
+ from einops import rearrange
+ from torch_scatter import scatter_mean
+ import argparse 
+diff --git a/TA/utils.py b/TA/utils.py
+--- a/TA/utils.py
++++ b/TA/utils.py
+@@ -1,10 +1,9 @@
+ import json
++import os
+ import re
+-from nltk import ngrams
+ from collections import Counter
+ import numpy as np
+ import random
+-from sentence_transformers import SentenceTransformer
+ 
+ def transform_tool_format_gpt(tool):
+     transformed_tool = {
+@@ -53,7 +52,7 @@ def transform_tool_format_gpt(tool):
+ 
+ def get_tool_dict(gpt_format=False):
+     tool_dict = {}
+-    with open('tools.json', 'r') as f:
++    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools.json'), 'r') as f:
+         toolkits = json.load(f)
+         for toolkit in toolkits:
+             kit_name = toolkit['toolkit']
+@@ -113,7 +112,7 @@ def detect_overly_long_sequences(text):
+ 
+ def detect_repetitive_language(text, n_gram = 8, n_rep = 10):
+     words = text.split()
+-    n_grams = list(ngrams(words, n_gram))
++    n_grams = list(zip(*(words[i:] for i in range(n_gram))))
+     frequency = Counter(n_grams)
+     if len(frequency) == 0:
+         return False
+@@ -286,6 +285,7 @@ def get_adj_matrix(graph_type, n):
+ 
+ 
+ def get_sentence_embedding(sentence):
++    from sentence_transformers import SentenceTransformer
+     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+     embeddings = model.encode(sentence)
+     return embeddings
+diff --git a/scalability/agents.py b/scalability/agents.py
+--- a/scalability/agents.py
++++ b/scalability/agents.py
+@@ -7,8 +7,6 @@ import random
+ from openai import OpenAI, AsyncOpenAI
+ import torch
+ from typing import Literal
+-from model import MyGAT
+-from sentence_transformers import SentenceTransformer
+ import copy
+ 
+ 
+@@ -202,7 +200,7 @@ class AgentGraph:
+             in_edges = self.adj_matrix[:, idx]
+             if len(in_idxs) > 0:
+                 for in_idx in in_idxs:
+-                    prompts += "\n" + f"Agent_{in_idx}'s View:" + self.communication_info_matrix[in_idx, idx]
++                    prompt += "\n" + f"Agent_{in_idx}'s View:" + self.communication_info_matrix[in_idx, idx]
+             else:
+                 prompt += "No responses from other agents.\n"
+ 
+@@ -396,7 +394,7 @@ class AgentGraphWithDefense:
+                 for in_idx in in_idxs:
+                     agent = self.agents[in_idx]
+                     if agent.get_role() == "normal": 
+-                        prompts += "\n" + f"Agent_{in_idx}'s View:" + self.communication_info_matrix[in_idx, idx]
++                        prompt += "\n" + f"Agent_{in_idx}'s View:" + self.communication_info_matrix[in_idx, idx]
+             else:
+                 prompt += "No responses from other agents.\n"
+ 
+diff --git a/scalability/gen_graph.py b/scalability/gen_graph.py
+--- a/scalability/gen_graph.py
++++ b/scalability/gen_graph.py
+@@ -3,7 +3,6 @@ import json
+ import pickle
+ import asyncio
+ from typing import Literal
+-from sentence_transformers import SentenceTransformer
+ from torch.utils.data.dataset import Dataset
+ from tqdm import tqdm
+ import numpy as np 
+diff --git a/scalability/gen_memory_attack_data.py b/scalability/gen_memory_attack_data.py
+--- a/scalability/gen_memory_attack_data.py
++++ b/scalability/gen_memory_attack_data.py
+@@ -1,5 +1,4 @@
+ import json
+-from utils import get_tool_dict 
+ 
+ 
+ def format_examples(dataset, idx):
+diff --git a/scalability/main_defense_for_different_topology.py b/scalability/main_defense_for_different_topology.py
+--- a/scalability/main_defense_for_different_topology.py
++++ b/scalability/main_defense_for_different_topology.py
+@@ -6,7 +6,7 @@ import json
+ import random
+ import numpy as np
+ import torch
+-from gen_graph import get_sentence_embedding
++from utils import get_sentence_embedding
+ from einops import rearrange
+ from torch_scatter import scatter_mean
+ import argparse 
+diff --git a/scalability/utils.py b/scalability/utils.py
+--- a/scalability/utils.py
++++ b/scalability/utils.py
+@@ -1,10 +1,8 @@
+ import json
+ import re
+-from nltk import ngrams
+ from collections import Counter
+ import numpy as np
+ import random
+-from sentence_transformers import SentenceTransformer
+ 
+ def transform_tool_format_gpt(tool):
+     transformed_tool = {
+@@ -113,7 +111,7 @@ def detect_overly_long_sequences(text):
+ 
+ def detect_repetitive_language(text, n_gram = 8, n_rep = 10):
+     words = text.split()
+-    n_grams = list(ngrams(words, n_gram))
++    n_grams = list(zip(*(words[i:] for i in range(n_gram))))
+     frequency = Counter(n_grams)
+     if len(frequency) == 0:
+         return False
+@@ -285,6 +283,7 @@ def get_adj_matrix(graph_type, n):
+     return adj_matrix
+ 
+ def get_sentence_embedding(sentence):
++    from sentence_transformers import SentenceTransformer
+     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+     embeddings = model.encode(sentence)
+     return embeddings
+\ No newline at end of file

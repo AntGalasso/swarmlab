@@ -12,6 +12,8 @@ dependencies = [
     "networkx==3.6.1",
     "openai==2.24.0",
     "python-dotenv==1.2.2",
+    "filelock==4.2.9",
+    "einops==0.8.2",                     # imported by the pinned G-Safeguard PI/MA model.py
     "datasets==5.1.0",
     "huggingface-hub==2.4.0",
     "transformers==5.22.1",
@@ -39,4 +41,6 @@ torch = { index = "pytorch-cpu" }
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "bazt_lab"]
+# `.` makes a bare `pytest` find bazt_lab and swarmlab; `scripts` lets the tests under scripts/tests import the scripts.
+testpaths = ["tests", "bazt_lab", "scripts"]
+pythonpath = [".", "scripts"]

@@ -30,7 +30,10 @@ experiments/profiles.toml          every setting; profiles sprint and research
 3. Only `adapters/` modules import third-party services: `wandb`, `datasets`, `huggingface_hub`, `openai`,
    `sentence_transformers`, `torch_geometric`, `swarmlab`, `bazt`, `llm_client`. torch and numpy may be used anywhere.
 4. Only `bazt_lab/app.py` imports every feature; it wires them and holds no logic of its own.
-5. No module reads an experiment value it does not get from settings; secrets come only from the environment
+5. A feature root holds `__init__.py`, `public.py` and the packages `private/`, `adapters/`, `tests/`, plus `CONTRACT.md`. The one
+   other module allowed there is a thin `__main__.py` (`python -m bazt_lab.features.<feature>`): it imports `sys` and its
+   own `public` and only calls it, with nothing else in it.
+6. No module reads an experiment value it does not get from settings; secrets come only from the environment
    (`HF_TOKEN`, `WANDB_API_KEY`, `OPENROUTER_API_KEY`), never from settings or code.
 
 ## Features and owners (one writer per file)
@@ -40,6 +43,7 @@ experiments/profiles.toml          every setting; profiles sprint and research
 | core | `bazt_lab/core/**` | contracts, settings, streams, checkpoints |
 | runner | `run_experiments.py`, `bazt_lab/app.py`, `bazt_lab/features/runner/**`, `tests/test_run_experiments.py`, `experiments/profiles.toml` | blocks, units, dry-run sizing, launch, calibration orchestration, manifests, CLI |
 | tracking | `bazt_lab/features/tracking/**` | `WandbTracker` (Tracker contract) |
+| sync | `bazt_lab/features/sync/**` | background upload of results, checkpoints and logs to the Hugging Face Hub (adapters/ only imports `huggingface_hub`); started by the runner through `public.py`, off unless `sync.enabled` |
 | mock_engine | `bazt_lab/features/mock_engine/**` | `MockPlatform` (Platform contract): torch engine, graphs, attack models, auditor presets, ledger |
 | conventional | `bazt_lab/features/conventional/**` | arms `A`, `B`, `C` (capped by their budget cell) |
 | references | `bazt_lab/features/references/**` | arms `GNN_standin`, `random_alloc`, `oracle_alloc`, `bra_greedy`, legacy matched-timing arms |
