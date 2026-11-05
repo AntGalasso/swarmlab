@@ -1,78 +1,82 @@
-"""bazt/config.py -- Frozen `BaztConfig` for the BAZT defence.
-
-All fields default to the values validated on the tune split (9001-9015).
-Never tune on main (1-30) or heldout (31-60).
-"""
-
+"""Frozen configuration of the BAZT gateway (one object = one fully specified experiment arm)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Optional
+
+BUDGET_MODES = ("pooled", "tiered")
 
 
 @dataclass(frozen=True)
 class BaztConfig:
-    # ------------------------------------------------------------------ budget
-    budget_mode: str = "pooled"          # "pooled" | "tiered"
-    B: int = 12                          # pooled capacity (actions)
-    K_hard: int = 3                      # tiered hard cap for ISOLATE / BLOCK_EDGE
-    B_soft: int = 6                      # tiered soft cap for INSPECT / SANITIZE / RESTRICT
-    # ------------------------------------------------------------------ costs
+    # --- budget ---------------------------------------------------------------------------------
+    budget_mode: str = "pooled"            # "pooled": one pool of B cost units | "tiered": hard + soft pools
+    B: int = 12                            # pooled capacity, in cost units
+    K_hard: int = 3                        # tiered: hard pool = K_hard isolate-equivalents (K_hard*cost_isolate)
+    B_soft: int = 6                        # tiered: soft pool = B_soft sanitize-equivalents (B_soft*cost_sanitize)
     cost_inspect: int = 1
     cost_sanitize: int = 1
     cost_restrict: int = 2
     cost_block: int = 2
     cost_isolate: int = 3
-    # ------------------------------------------------------------------ monitor / inspection / TTL
-    q_inspect: float = 0.8               # P(inspect returns a conclusive verdict)
-    inspect_ttl: int = 2                 # steps an inspection verdict overrides fused p'
-    ttl_restrict: int = 3                # steps a RESTRICT node stays restricted
-    tau_release: float = 0.3             # restricted node reassesses and releases when p' < tau_release
-    quarantine_ttl: Optional[int] = None  # optional hard TTL for quarantined (isolated) nodes
-    p_strip: float = 0.9                 # mock probability trusted_sanitize strips (used by taint attenuation)
-    # ------------------------------------------------------------------ provenance & fusion
-    w_prov: float = 1.0                  # weight of lineage taint in the log-odds
-    delta_hop: float = 0.7               # per-hop taint decay (< 1 -> monotone decay across hops)
-    own_decay: float = 0.5               # per-step decay of a node's own taint
-    # ------------------------------------------------------------------ optimizer & pacing
-    lam: float = 1.0                     # utility cost weight (0 -> ignore utility)
-    rho_san: float = 0.15                # SANITIZE utility cost coefficient
-    rho_res: float = 0.35                # RESTRICT utility cost coefficient
-    theta0: float = 0.15                 # base acceptance density threshold
-    kappa: float = 1.5                   # pacing: theta = theta0 * exp(kappa * z())
-    n_privileged: int = 3                # tool-holding / privileged nodes
-    # ------------------------------------------------------------------ filtering cost toggle
-    strip_degrades_weight: bool = True   # stripped messages lose consensus weight
-    stripped_edge_weight: float = 0.35   # weight of a stripped (schema-only) message vs intact 1.0 / 0.6
-    # ------------------------------------------------------------------ external monitor override
-    probe_score_hook: Optional[Callable] = None  # Track-4 open-weight activation probe s^{probe}_{i,t}
-    # ------------------------------------------------------------------ ablation booleans
-    unlimited: bool = False              # infinite pooled budget
-    use_pacing: bool = True              # theta rises as budget is spent
-    use_topology: bool = True            # horizon-bounded reachability in H
-    use_provenance: bool = True          # lineage taint in ell (w_prov -> 0 disables)
-    use_utility: bool = True             # lam_eff = lam if True else 0
-    binary_actions: bool = False         # only ISOLATE candidates
+    # --- inspection / state lifetimes -----------------------------------------------------------
+    q_inspect: float = 0.8                 # probability a paid inspection is conclusive
+    inspect_ttl: int = 2                   # a verdict stays valid for this many steps (including its own)
+    ttl_restrict: int = 3                  # a restriction lasts this many steps
+    tau_release: float = 0.3               # restricted node is released early once p' drops below this
+    quarantine_ttl: Optional[int] = None   # None = isolation is permanent (legacy semantics)
+    # --- provenance & evidence fusion -----------------------------------------------------------
+    w_prov: float = 1.0                    # weight of lineage taint in the log-odds fusion
+    delta_hop: float = 0.7                 # taint attenuation per hop
+    own_decay: float = 0.8                 # per-step decay of a node's own taint when nothing refreshes it
+    n_ingress: int = 2                     # designated external-facing nodes (patient-zero mode only)
+    # --- optimizer & pacing ---------------------------------------------------------------------
+    lam: float = 1.0                       # utility-cost weight (same meaning as swarmlab.Config.lam)
+    rho_san: float = 0.15                  # utility cost of one sanitize, as a fraction of centrality C_i
+    rho_res: float = 0.35                  # utility cost of one restriction, as a fraction of C_i
+    theta0: float = 0.15                   # base density threshold
+    kappa: float = 1.5                     # pacing steepness: theta = theta0 * exp(kappa * spent/capacity)
+    n_privileged: int = 3                  # tool-holding nodes
+    priv_bonus: float = 0.5                # extra benefit of restricting a privileged node (denies its tools)
+    # --- non-trivial filtering cost (see bazt/channel.py) -----------------------------------------
+    strip_degrades_weight: bool = True
+    stripped_edge_weight: float = 0.35     # consensus weight scale of a schema-only (rationale-free) message
+    precision_hp: float = 1.0              # weight scale of an intact message from a high-precision sensor
+    precision_lp: float = 0.6              # ... from a noisy sensor
+    noisy_frac: float = 0.4                # fraction of nodes with a noisy sensor
+    # --- optional external monitor (open-weight activation probe, Track 4) ----------------------
+    probe_score_hook: Optional[Callable] = None   # f(node, t, StepView) -> Optional[float], rolling-score scale
+    # --- ablations ------------------------------------------------------------------------------
+    unlimited: bool = False
+    use_pacing: bool = True
+    use_topology: bool = True
+    use_provenance: bool = True
+    use_utility: bool = True
+    binary_actions: bool = False
 
+    def __post_init__(self):
+        if self.budget_mode not in BUDGET_MODES:
+            raise ValueError(f"budget_mode must be one of {BUDGET_MODES}, got {self.budget_mode!r}")
+        for name in ("cost_inspect", "cost_sanitize", "cost_restrict", "cost_block", "cost_isolate"):
+            if getattr(self, name) <= 0:
+                raise ValueError(f"{name} must be positive")
+        for name in ("B", "K_hard", "B_soft"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be >= 0")
+        if not 0.0 <= self.q_inspect <= 1.0:
+            raise ValueError("q_inspect must be in [0, 1]")
+        if self.inspect_ttl < 1 or self.ttl_restrict < 1:
+            raise ValueError("inspect_ttl and ttl_restrict must be >= 1")
+        if self.quarantine_ttl is not None and self.quarantine_ttl < 1:
+            raise ValueError("quarantine_ttl must be None or >= 1")
+        if not 0.0 < self.stripped_edge_weight <= 1.0:
+            raise ValueError("stripped_edge_weight must be in (0, 1]")
 
-def cost_of(kind, cfg: "BaztConfig") -> int:
-    k = kind.value if hasattr(kind, "value") else str(kind)
-    return {
-        "INSPECT": cfg.cost_inspect,
-        "SANITIZE": cfg.cost_sanitize,
-        "RESTRICT": cfg.cost_restrict,
-        "BLOCK_EDGE": cfg.cost_block,
-        "ISOLATE": cfg.cost_isolate,
-    }[k]
-
-
-def message_weight(intact: bool, noisy: bool, cfg: BaztConfig) -> float:
-    """Consensus weight of a delivered message.
-
-    Intact message: calibrated precision weight (1.0 high-precision / 0.6 noisy sensor).
-    Stripped (schema-only) message: loses the rationale, drops to `stripped_edge_weight`,
-    creating a genuine, measurable MAE degradation when benign nodes are over-sanitized.
-    """
-    if not intact:
-        return cfg.stripped_edge_weight
-    return 0.6 if noisy else 1.0
+    @property
+    def total_capacity(self) -> float:
+        """Total budget in cost units (inf when unlimited)."""
+        if self.unlimited:
+            return float("inf")
+        if self.budget_mode == "pooled":
+            return float(self.B)
+        return float(self.K_hard * self.cost_isolate + self.B_soft * self.cost_sanitize)

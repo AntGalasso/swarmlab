@@ -1,24 +1,17 @@
-"""bazt/ -- Budget-Aware Zero-Trust Topology defence (BAZT).
+"""bazt -- Budgeted Adaptive Zero-Trust gateway for agent swarms.
 
-Stage-4 extension built on top of the pre-existing `swarmlab.py` simulator.
+PRE-EXISTING SCAFFOLDING (written before the Swarm Alignment Hackathon kickoff). Contains no experimental result;
+every number it produces in --mode mock is a pipeline check, not a finding.
 
-Dependency direction (non-negotiable): `bazt` imports `swarmlab` and `env_ladder`;
-neither `swarmlab.py` nor `env_ladder.py` imports `bazt`.
+Layered on top of the pre-existing simulator: this package imports `swarmlab` and `env_ladder`; neither of
+them imports it. Everything attaches to `swarmlab.run_episode` through `EpisodeHooks.gateway_factory`, so a
+run without that hook (or with a non-BAZT policy) is bit-identical to the original simulator.
 
-Every BAZT arm is plugged into `swarmlab.run_episode` through `EpisodeHooks`
-(`gateway_factory` / `edge_weight_modifier`), which are default-off and only
-consulted for policies in `swarmlab.BAZT_POLICIES`.  All legacy arms and the
-`hooks=None` path remain bit-identical.
+Module map (dependencies point downwards only):
 
-Mock mode only before kickoff (`SWARMLAB_KICKOFF_UTC = 2026-11-06 20:00 UTC`);
-`--mode llm` is refused unconditionally before kickoff and routed through
-`llm_client.make_llm_policy` (openrouter / adaption) after kickoff.
+    config -> actions -> ledger -> optimizer -> gateway -> arms -> runner
+              evidence, provenance, roles, contagion, audit, metrics, channel  (leaf helpers)
 """
+from bazt.config import BaztConfig  # noqa: F401
 
-from __future__ import annotations
-
-__all__ = [
-    "config", "roles", "provenance", "evidence", "contagion",
-    "actions", "ledger", "optimizer", "gateway", "audit", "metrics",
-    "arms", "runner",
-]
+__all__ = ["BaztConfig"]

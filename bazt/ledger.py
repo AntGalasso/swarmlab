@@ -1,84 +1,87 @@
-"""bazt/ledger.py -- `BudgetLedger`: enforcement budget, never silently clips.
-
-Supports `"pooled"` (`capacity = B`, or `inf` if `unlimited=True`) and
-`"tiered"` (`K_hard` for `ISOLATE`/`BLOCK_EDGE`, `B_soft` for
-`INSPECT`/`SANITIZE`/`RESTRICT`).
-
-`charge(kind)` raises `BudgetViolation` if unaffordable -- never silently clips.
-
-    z()   = spent / capacity  (0.0 if unlimited or capacity == 0)
-    theta() = theta0 * exp(kappa * z()) if use_pacing else theta0
-"""
-
+"""Budget accounting. Overspending is an error, never a silent clip."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import math
+from dataclasses import dataclass
+from typing import Dict
 
-from bazt.config import BaztConfig, cost_of
-
-
-class BudgetViolation(Exception):
-    """Raised when an action would exceed the enforcement budget."""
-
-
-_HARD_KINDS = {"ISOLATE", "BLOCK_EDGE"}
-_SOFT_KINDS = {"INSPECT", "SANITIZE", "RESTRICT"}
+from bazt.actions import ActionKind, HARD_KINDS, cost_of
+from bazt.config import BaztConfig
 
 
-@dataclass
+class BudgetViolation(RuntimeError):
+    """Raised when an action is charged that the budget cannot afford."""
+
+
+@dataclass(frozen=True)
+class Charge:
+    kind: ActionKind
+    cost: int
+    pool: str
+    spent: float                 # pool spend AFTER this charge
+    remaining: float             # pool capacity - spent (inf when unlimited)
+
+
 class BudgetLedger:
-    cfg: BaztConfig
-    # pooled
-    capacity: float = 0.0
-    spent: float = 0.0
-    # tiered
-    hard_spent: float = 0.0
-    soft_spent: float = 0.0
-    per_kind: dict = field(default_factory=dict)
+    """pooled: one pool of B cost units. tiered: hard pool (ISOLATE/BLOCK_EDGE) + soft pool (the rest).
 
-    def __post_init__(self) -> None:
-        cfg = self.cfg
-        if cfg.budget_mode == "tiered":
-            self.capacity = float(cfg.K_hard) + float(cfg.B_soft)
+    All pools are denominated in cost units so spend is comparable across budget modes.
+    """
+
+    def __init__(self, cfg: BaztConfig):
+        self.cfg = cfg
+        inf = float("inf")
+        if cfg.budget_mode == "pooled":
+            self._cap: Dict[str, float] = {"pool": inf if cfg.unlimited else float(cfg.B)}
         else:
-            self.capacity = float("inf") if cfg.unlimited else float(cfg.B)
-        self.per_kind = {k: 0 for k in (_HARD_KINDS | _SOFT_KINDS)}
+            self._cap = {"hard": inf if cfg.unlimited else float(cfg.K_hard * cfg.cost_isolate),
+                         "soft": inf if cfg.unlimited else float(cfg.B_soft * cfg.cost_sanitize)}
+        self._spent: Dict[str, float] = {k: 0.0 for k in self._cap}
+        self.spent_by_kind: Dict[ActionKind, float] = {k: 0.0 for k in ActionKind}
 
-    # ------------------------------------------------------------------ queries
-    def can_afford(self, kind: str) -> bool:
-        cost = cost_of(kind, self.cfg)
-        if self.cfg.budget_mode == "tiered":
-            cap = float(self.cfg.K_hard) if kind in _HARD_KINDS else float(self.cfg.B_soft)
-            spent = self.hard_spent if kind in _HARD_KINDS else self.soft_spent
-            return spent + cost <= cap + 1e-9
-        return self.spent + cost <= self.capacity + 1e-9
+    # ---------------------------------------------------------------------------- queries
+    def pool_of(self, kind: ActionKind) -> str:
+        if self.cfg.budget_mode == "pooled":
+            return "pool"
+        return "hard" if kind in HARD_KINDS else "soft"
+
+    def capacity(self, pool: str) -> float:
+        return self._cap[pool]
+
+    @property
+    def spent(self) -> float:
+        return sum(self._spent.values())
+
+    @property
+    def capacity_total(self) -> float:
+        return sum(self._cap.values())
+
+    def remaining(self, pool: str) -> float:
+        return self._cap[pool] - self._spent[pool]
+
+    def can_afford(self, kind: ActionKind) -> bool:
+        pool = self.pool_of(kind)
+        return self._spent[pool] + cost_of(self.cfg, kind) <= self._cap[pool]
 
     def z(self) -> float:
-        if self.cfg.unlimited or self.capacity == 0:
+        """Budget pressure in [0, 1]: fraction of the total capacity already spent."""
+        cap = self.capacity_total
+        if self.cfg.unlimited or cap == 0 or math.isinf(cap):
             return 0.0
-        return self.spent / self.capacity if self.cfg.budget_mode != "tiered" else (
-            (self.hard_spent + self.soft_spent) / self.capacity
-        )
+        return self.spent / cap
 
     def theta(self) -> float:
+        """Density threshold: flat theta0, or pacing theta0 * exp(kappa * z) as the budget drains."""
         if not self.cfg.use_pacing:
             return self.cfg.theta0
-        return self.cfg.theta0 * __import__("math").exp(self.cfg.kappa * self.z())
+        return self.cfg.theta0 * math.exp(self.cfg.kappa * self.z())
 
-    # ------------------------------------------------------------------ mutation
-    def charge(self, kind: str) -> None:
-        if not self.can_afford(kind):
-            raise BudgetViolation(
-                f"cannot afford {kind} (cost={cost_of(kind, self.cfg)}, "
-                f"spent={self.spent}, capacity={self.capacity})"
-            )
-        cost = cost_of(kind, self.cfg)
-        k = kind.value if hasattr(kind, "value") else str(kind)
-        self.per_kind[k] += cost
-        if self.cfg.budget_mode == "tiered":
-            if kind in _HARD_KINDS:
-                self.hard_spent += cost
-            else:
-                self.soft_spent += cost
-        else:
-            self.spent += cost
+    # ---------------------------------------------------------------------------- mutation
+    def charge(self, kind: ActionKind) -> Charge:
+        pool, cost = self.pool_of(kind), cost_of(self.cfg, kind)
+        if self._spent[pool] + cost > self._cap[pool]:
+            raise BudgetViolation(f"{kind.name} costs {cost} but pool {pool!r} has only "
+                                  f"{self.remaining(pool):g} of {self._cap[pool]:g} left")
+        self._spent[pool] += cost
+        self.spent_by_kind[kind] += cost
+        return Charge(kind, cost, pool, self._spent[pool], self.remaining(pool))

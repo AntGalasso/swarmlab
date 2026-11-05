@@ -1,217 +1,311 @@
-"""bazt/runner.py -- BAZT CLI.
+#!/usr/bin/env python3
+"""bazt.runner -- run the legacy arms, static_zta and the BAZT arms on identical worlds (strict CRN).
 
-    python -m bazt.runner --mode mock --split tune --seeds 12
+    python -m bazt.runner --mode mock --split tune --seeds 12        # smoke check, tune seeds only
+    python -m bazt.runner --mode mock --split tune --budget-sweep    # cost-matched budget sweep
 
-Writes strictly to `results/bazt/` (never `results/per_seed_main.csv` or
-`results/per_seed_heldout.csv`).
-
-`--mode llm` is wired through `swarmlab._enforce_kickoff_guard` +
-`llm_client.make_llm_policy` (openrouter / adaption): before kickoff it raises
-`SystemExit` unconditionally; after kickoff (`--mode llm --allow-live-llm`) it
-works without code edits.  Today (before kickoff) every run is `--mode mock`.
+COMPLIANCE
+  * Everything is written under results/bazt/. Legacy artifacts (results/per_seed_main.csv, ...) are never touched.
+  * `--mode llm` goes through swarmlab's own kickoff guard, unchanged: before SWARMLAB_KICKOFF_UTC it exits
+    unconditionally; afterwards it needs `--allow-live-llm`. The provider (openrouter | adaption) is chosen by
+    $SWARMLAB_PROVIDER inside llm_client, so no code edit is needed on sprint day.
+  * `--split main|heldout` needs `--confirm-frozen-config`: BaztConfig must be frozen on tune seeds first.
+  * Mock numbers are pipeline checks, never findings.
 """
-
 from __future__ import annotations
 
 import argparse
+import csv
+import dataclasses
+import itertools
+import json
 import os
 import sys
 import time
-from dataclasses import replace
-from typing import List, Optional
+from types import SimpleNamespace
+from typing import List, Optional, Sequence, Tuple
 
-import swarmlab as sl
-from swarmlab import (
-    Config, EpisodeHooks, run_episode, write_outputs, BAZT_POLICIES,
-    _enforce_kickoff_guard, _seeds, make_world, pick_decoys,
-)
-from bazt.arms import (
-    ALL_ARMS, BAZT_ARMS, COST_MATCHED_LEGACY, STATIC_ZTA,
-    bazt_config, equalized_K, is_bazt_arm, static_zta_spec,
-)
-from bazt.config import BaztConfig
-from bazt.gateway import EnforcementGateway
-from bazt.roles import assign_roles
+import numpy as np
 
 import env_ladder as el
+import swarmlab as sl
+from bazt.arms import BAZT_ARMS, DEFAULT_ARMS, RunContext, build_episode
+from bazt.config import BUDGET_MODES, BaztConfig
+from bazt.metrics import BAZT_METRICS, add_paired_metrics, legacy_spend_columns
+
+DEFAULT_OUT = os.path.join("results", "bazt")
+META_COLS = ["topology", "regime", "policy", "seed", "N", "budget_mode", "B"]
+CONSTRAINT_COLS = ["constraint_blocked_sends", "message_drop_rate"]
+COLUMNS = META_COLS + list(sl.METRICS) + sl.EXTRA_COLS + BAZT_METRICS + CONSTRAINT_COLS   # sl.METRICS is NOT modified
+EVASION_ADAPTERS = ("none", "naive", "compressed", "live_cot")
+SWEEP_B = (4, 8, 12, 16, 24)
 
 
-# ------------------------------------------------------------------ hooks factory
-def make_hooks(policy, seed, cfg, entry_source, corpus, entry_readers, B):
-    """Policy-specific `EpisodeHooks`.  Default-off: legacy arms get `None`."""
-    seed_agents: frozenset = frozenset()
-    suppress_patient_zero = False
-    recv_from = None
-    channel_filter = None
-    gateway_factory = None
-    edge_weight_modifier = None
-
-    if entry_source == "fake_web_jsonl":
-        factory = el.make_entry_hooks_factory(corpus=corpus, n_readers=entry_readers)
-        eh = factory(seed, cfg.N)
-        seed_agents = eh.seed_agents
-        suppress_patient_zero = bool(eh.suppress_patient_zero)
-
-    if policy == STATIC_ZTA:
-        spec = static_zta_spec()
-        # recv_from/channel_filter are filled by the caller (needs world.adj).
-        recv_from = "__STATIC_ZTA__"
-        channel_filter = el.make_channel_filter(el.ladder_spec(1), spec)
-
-    if policy in BAZT_POLICIES:
-        bazt_cfg = bazt_config(policy, B=B)
-        gw_cell = {"gw": None}
-
-        def gateway_factory(p2, world2, cfg2, base_adj2, decoys2, hooks2):
-            if p2 not in BAZT_POLICIES:
-                return None
-            gw = _build_gateway(p2, world2, cfg2, base_adj2, decoys2, hooks2, seed, B)
-            gw_cell["gw"] = gw
-            return gw
-
-        def edge_weight_modifier(j, i, t, msg):
-            gw = gw_cell["gw"]
-            if gw is None or not gw.bcfg.strip_degrades_weight:
-                return 1.0
-            return gw.bcfg.stripped_edge_weight if j in gw.stripped_messages else 1.0
-
-    return EpisodeHooks(
-        seed_agents=seed_agents,
-        suppress_patient_zero=suppress_patient_zero,
-        recv_from=recv_from,
-        channel_filter=channel_filter,
-        gateway_factory=gateway_factory,
-        edge_weight_modifier=edge_weight_modifier,
-    )
+# ================================================================================ compliance / LLM
+def _enforce_kickoff_guard(allow_live_llm: bool, mode: str = "llm") -> None:
+    """swarmlab's own guard, unchanged: SystemExit before kickoff (always) or without --allow-live-llm."""
+    sl._kickoff_guard(SimpleNamespace(mode=mode, allow_live_llm=allow_live_llm))
 
 
-def _build_gateway(policy, world, cfg, base_adj, decoys, hooks, seed, B):
-    bazt_cfg = bazt_config(policy, B=B)
-    ingress_nodes: set = set(hooks.seed_agents) if (hooks and hooks.seed_agents) else set()
-    roles = assign_roles(cfg.N, world.topology, seed, base_adj, ingress_nodes, bazt_cfg.n_privileged)
-    if ingress_nodes:
-        entry_seed_nodes = set(ingress_nodes)
-    else:
-        entry_seed_nodes = {r.node_id for r in roles if r.role == "ingress"}
-    return EnforcementGateway(cfg, bazt_cfg, world.topology, seed, base_adj,
-                              roles, ingress_nodes, entry_seed_nodes)
+def _make_backend(args):
+    """Seam for tests. Provider and key come from the environment (llm_client), never from this file."""
+    from llm_client import SQLiteLLMCache, make_llm_policy
+    return make_llm_policy(args.model, SQLiteLLMCache(args.cache))
 
 
-# ------------------------------------------------------------------ runner
-def run(args) -> int:
+class AdapterLLMAgentPolicy(sl.LLMAgentPolicy):
+    """LLM agent whose prompts pass through a CoTPayloadAdapter (Kunal's live hook, post-kickoff only)."""
+
+    def __init__(self, backend, payload: str, adapter: el.CoTPayloadAdapter, constraint: el.HardConstraintSpec):
+        super().__init__(backend, payload)
+        self.adapter, self.constraint = adapter, constraint
+
+    def step(self, ctxs):
+        reqs = []
+        for c in ctxs:
+            system, user, salt = self._prompts(c)
+            infected = bool(c.is_seed or any(self.adapter.detect_ground_truth_payload(m)
+                                             for m in ([c.own_prev] if c.own_prev else []) + list(c.inbox)))
+            system, user = self.adapter.transform_agent_step_prompt(system, user, infected, self.constraint)
+            reqs.append((system, user, salt))
+        return self.backend.generate(reqs)
+
+
+def make_adapter(name: str) -> Optional[el.CoTPayloadAdapter]:
+    if name == "none":
+        return None
+    if name in el.PAYLOAD_FORMS:
+        return el.TemplateCoTPayloadAdapter(payload_form=name)
+    from live_cot_adapter import LiveCoTAdapter            # lazy: only the live_cot path needs it
+    return LiveCoTAdapter()
+
+
+def make_agent_factory(args, adapter, constraint, backend=None):
     if args.mode == "llm":
-        _enforce_kickoff_guard(args.allow_live_llm)
+        if adapter is not None:
+            return lambda cfg, world: AdapterLLMAgentPolicy(backend, args.payload, adapter, constraint)
+        return lambda cfg, world: sl.LLMAgentPolicy(backend, payload=args.payload)
+    if adapter is not None:
+        return lambda cfg, world: el.ConstrainedMockAgentPolicy(adapter, constraint, cfg)
+    return lambda cfg, world: sl.MockAgentPolicy(cfg)
 
-    topos: List[str] = list(args.topologies)
-    regimes: List[str] = list(args.regimes)
-    policies: List[str] = list(args.policies) if args.policies else list(BAZT_ARMS)
-    seeds: List[int] = _seeds(args)
-    if not seeds:
-        seeds = list(range(args.seed_start, args.seed_start + args.seeds))
 
-    B = int(args.B)
-    equalize_budget = bool(args.equalize_budget)
+# ======================================================================================== the grid
+def resolve_seeds(split: Optional[str], n: Optional[int], seed_start: int) -> List[int]:
+    if split:
+        lo, hi = sl.SPLITS[split]
+        full = list(range(lo, hi + 1))
+        return full if n is None else full[:n]
+    return list(range(seed_start, seed_start + (n or 30)))
 
-    backend = None
-    if args.mode == "llm":
-        from llm_client import SQLiteLLMCache, make_llm_policy
-        backend = make_llm_policy(args.model, SQLiteLLMCache(args.cache))
 
-    def agent_factory(c):
-        if backend is not None:
-            return sl.LLMAgentPolicy(backend, payload=args.payload)
-        return sl.MockAgentPolicy(c)
-
+def run_bazt_grid(topologies: Sequence[str], regimes: Sequence[str], arms: Sequence[str], seeds: Sequence[int],
+                  swarm_cfg: sl.Config, ctx: RunContext, progress: bool = True,
+                  collect_audit: bool = False) -> Tuple[List[dict], List[dict]]:
     rows: List[dict] = []
-    episodes: List[dict] = []
-    t0 = time.time()
-    done = 0
-    total = len(topos) * len(regimes) * len(seeds) * len(policies)
+    audit_rows: List[dict] = []
+    if collect_audit:
+        ctx.sink = []
+    total = len(topologies) * len(seeds) * len(regimes) * len(arms)
+    done, t0 = 0, time.time()
+    for topo, seed in itertools.product(topologies, seeds):
+        world = sl.make_world(topo, seed, swarm_cfg)
+        for regime in regimes:
+            decoys = sl.pick_decoys(world, swarm_cfg.decoys_in_decoy_regime if regime == "decoy" else 0)
+            for arm in arms:
+                setup = build_episode(arm, world, swarm_cfg, ctx)
+                r = sl.run_episode(world, setup.policy, setup.cfg, setup.agent, decoys, hooks=setup.hooks)
+                for k in ("ever_curve", "cum_decoy_quarantines", "cum_true_quarantines"):
+                    r.pop(k)
+                row = {"topology": topo, "regime": regime, "policy": arm, "seed": seed, "N": swarm_cfg.N,
+                       "budget_mode": ctx.bcfg.budget_mode, "B": ctx.bcfg.B, **r}
+                if arm not in BAZT_ARMS:
+                    legacy_spend_columns(row, ctx.bcfg.cost_isolate, ctx.bcfg.cost_sanitize)
+                rows.append(row)
+                if ctx.sink:
+                    gw = ctx.sink.pop()
+                    audit_rows += [{"topology": topo, "regime": regime, "arm": arm, "seed": seed, **a}
+                                   for a in gw.audit.rows()]
+                done += 1
+        if progress:
+            print(f"  {done}/{total} episodes  ({time.time() - t0:.0f}s)", file=sys.stderr)
+    return rows, audit_rows
 
-    for topo in topos:
-        for seed in seeds:
-            world = make_world(topo, seed, Config())
-            base_adj = world.adj
-            # static_zta movement mask (shared across seeds for this topology)
-            static_mask = None
-            if STATIC_ZTA in policies:
-                static_mask = el.routing_mask(base_adj, static_zta_spec().movement_direction_mode)
-            for regime in regimes:
-                decoys = pick_decoys(world, 3 if regime == "decoy" else 0)
-                for pol in policies:
-                    hooks = None
-                    if pol == STATIC_ZTA:
-                        hooks = EpisodeHooks(
-                            seed_agents=frozenset(), suppress_patient_zero=False,
-                            recv_from=static_mask.recv_from,
-                            channel_filter=static_zta_spec() and el.make_channel_filter(
-                                el.ladder_spec(1), static_zta_spec()),
-                        )
-                    elif pol in BAZT_POLICIES or pol in COST_MATCHED_LEGACY:
-                        hooks = make_hooks(pol, seed, Config(), args.entry_source,
-                                           args.corpus, args.entry_readers, B)
 
-                    c = Config()
-                    if pol in COST_MATCHED_LEGACY and equalize_budget:
-                        ref = bazt_config(pol, B=B) if pol in BAZT_POLICIES else BaztConfig(B=B)
-                        c = replace(Config(), K=equalized_K(ref))
+def finalize(rows: List[dict], extra_keys: Tuple[str, ...] = ()) -> None:
+    keys = ("topology", "regime", "seed") + extra_keys
+    sl.add_deltas(rows, keys=keys)
+    add_paired_metrics(rows, keys=keys)
 
-                    r = run_episode(world, pol, c, agent_factory(c), decoys, hooks=hooks)
-                    curve = r.pop("ever_curve", None)
-                    cd = r.pop("cum_decoy_quarantines", None)
-                    ct = r.pop("cum_true_quarantines", None)
-                    meta = dict(topology=topo, regime=regime, policy=pol, seed=seed, B=B)
-                    rows.append({**meta, **r})
-                    episodes.append({**meta, **r,
-                                     "ever_curve": curve, "cum_decoy_quarantines": cd,
-                                     "cum_true_quarantines": ct})
-                    done += 1
-                    if done % 25 == 0:
-                        print(f"  {done}/{total} episodes ({time.time()-t0:.0f}s)", file=sys.stderr)
 
-    os.makedirs(args.out, exist_ok=True)
-    tag = f"_{args.tag}" if args.tag else ""
-    write_outputs(rows, episodes, args.out, tag=tag, split=args.split)
-    print(f"wrote {args.out}/per_seed_{args.split}{tag}.csv  ({done} episodes)")
-    return 0
+def run_budget_sweep(topologies, regimes, arms, seeds, swarm_cfg, base_ctx: RunContext, values=SWEEP_B,
+                     progress=True) -> List[dict]:
+    """One grid per pooled budget B, legacy arms cost-matched (equalize forced on)."""
+    rows: List[dict] = []
+    for b in values:
+        ctx = dataclasses.replace(base_ctx, bcfg=dataclasses.replace(base_ctx.bcfg, B=int(b), budget_mode="pooled"),
+                                  equalize=True)
+        rows += run_bazt_grid(topologies, regimes, arms, seeds, swarm_cfg, ctx, progress=progress)[0]
+    finalize(rows, ("B",))
+    return rows
+
+
+# ==================================================================================== output / print
+def write_rows(rows: Sequence[dict], path: str) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", newline="") as f:
+        wr = csv.DictWriter(f, fieldnames=COLUMNS, extrasaction="ignore")
+        wr.writeheader()
+        wr.writerows(rows)
+
+
+def _mean(rows: Sequence[dict], key: str) -> float:
+    xs = [r[key] for r in rows if key in r and r[key] == r[key]]
+    return float(np.mean(xs)) if xs else float("nan")
+
+
+SUMMARY = [("AUC_ever", "auc_ever_infected", 9, 3), ("MAE", "task_mae", 7, 2), ("spend", "enforcement_spend", 7, 2),
+           ("harm", "harm_exposure_auc", 7, 3), ("thruput", "message_throughput", 9, 3),
+           ("falseAct", "false_action_rate", 9, 3), ("$/prev", "cost_per_prevented_compromise", 8, 2),
+           ("viol", "budget_violations", 6, 0)]
+
+
+def format_summary(rows: Sequence[dict], regime: str = "decoy") -> str:
+    sub = [r for r in rows if r["regime"] == regime]
+    pol_order = [a for a in DEFAULT_ARMS if any(r["policy"] == a for r in sub)]
+    lines = [f"\n== mean over topologies x seeds | regime={regime} | n_rows={len(sub)}",
+             f"{'arm':<18}" + "".join(f"{h:>{w}}" for h, _, w, _ in SUMMARY)]
+    for pol in pol_order:
+        rs = [r for r in sub if r["policy"] == pol]
+        lines.append(f"{pol:<18}" + "".join(f"{_mean(rs, k):>{w}.{d}f}" for _, k, w, d in SUMMARY))
+    return "\n".join(lines)
+
+
+def run_meta(args, bcfg: BaztConfig, swarm_cfg: sl.Config, seeds: Sequence[int], arms: Sequence[str]) -> dict:
+    cfg_dict = {k: v for k, v in dataclasses.asdict(bcfg).items() if k != "probe_score_hook"}
+    return {"module": "bazt.runner", "mode": args.mode, "split": args.split, "seeds": [seeds[0], seeds[-1]],
+            "n_seeds": len(seeds), "arms": list(arms), "topologies": args.topologies, "regimes": args.regimes,
+            "entry_source": args.entry_source, "evasion_adapter": args.evasion_adapter,
+            "equalize_budget": bool(args.equalize_budget), "bazt_config": cfg_dict,
+            "swarm_config": {"N": swarm_cfg.N, "T": swarm_cfg.T, "K": swarm_cfg.K, "B_san": swarm_cfg.B_san},
+            "note": "mock numbers are pipeline checks, not findings" if args.mode == "mock" else "live run"}
+
+
+# ============================================================================================= CLI
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description="BAZT runner (writes only under results/bazt/)")
+    ap.add_argument("--mode", choices=["mock", "llm"], default="mock")
+    ap.add_argument("--allow-live-llm", action="store_true")
+    ap.add_argument("--split", choices=list(sl.SPLITS), default="tune")
+    ap.add_argument("--seeds", type=int, default=None, help="use only the first N seeds of the split")
+    ap.add_argument("--seed-start", type=int, default=1, help="first seed when no --split is meaningful")
+    ap.add_argument("--confirm-frozen-config", action="store_true",
+                    help="required for main/heldout: certifies BaztConfig was frozen on tune seeds")
+    ap.add_argument("--topologies", nargs="+", default=sl.TOPOLOGIES)
+    ap.add_argument("--regimes", nargs="+", default=["clean", "decoy"])
+    ap.add_argument("--arms", nargs="+", default=list(DEFAULT_ARMS))
+    ap.add_argument("--entry-source", choices=["patient_zero", "fake_web_jsonl"], default="patient_zero")
+    ap.add_argument("--corpus", default=el.DEFAULT_CORPUS)
+    ap.add_argument("--entry-readers", type=int, default=2)
+    ap.add_argument("--evasion-adapter", choices=EVASION_ADAPTERS, default="none")
+    ap.add_argument("--channel-mode", choices=el.CHANNEL_MODES, default="free_note")
+    ap.add_argument("--movement-mode", choices=el.MOVEMENT_MODES, default="unrestricted")
+    ap.add_argument("--budget-mode", choices=BUDGET_MODES, default="pooled")
+    ap.add_argument("--B", type=int, default=12)
+    ap.add_argument("--K-hard", type=int, default=3)
+    ap.add_argument("--B-soft", type=int, default=6)
+    ap.add_argument("--equalize-budget", action="store_true",
+                    help="give legacy arms the same total cost budget (hard-only: K = B // cost_isolate)")
+    ap.add_argument("--budget-sweep", action="store_true", help="sweep pooled B (legacy arms cost-matched)")
+    ap.add_argument("--sweep-B", nargs="+", type=int, default=list(SWEEP_B))
+    ap.add_argument("--no-strip-cost", action="store_true", help="disable the filtering utility cost")
+    ap.add_argument("--model", default="qwen/qwen-2.5-7b-instruct")
+    ap.add_argument("--payload", choices=sl.PAYLOADS, default="canary_tag")
+    ap.add_argument("--cache", default="llm_cache.sqlite")
+    ap.add_argument("--write-audit", action="store_true", help="also write the per-decision audit CSV")
+    ap.add_argument("--out", default=DEFAULT_OUT)
+    ap.add_argument("--out-file", default=None)
+    ap.add_argument("--quiet", action="store_true")
+    return ap
+
+
+def _out_name(args) -> str:
+    if args.out_file:
+        return args.out_file
+    if args.budget_sweep:
+        return f"budget_sweep_{args.split}.csv"
+    return "smoke_tune_check.csv" if args.split == "tune" else f"per_seed_{args.split}.csv"
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="BAZT defence runner (mock before kickoff)")
-    ap.add_argument("--mode", choices=["mock", "llm"], default="mock")
-    ap.add_argument("--allow-live-llm", action="store_true", default=False)
-    ap.add_argument("--split", choices=["tune", "main", "heldout"], default="tune")
-    ap.add_argument("--budget-sweep", action="store_true",
-                    help="sweep B in (3, 6, 12, 24), one output file per B")
-    ap.add_argument("--entry-source", choices=["patient_zero", "fake_web_jsonl"],
-                    default="patient_zero")
-    ap.add_argument("--corpus", default="data/fake_web_corpus.jsonl")
-    ap.add_argument("--entry-readers", type=int, default=2)
-    ap.add_argument("--evasion-adapter", choices=["none", "naive", "compressed", "live_cot"],
-                    default="none")
-    ap.add_argument("--model", default="qwen/qwen-2.5-7b-instruct")
-    ap.add_argument("--cache", default="llm_cache.sqlite")
-    ap.add_argument("--seeds", type=int, default=12)
-    ap.add_argument("--seed-start", type=int, default=1)
-    ap.add_argument("--topologies", nargs="+", default=["small_world", "star_hub", "chain"])
-    ap.add_argument("--regimes", nargs="+", default=["decoy"])
-    ap.add_argument("--policies", nargs="+", default=None)
-    ap.add_argument("--B", type=int, default=12, help="BAZT pooled budget")
-    ap.add_argument("--equalize-budget", action="store_true",
-                    help="map pooled B -> K = B // cost_isolate for hard-only baselines")
-    ap.add_argument("--out", default="results/bazt")
-    ap.add_argument("--tag", default="")
-    args = ap.parse_args(argv)
+    args = build_parser().parse_args(argv)
+    if args.mode == "llm":                                   # first thing, before any world is built
+        _enforce_kickoff_guard(args.allow_live_llm)
+    if args.split in ("main", "heldout") and not args.confirm_frozen_config:
+        sys.exit(f"Refusing: --split {args.split} needs --confirm-frozen-config (tune BaztConfig on tune seeds only).")
+    name = _out_name(args)
+    if os.path.basename(name) in ("per_seed_main.csv", "per_seed_heldout.csv") and \
+            os.path.basename(os.path.normpath(args.out)) != "bazt":
+        sys.exit("Refusing: BAZT never writes the legacy per_seed_main/heldout files outside a 'bazt' directory.")
+    unknown = [a for a in args.arms if a not in DEFAULT_ARMS]
+    if unknown:
+        sys.exit(f"unknown arms: {unknown}")
 
-    if args.budget_sweep:
-        rc = 0
-        for B in (3, 6, 12, 24):
-            args2 = argparse.Namespace(**vars(args))
-            args2.B = B
-            args2.tag = f"{args.tag}_B{B}" if args.tag else f"B{B}"
-            rc |= run(args2)
-        return rc
-    return run(args)
+    seeds = resolve_seeds(args.split, args.seeds, args.seed_start)
+    bcfg = BaztConfig(budget_mode=args.budget_mode, B=args.B, K_hard=args.K_hard, B_soft=args.B_soft,
+                      strip_degrades_weight=not args.no_strip_cost)
+    swarm_cfg = sl.Config()
+    adapter = make_adapter(args.evasion_adapter)
+    constraint = None
+    if adapter is not None or args.channel_mode != "free_note" or args.movement_mode != "unrestricted":
+        constraint = el.HardConstraintSpec(movement_direction_mode=args.movement_mode,
+                                           action_channel_mode=args.channel_mode)
+    entry_factory = None
+    if args.entry_source == "fake_web_jsonl":
+        entry_factory = el.make_entry_hooks_factory(corpus=args.corpus, n_readers=args.entry_readers)
+    backend = _make_backend(args) if args.mode == "llm" else None
+    agent_factory = make_agent_factory(args, adapter, constraint or el.HardConstraintSpec(), backend)
+    ctx = RunContext(bcfg=bcfg, agent_factory=agent_factory, equalize=args.equalize_budget,
+                     entry_factory=entry_factory, adapter=adapter, constraint=constraint)
+
+    print(f"mode={args.mode} split={args.split} seeds={seeds[0]}..{seeds[-1]} arms={len(args.arms)} "
+          f"topologies={list(args.topologies)} regimes={args.regimes} budget={bcfg.budget_mode}/B={bcfg.B}",
+          file=sys.stderr)
+    try:
+        audit: List[dict] = []
+        if args.budget_sweep:
+            rows = run_budget_sweep(args.topologies, args.regimes, args.arms, seeds, swarm_cfg, ctx,
+                                    values=args.sweep_B, progress=not args.quiet)
+        else:
+            rows, audit = run_bazt_grid(args.topologies, args.regimes, args.arms, seeds, swarm_cfg, ctx,
+                                        progress=not args.quiet, collect_audit=args.write_audit)
+            finalize(rows)
+    finally:
+        if backend is not None:
+            print("llm cache:", backend.cache.stats(), file=sys.stderr)
+            backend.close()
+            backend.cache.close()
+
+    path = os.path.join(args.out, name)
+    write_rows(rows, path)
+    with open(path[:-4] + ".meta.json", "w") as f:
+        json.dump(run_meta(args, bcfg, swarm_cfg, seeds, args.arms), f, indent=2)
+    if audit:
+        apath = path[:-4] + ".audit.csv"
+        with open(apath, "w", newline="") as f:
+            from bazt.audit import AUDIT_FIELDS
+            wr = csv.DictWriter(f, fieldnames=["topology", "regime", "arm", "seed"] + AUDIT_FIELDS)
+            wr.writeheader()
+            wr.writerows(audit)
+        print("wrote", apath)
+    print("wrote", path)
+    if "decoy" in args.regimes:
+        print(format_summary(rows, "decoy"))
+    if "clean" in args.regimes:
+        print(format_summary(rows, "clean"))
+    if args.mode == "mock":
+        print("\nNOTE: mock agents -> pipeline check ONLY. No number above is a finding.")
+    return 0
 
 
 if __name__ == "__main__":

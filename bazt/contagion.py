@@ -1,63 +1,46 @@
-"""bazt/contagion.py -- Active-graph reachability reusing `swarmlab.reach_H`.
-
-`H_i` over active non-isolated nodes and open directed edges within
-`min(h_t, d_max)` hops (`1.0` if `use_topology` is False).
-
-`H_edge(i, j) = (1.0 - p'_j) * (1.0 + H_j_without_i)` on open directed edge
-`i -> j`.
-
-Horizon rule: at the final step (`h_t = T - t == 0`), future contagion reach is
-`0.0`, so `BudgetedOptimizer` spends `0` budget at step `T`.
-"""
-
+"""Forward contagion reach on the ACTIVE graph with OPEN directed edges (reuses swarmlab.reach_H)."""
 from __future__ import annotations
 
-from typing import List, Set
+from typing import Dict, Sequence, Set, Tuple
 
 import swarmlab as sl
+from bazt.config import BaztConfig
 
 
-def node_reach(
-    adj: List[List[int]],
-    i: int,
-    h_t: int,
-    active: Set[int],
-    isolated: Set[int],
-    p_prime: List[float],
-    sl_cfg,  # swarmlab.Config (dmax, gamma)
-    use_topology: bool,
-) -> float:
-    """Horizon-bounded, path-decayed reachability from `i` over active,
-    non-isolated nodes. `1.0` when topology is disabled; `0.0` at h_t == 0."""
-    if h_t <= 0:
-        return 0.0
-    if not use_topology:
-        return 1.0
-    eff_active = {n for n in active if n not in isolated}
-    return sl.reach_H(adj, i, min(h_t, sl_cfg.dmax), sl_cfg, eff_active, p_prime, use_p=True)
+class ContagionModel:
+    """Memoised H_i and H_edge(i, j) for one decision step.
 
-
-def edge_reach(
-    adj: List[List[int]],
-    i: int,
-    j: int,
-    h_t: int,
-    active: Set[int],
-    isolated: Set[int],
-    p_prime: List[float],
-    sl_cfg,  # swarmlab.Config (dmax, gamma)
-    use_topology: bool,
-) -> float:
-    """`H_edge(i, j) = (1.0 - p'_j) * (1.0 + H_j_without_i)` on open edge `i -> j`.
-
-    `H_j_without_i` = reachability from `j` over active, non-isolated nodes with
-    `i` removed (marginal contagion through the directed edge `i -> j`).
+    Horizon rule: with h_t = T - t == 0 nothing can still spread, so every reach is 0 and the optimizer
+    buys nothing at the last step -- also when topology awareness is ablated.
     """
-    if h_t <= 0:
-        return 0.0
-    if not use_topology:
-        # topology disabled: every open edge carries unit marginal reach
-        return (1.0 - p_prime[j]) * 1.0
-    eff_active = {n for n in active if n not in isolated and n != i}
-    H_j_without_i = sl.reach_H(adj, j, min(h_t, sl_cfg.dmax), sl_cfg, eff_active, p_prime, use_p=True)
-    return (1.0 - p_prime[j]) * (1.0 + H_j_without_i)
+
+    def __init__(self, sl_cfg: sl.Config, cfg: BaztConfig, out_adj: Sequence[Sequence[int]], active: Set[int],
+                 p_prime: Sequence[float], h_t: int):
+        self.sl_cfg, self.cfg, self.out_adj, self.active, self.p, self.h_t = sl_cfg, cfg, out_adj, active, p_prime, h_t
+        self._H: Dict[int, float] = {}
+        self._He: Dict[Tuple[int, int], float] = {}
+
+    def H(self, i: int) -> float:
+        if self.h_t <= 0:
+            return 0.0
+        if not self.cfg.use_topology:
+            return 1.0
+        if i not in self._H:
+            self._H[i] = sl.reach_H(self.out_adj, i, self.h_t, self.sl_cfg, self.active, self.p)
+        return self._H[i]
+
+    def H_edge(self, i: int, j: int) -> float:
+        """(1 - p'_j) * (1 + H_j without i): value of cutting the open directed edge i -> j."""
+        if self.h_t <= 0:
+            return 0.0
+        key = (i, j)
+        if key not in self._He:
+            beyond = 0.0
+            if self.cfg.use_topology:
+                self.active.discard(i)               # reach from j must not route back through i
+                try:
+                    beyond = sl.reach_H(self.out_adj, j, self.h_t - 1, self.sl_cfg, self.active, self.p)
+                finally:
+                    self.active.add(i)
+            self._He[key] = (1.0 - self.p[j]) * (1.0 + beyond)
+        return self._He[key]

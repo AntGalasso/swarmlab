@@ -215,6 +215,7 @@ by wrecking utility, hence the joint criterion.
    to zero by construction; it is a *no-measurable-numeric-loss* claim, not a claim that sanitation is free.
 
 ## 14. Ladder & sandbox metrics (`env_ladder.py`)
+
 These extend the simulator without changing any quantity defined above: every Stage-2/3 episode is still a
 `swarmlab.run_episode` call, and `auc_ever` below uses the same `c_t` as §1. All values are mock-only
 pipeline checks until kickoff (`--mode mock`); `env_ladder.py` has no live-LLM code path at all.
@@ -322,23 +323,96 @@ clean/decoy regimes.
 | `results/figures/fig4_ladder_breaking_point.pdf`, `fig5_constraint_evasion.pdf` | the two figures |
 | `data/fake_web_corpus.jsonl` | deterministic 36-document Stage-1 corpus (gitignored via `data/`) |
 
-## 15. BAZT metrics (`bazt/gateway.py::extra_metrics`)
+## 15. BAZT gateway metrics (`bazt/`)
 
-Computed post-episode at `t == T` by `EnforcementGateway.extra_metrics(infected_series,
-world)`. Ground-truth evaluation — never consulted inside `decide()`; the gateway's only
-ground-truth channel during the episode is `inspect_oracle`, which spends inspection budget.
+Written by `python -m bazt.runner` to `results/bazt/*.csv` — never to `results/per_seed_*.csv`, and
+`swarmlab.METRICS` is **not** extended (its CSV writer ignores unknown columns). Every row of every arm carries the
+same columns; a gateway-only metric is `NaN` for a legacy arm (not applicable), never `0`. All quantities of §1–§14
+keep their meaning. Mock numbers are pipeline checks, not findings.
 
-| key | definition |
+Notation (extends §0): `E_dir = Σ_i |recv_i|` directed send pairs of the *effective* graph (after any movement
+mask); `D_t` = set of edges `j → i` whose message written at step `t` was delivered (sender emitted, edge open,
+receiver not isolated); `s_t(j) = 1` if `j`'s message at `t` was successfully stripped (`u_strip < p_strip`);
+`inf_j(t)` as in §0. Messages written at step `T` are never consumed, so rates are taken over `t = 1..T−1`
+with capacity `(T−1)·E_dir`. Ground truth (`inf`) is used only here, after the last decision.
+
+### 15.1 Spend (units: cost units; `cost_inspect=1, cost_sanitize=1, cost_restrict=2, cost_block=2, cost_isolate=3`)
+
+```
+spend_k          = Σ over charged actions of kind k of cost_k           k ∈ {inspect, sanitize, restrict, block, isolate}
+enforcement_spend = Σ_k spend_k   ≤  capacity   (pooled: B;  tiered: K_hard·cost_isolate + B_soft·cost_sanitize;  unlimited: ∞)
+```
+
+Legacy arms are priced in the same units so every arm has a spend:
+`enforcement_spend = quarantines_used·cost_isolate + sanitizations_used·cost_sanitize`.
+`--equalize-budget` gives hard-only baselines `K = ⌊B / cost_isolate⌋`; `risk_aware_tiered` keeps
+`B_san = min(B_san, ⌊B / cost_sanitize⌋)` and spends the remainder on `K = ⌊(B − B_san·cost_sanitize) / cost_isolate⌋`
+(tiered budgets: `K = K_hard`, `B_san = B_soft`).
+
+### 15.2 Harm and throughput (units: fraction of directed-edge capacity)
+
+```
+harm_exposure_auc  = (1 / ((T−1)·E_dir)) · Σ_{t<T} #{ (j→i) ∈ D_t : inf_j(t) = 1 ∧ s_t(j) = 0 }
+message_throughput = (1 / ((T−1)·E_dir)) · Σ_{t<T} |D_t|
+```
+
+`harm_exposure_auc` counts payload-bearing deliveries that reached a neighbour intact; a successful strip, a blocked
+edge or an isolated sender removes them. Both lie in `[0, 1]`; `message_throughput` is the connectivity the defence
+leaves intact, `harm_exposure_auc` the contagion it fails to stop. Not comparable with `auc_ever_infected`
+(§1), which counts *nodes*, not *deliveries*.
+
+### 15.3 Side effects and accuracy of actions
+
+```
+degraded_node_step_frac = (1 / (N·T)) · Σ_t |restricted_t ∪ sanitized_t ∪ isolated_t|
+false_action_rate       = #{ actions a ∈ {sanitize, restrict, block, isolate} on node i at step t : ever_i(t) = 0 }
+                          / #{ such actions }                                 (0 if there is none)
+recovery_time           = t_clear − t_first          t_first = first non-inspect action,
+                                                      t_clear = first t ≥ t_first with Σ_i inf_i(t) = 0
+                          censored to T − t_first + 1 if never clear;  NaN if the arm took no action
+```
+
+`false_action_rate` uses the same "never infected so far" test as the legacy `collateral_healthy_quarantined`.
+Inspections are excluded from the numerator and denominator (they never disturb a node).
+
+### 15.4 Cost efficiency (paired by CRN)
+
+```
+cost_per_prevented_compromise = enforcement_spend / ( N · (final_ever_infected_rate[no_defense] − final_ever_infected_rate[arm]) )
+```
+
+paired on the same `(topology, regime, seed)` world, exactly like `delta_abs` (§4). `NaN` when the arm spared no node
+(an undefined ratio is never reported as 0 or ∞). Units: cost units per node spared.
+
+### 15.5 Integrity
+
+```
+budget_violations     = #{ audit rows with remaining < 0 }        (independent recount; always 0: the ledger raises, never clips)
+inspections_conclusive = #{ paid inspections that returned a verdict }
+```
+
+### 15.6 Filtering cost (why `task_mae` is meaningful for BAZT arms)
+
+In the mock a benign message *is* its own schema, so `trusted_sanitize` would be free and over-sanitising could never
+hurt (§13 point 2). BAZT runs append a calibration rationale `sens=hp|lp` (sender sensor class, CRN-drawn,
+`noisy_frac = 0.4`) to every message and weight each incoming edge `w_ji · m` with
+
+```
+m = 1.0 (intact, high-precision) | 0.6 (intact, noisy sensor) | stripped_edge_weight = 0.35 (rationale stripped)
+```
+
+The unmoved weight `w_ji·(1 − m)` stays with the receiver (the same "blocked weight stays with self" rule as §5), so the
+update remains a convex combination. The rule is installed for **every** arm of a run, so arms differ only by their
+defence. On attack-free episodes the price of stripping every message is `MAE` 3.35 vs 2.41 intact (tune seeds,
+paired in 92 % of episodes); without the rule stripping is free (1.7925 vs 1.7919). `--no-strip-cost` switches the
+rule and the rationale off.
+
+### 15.7 Files
+
+| file | content |
 |---|---|
-| `bazt_budget_spent` | `ledger.spent` — total enforcement actions charged (pooled cap `B`, tiered hard+soft, or `∞` unlimited) |
-| `bazt_budget_capacity` | `B` (pooled), `-1.0` (unlimited, shown as no finite capacity) |
-| `bazt_budget_violations` | count of `BudgetViolation` events — must be `0.0` on every run |
-| `enforcement_spend` | mirror of `bazt_budget_spent` in the `run_episode` result dict |
-| `spend_isolate / spend_sanitize / spend_restrict / spend_block / spend_inspect` | per-kind spend from `ledger.per_kind` |
-| `harm_exposure_auc` | `auc_ever_infected` computed on the final `infected_series` (post-episode ground truth) |
-| `false_action_rate` | fraction of enforcement actions targeting nodes with `ever = 0` (collateral actions on clean nodes) |
-| `quarantines_used / sanitizations_used` | mirrored from swarmlab's `quar` / `san_now` bookkeeping |
-
-`extra_metrics` returns a `dict`; it never mutates simulation state and writes only to
-`results/bazt/` — never to `results/per_seed_*.csv`.
-
+| `results/bazt/smoke_tune_check.csv` | tune-split run, one row per `(topology, regime, arm, seed)`: §1–§5 columns + §15 columns |
+| `results/bazt/per_seed_{main,heldout}.csv` | frozen-config runs (`--confirm-frozen-config` required) |
+| `results/bazt/budget_sweep_<split>.csv` | `--budget-sweep`: one block per pooled `B`, legacy arms cost-matched |
+| `results/bazt/*.meta.json` | mode, split, seeds, arms, full `BaztConfig` |
+| `results/bazt/*.audit.csv` | `--write-audit`: `t, action, target, cost, pool, spent, remaining, p_prime, s_mon, taint, H, net, density, theta, reason` |
