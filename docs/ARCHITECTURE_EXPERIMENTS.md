@@ -50,7 +50,8 @@ experiments/profiles.toml          every setting; profiles sprint and research
 | judge | `bazt_lab/features/judge/**` | PromptArmor judge (Judge contract), logprob("yes"), fake judge |
 | llm_harness | `bazt_lab/features/llm_harness/**`, `.gitmodules`, `vendor/G-safeguard` | `LLMPlatform` (Platform contract) over the pinned G-Safeguard submodule and patch set |
 | gnn | `bazt_lab/features/gnn/**` | G-Safeguard GNN port (PyG), training and the `GNN` arm (LLM side) |
-| quality | `requirements-lock.txt`, `ruff.toml`, `scripts/**`, `bazt_lab/tools/**`, `tests/test_architecture_bazt_lab.py`, `.env.example`, `docs/EXPERIMENTS_HOWTO.md` | pinned dependencies, environment check, static checks, import gate, e2e smoke scripts, how-to |
+| quality | `pyproject.toml`, `uv.lock`, `ruff.toml`, `.gitignore`, `scripts/**`, `bazt_lab/tools/**`, `tests/test_architecture_bazt_lab.py`, `.env.example`, `docs/EXPERIMENTS_HOWTO.md` | pinned dependencies (`uv sync`), environment check, static checks, import gate, e2e smoke scripts, how-to |
+| adaptive | `bazt_lab/features/adaptive/**` | adaptive attacker conditions for the mock (best response against the parametric monitor) |
 
 A feature that needs a new settings key or a contract change does not edit a file it does not own: it lists the
 request in its CONTRACT.md under "Requests" and in its report; the coordinator applies it.

@@ -1,0 +1,42 @@
+[project]
+name = "swarmlab"
+version = "0.1.0"
+description = "BAZT vs conventional zero trust experiments (swarmlab, bazt, bazt_lab)"
+requires-python = "==3.11.*"
+# Exact pins. uv.lock records the full resolved set with hashes; install with `uv sync`.
+dependencies = [
+    "torch==2.14.0",
+    "numpy==2.4.6",
+    "scipy==1.17.1",
+    "matplotlib==3.11.0",
+    "networkx==3.6.1",
+    "openai==2.24.0",
+    "python-dotenv==1.2.2",
+    "datasets==5.1.0",
+    "huggingface-hub==2.4.0",
+    "transformers==5.22.1",
+    "sentence-transformers==6.2.0",
+    "torch-geometric==2.8.1",
+    "wandb==0.31.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.17.3",
+]
+
+# CPU wheels of torch come from the official PyTorch index; everything else from PyPI.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "bazt_lab"]
