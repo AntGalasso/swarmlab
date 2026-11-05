@@ -22,12 +22,17 @@ Project: *When and Whom to Quarantine? Topology-aware risk control under alert-d
 | `stats_check.py` | pre-registered H1-H4 tests (paired Wilcoxon, Holm, bootstrap CI, Spearman) + strict Pareto / non-inferiority labels |
 | `make_figures.py` | publication `.pdf` figures (safety-utility frontier, budget exhaustion dynamics, scaling curve) |
 | `env_ladder.py` | Stage 1 fake-web corpus, Stage 2 difficulty ladder + breaking-point finder, Stage 3 hard constraints + `CoTPayloadAdapter` evasion sweep (mock-only, no live-LLM path) |
-| `METRICS_SPEC.md` | exact equations for every reported metric, monitor, risk score, tuning objective and label (§1-§13), plus the ladder/sandbox metrics (§14) |
+| `METRICS_SPEC.md` | exact equations for every reported metric, monitor, risk score, tuning objective and label (§1-§13), plus the ladder/sandbox metrics (§14) and BAZT metrics (§15) |
+| `BAZT_SPEC_v2.md` | BAZT adaptive gateway enforcement: fused p', lineage taint, budget ledger, §15 metrics |
+| `ARCHITECTURE_BAZT_FOR_REPO.md` | BAZT module map, data flow, boundaries, seed splits |
 | `KUNAL_SANDBOX_GUIDE.md` | developer guide to the three stages: how to plug a live CoT payload adapter into Stage 3 after kickoff |
 | `ARCHITECTURE_MAP.md` | module map, seed splits, artifact list, per-teammate ownership |
-| `swarmtraces_fetch.py` | download + aggregate-only profile of the public Swarm Traces dataset |
+| `bazt/` | BAZT enforcement package: config, roles, provenance, evidence, contagion, actions, ledger, optimizer, audit, metrics, gateway, arms, runner |
 | `tests/test_core.py` | 46 offline tests (determinism, CRN prefix sharing, caps, guards, cache, decoy realism, arm divergence, metric formulas, Pareto labels, per-step tier-1 budgets, payloads) |
 | `tests/test_env_ladder.py` | 27 offline tests (corpus schema/determinism, ladder monotonicity + pinned breaking point, routing masks, channel filters, adapter contract, hook compatibility, LLM refusal) |
+| `tests/test_bazt_core.py` | 26 BAZT core contract tests |
+| `tests/test_bazt_gateway.py` | 10 BAZT gateway contract tests |
+| `tests/test_bazt_integration.py` | 6 BAZT integration tests |
 
 ## Quickstart
 ```bash
@@ -50,6 +55,22 @@ python stats_check.py --ladder results/ladder_breaking_point.csv                
 python make_figures.py                                       # fig1..fig5 (fig4/fig5 need the ladder outputs)
 python swarmlab.py --budget --seeds 30 --price-in <usd/Mtok> --price-out <usd/Mtok>   # you supply real prices
 python swarmtraces_fetch.py download && python swarmtraces_fetch.py profile
+```
+
+## BAZT quickstart
+
+```bash
+pytest tests/test_bazt_core.py tests/test_bazt_gateway.py tests/test_bazt_integration.py -q   # 42 BAZT contract + integration tests
+pytest -q                                                                                  # 128 total: 86 legacy + 42 BAZT
+
+python -m bazt.runner --mode mock --policy bazt --seed 9001 --topology small_world          # single BAZT episode
+python -m bazt.runner --mode mock --policy bazt --budget-sweep                             # sweep B ∈ {3, 6, 12, 24}
+python -m bazt.runner --mode mock --policy bazt_unlimited --seed 9001                       # unlimited budget ablation
+```
+
+Outputs write only to `results/bazt/`; `results/per_seed_*.csv` and `results/per_seed_*.md5`
+are never touched by BAZT.
+
 ```
 Seed splits: **tune** 9001-9030 (always all 30 for tuning), **main** 1-30, **heldout** 31-60, **ladder calibration**
 9401-9440 (freezes the ladder's success bar, never graded), **ladder/scaling** 9001-9020. `--tune` refuses other splits.

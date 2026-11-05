@@ -215,7 +215,6 @@ by wrecking utility, hence the joint criterion.
    to zero by construction; it is a *no-measurable-numeric-loss* claim, not a claim that sanitation is free.
 
 ## 14. Ladder & sandbox metrics (`env_ladder.py`)
-
 These extend the simulator without changing any quantity defined above: every Stage-2/3 episode is still a
 `swarmlab.run_episode` call, and `auc_ever` below uses the same `c_t` as §1. All values are mock-only
 pipeline checks until kickoff (`--mode mock`); `env_ladder.py` has no live-LLM code path at all.
@@ -322,3 +321,24 @@ clean/decoy regimes.
 | `results/ladder_stats_report.json` | `stats_check.py --ladder --evasion`: Wilson CIs, paired Holm tests |
 | `results/figures/fig4_ladder_breaking_point.pdf`, `fig5_constraint_evasion.pdf` | the two figures |
 | `data/fake_web_corpus.jsonl` | deterministic 36-document Stage-1 corpus (gitignored via `data/`) |
+
+## 15. BAZT metrics (`bazt/gateway.py::extra_metrics`)
+
+Computed post-episode at `t == T` by `EnforcementGateway.extra_metrics(infected_series,
+world)`. Ground-truth evaluation — never consulted inside `decide()`; the gateway's only
+ground-truth channel during the episode is `inspect_oracle`, which spends inspection budget.
+
+| key | definition |
+|---|---|
+| `bazt_budget_spent` | `ledger.spent` — total enforcement actions charged (pooled cap `B`, tiered hard+soft, or `∞` unlimited) |
+| `bazt_budget_capacity` | `B` (pooled), `-1.0` (unlimited, shown as no finite capacity) |
+| `bazt_budget_violations` | count of `BudgetViolation` events — must be `0.0` on every run |
+| `enforcement_spend` | mirror of `bazt_budget_spent` in the `run_episode` result dict |
+| `spend_isolate / spend_sanitize / spend_restrict / spend_block / spend_inspect` | per-kind spend from `ledger.per_kind` |
+| `harm_exposure_auc` | `auc_ever_infected` computed on the final `infected_series` (post-episode ground truth) |
+| `false_action_rate` | fraction of enforcement actions targeting nodes with `ever = 0` (collateral actions on clean nodes) |
+| `quarantines_used / sanitizations_used` | mirrored from swarmlab's `quar` / `san_now` bookkeeping |
+
+`extra_metrics` returns a `dict`; it never mutates simulation state and writes only to
+`results/bazt/` — never to `results/per_seed_*.csv`.
+

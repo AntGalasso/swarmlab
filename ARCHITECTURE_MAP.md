@@ -18,7 +18,7 @@ alert-driven budget exhaustion in agent swarms.* Everything below runs offline i
                                                      │  (constraints held fixed here)
                     ┌──────────────── Stage 3 (attack / defence at that point) ────────────────┐
   HardConstraintSpec (movement x channel) + CoTPayloadAdapter ──► delivery vs detection vs MAE    │
-   policies: no_defense, fixed_early, score_only, risk_aware, risk_aware_tiered                    │
+   policies: no_defense, fixed_early, score_only, risk_aware, risk_aware_tiered, bazt (7 ablation arms)                    │
                     └──────────────────────────────────────────────────────────────────────────┘
                                                      ▼
                  results/*.csv|json ──► stats_check.py (paired tests) ──► make_figures.py (fig1..fig5)
@@ -42,6 +42,11 @@ kickoff and edit this table rather than guess later.
 | `tests/test_core.py` | 46 pre-existing offline tests — the compatibility contract, do not edit | Antonio |
 | `tests/test_env_ladder.py` | 27 tests for corpus, ladder, masks, filters, adapter, guards | Kunal |
 | `README.md` | compliance guardrail, file table, quickstart | Antonio |
+| `BAZT_SPEC_v2.md` | BAZT adaptive gateway enforcement: fused p', lineage taint, budget ledger, §15 metrics | Antonio |
+| `ARCHITECTURE_BAZT_FOR_REPO.md` | BAZT module map, data flow, boundaries, seed splits | Antonio |
+| `tests/test_bazt_core.py` | 26 BAZT core contract tests (config, roles, provenance, evidence, contagion, actions, ledger, optimizer) | Antonio |
+| `tests/test_bazt_gateway.py` | 10 BAZT gateway contract tests (edge_open, inspect_oracle, decide, on_deliver, extra_metrics) | Antonio |
+| `tests/test_bazt_integration.py` | 6 BAZT integration tests (full `run_episode`, ablation arms, determinism) | Antonio |
 
 ## Seed splits (never overlap — this is the pre-registration)
 
@@ -61,6 +66,7 @@ disjointness. Changing a split boundary invalidates every number in the results 
 | artifact | content |
 |---|---|
 | `results/per_seed_{main,heldout}.csv` | one row per `(topology, regime, policy, seed)`: AUC, MAE, quarantines, decoy waste, `dRel` |
+| `results/bazt/` | BAZT output directory (write-only target for `bazt/runner.py`); never `per_seed_*.csv` |
 | `results/summary_{clean,decoy}[_heldout].csv` | descriptive tables (never mixed across regimes) |
 | `results/stats_report_{main,heldout}.json` | H1–H4 with `p_raw` **and** `p_holm`, Pareto labels |
 | `results/tuned_params.json`, `results/tuning_summary.json` | joint-objective tuning, full candidate table |

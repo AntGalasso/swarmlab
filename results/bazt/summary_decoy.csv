@@ -1,0 +1,2 @@
+topology,regime,policy,n_seeds,mean_auc_ever_infected,mean_auc_active_unquarantined,mean_final_ever_infected_rate,mean_total_deviated_messages,mean_task_mae,mean_quarantines_used,mean_sanitizations_used,mean_sanitized_nodes,mean_collateral_healthy_quarantined,mean_decoy_quarantines_wasted,mean_time_to_containment,mean_delta_abs,mean_delta_rel
+small_world,decoy,bazt,30,0.7074,0.6720,1.0000,96.7667,40.4350,0.0000,0.1000,0.1000,0.0000,0.0000,13.0000,,
