@@ -42,6 +42,11 @@ active_profile = "sprint"
 # ws_rewire_p = <float>                    # Watts-Strogatz (both platforms): rewiring probability
 # llm_seeds = [<int>, ...]                 # 5 values
 # llm_calibration_seeds = [<int>, ...]     # 5 values, disjoint from llm_seeds
+# sanitize_success = <float>               # probability a sanitize / degraded delivery loses its payload
+# insider_bias = <float>                   # mock insider: shift of the reported value
+# ta_detectability = <float>               # mock TA insider: mean monitor score of its messages
+# ma_detectability = <float>               # mock MA insider: mean monitor score of its messages
+# aitm_rewrite_strength = <float>          # mock AiTM: probability a rewritten delivery carries the payload
 
 [runtime.llm_sink_positions]               # agent indices per LLM topology, one list per topology
 # random_directed = [<int>, ...]
@@ -68,8 +73,8 @@ attack_cells = [
     ["aitm", "mmlu"], ["aitm", "csqa"], ["aitm", "gsm8k"],
 ]
 attack_free_tasks = ["mmlu", "csqa", "gsm8k", "injecagent", "poisonedrag_msmarco"]
-headline_arms = ["A", "B", "C", "BAZT", "GNN"]   # all uncapped
-capped_arms = ["C", "BAZT"]
+headline_arms = ["A", "B", "C", "BAZT", "BAZT_upstream", "GNN"]   # all uncapped
+capped_arms = ["C", "BAZT", "BAZT_upstream"]
 judge_arms = ["B", "C", "BAZT"]            # arms that send texts to the judge (also their capped variants)
 calibrated_arms = ["B", "C", "BAZT"]       # calibrated on the uncapped arm, threshold reused at every cap
 # calibration_conversations_per_cell = 100 # not specified yet (spec §11)
@@ -104,7 +109,24 @@ conversations_per_setting = 40             # 5 edge probabilities x 4 attacker c
 
 # ------------------------------------------------------------------------------------------ mock side
 
+[mock.model]                               # swarmlab's model (swarmlab.Config), implemented by the torch engine
+T = 12                                     # base horizon; the engine scales it with the effective diameter
+m = 2                                      # rolling window of the cheap monitor
+a = 2.5                                    # monitor calibration p = sigmoid(a * rolling - b)
+b = 2.0
+mu_inf = 2.0                               # mean monitor score of a payload-carrying message
+mu_dec = 2.8                               # mean monitor score of a decoy message (1-2 round burst)
+sd = 0.65                                  # monitor noise
+beta = 0.35                                # per-exposure adoption probability
+p_stay = 0.8                               # probability an infected agent keeps the payload
+p_decoy = 0.9                              # probability a decoy writes its header inside its burst
+decoys = 3                                 # decoy agents per episode
+reading_mean = 50.0                        # private readings ~ N(reading_mean, reading_sd^2)
+reading_sd = 10.0
+
 [mock]
+batch_size = 512                           # episodes per vectorised batch (performance only; results do not
+                                           # depend on it: every episode has its own streams)
 topologies = ["star_hub", "star_leaf", "chain", "small_world", "barabasi_albert"]   # small_world = Watts-Strogatz
 families = ["insider_pi", "insider_ta", "insider_ma", "infection", "aitm"]
 frontier_agents = [12]
@@ -113,8 +135,8 @@ every_sink = true
 main_seeds = [1, 30]                       # inclusive range
 heldout_seeds = [31, 60]                   # run only after the analysis is frozen
 tune_seeds = [9001, 9030]                  # calibration
-uncapped_arms = ["A", "B", "C", "BAZT", "GNN_standin"]
-capped_arms = ["B", "C", "BAZT"]
+uncapped_arms = ["A", "B", "C", "BAZT", "BAZT_upstream", "GNN_standin"]
+capped_arms = ["B", "C", "BAZT", "BAZT_upstream"]
 allocation_arms = ["random_alloc", "oracle_alloc", "bra_greedy"]   # run at the same cells as the capped arms
 calibrated_arms = ["B", "C", "BAZT"]       # GNN stand-in, A, random, oracle: not specified yet (spec §11)
 

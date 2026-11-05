@@ -4,3 +4,6 @@ data/
 results/*.jsonl
 __pycache__/
 .pytest_cache/
+.venv/
+wandb/
+results/experiments/
