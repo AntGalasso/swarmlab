@@ -1,0 +1,21 @@
+{
+  "main_base_commit": "a94ebe2fbabb6094254d2b3b34306ae000d580b1",
+  "date_utc": "2026-11-06",
+  "scope": "offline integration checks, not scientific findings",
+  "pytest": {
+    "passed": 184,
+    "failed": 0,
+    "seconds": 8.53
+  },
+  "mock_episodes": 24,
+  "fake_pilot_episodes": 6,
+  "actual_adaption_calls": 0,
+  "credits_used": 0,
+  "budget_violations": 0,
+  "python_version": "3.12.14",
+  "sources_sha256": {
+    "llm_client.py": "2bc2f5325ea118593be1aac03633f0e51e4b0c41d4499dfc1d05f6d6a97c3850",
+    "scripts/run_adaption_pilot.py": "84572a484ba2256f2bb675d0fdd44ed3f0046fd610de638985228b243eb43d68",
+    "tests/test_adaption_smoke.py": "689c1fe7889c6bbdb807d339297ab1169be166a5e7af573c179a42b0d10a05b7"
+  }
+}
