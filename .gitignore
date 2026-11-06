@@ -1,6 +1,16 @@
 .env
 llm_cache.sqlite*
-data/
+/data/
 results/*.jsonl
+results/experiments/
 __pycache__/
+*.pyc
 .pytest_cache/
+.ruff_cache/
+.venv/
+wandb/
+# dataset and model caches
+.cache/
+hf_cache/
+# profiler output written at the repository root
+/prof.out

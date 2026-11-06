@@ -25,6 +25,10 @@ REFERENCE_ARMS = ("offline_oracle",)                  # non-deployable upper bou
 STATIC_ARM = "static_zta"
 BAZT_ARMS = tuple(sl.BAZT_POLICIES)
 DEFAULT_ARMS = LEGACY_ARMS + REFERENCE_ARMS + (STATIC_ARM,) + BAZT_ARMS
+# Sprint experiment registry (additive; DEFAULT_ARMS is untouched so `bazt.runner` behaves exactly as before).
+from bazt.conventional_zta import (ALL_CONVENTIONAL_ARMS, BASELINE_ARMS, MATCHED_TIMING_ARMS,  # noqa: E402
+                                   ZTA_ARMS)
+EXPERIMENT_ARMS = tuple(BAZT_ARMS) + ALL_CONVENTIONAL_ARMS
 
 _BAZT_OVERRIDES: Dict[str, dict] = {
     "bazt": {}, "bazt_no_prov": {"use_provenance": False}, "bazt_no_topo": {"use_topology": False},
@@ -65,6 +69,10 @@ class RunContext:
     adapter: Optional[el.CoTPayloadAdapter] = None
     constraint: Optional[el.HardConstraintSpec] = None
     sink: Optional[List[EnforcementGateway]] = None                          # collects gateways for audit export
+    # --- sprint experiments (all defaulted: a run that does not set them is unchanged) -----------
+    zcfg: Optional[object] = None                    # bazt.conventional_zta.ZtaConfig
+    matched_steps: Optional[dict] = None             # arm -> frozenset(steps) for the matched-timing controls
+    scenario_hooks: Optional[Callable[[int, int], sl.EpisodeHooks]] = None   # attack-suite hooks
 
 
 @dataclass
@@ -77,11 +85,21 @@ class EpisodeSetup:
 
 def make_gateway_factory(ctx: RunContext) -> Callable:
     """Matches `EpisodeHooks.gateway_factory`. `decoys` is part of the signature but never read: a gateway
-    must not know which benign nodes are decoys."""
+    must not know which benign nodes are decoys.
+
+    BAZT arms get `EnforcementGateway`; the sprint's conventional ladder and baselines get the matching
+    `bazt.conventional_zta` class. Both speak the identical protocol and share the identical dual ledger.
+    """
     def factory(policy, world, cfg, base_adj, decoys, hooks):  # noqa: ARG001
         recv = hooks.recv_from if hooks.recv_from is not None else base_adj
-        gw = EnforcementGateway(policy, bazt_config_for(policy, ctx.bcfg), cfg, world.topology, world.seed,
-                                base_adj, recv, frozenset(hooks.seed_agents))
+        if policy in ALL_CONVENTIONAL_ARMS:
+            from bazt.conventional_zta import make_conventional_gateway
+            steps = (ctx.matched_steps or {}).get(policy)
+            gw = make_conventional_gateway(policy, ctx.zcfg, ctx.bcfg, cfg, world.topology, world.seed,
+                                           base_adj, recv, frozenset(hooks.seed_agents), matched_steps=steps)
+        else:
+            gw = EnforcementGateway(policy, bazt_config_for(policy, ctx.bcfg), cfg, world.topology, world.seed,
+                                    base_adj, recv, frozenset(hooks.seed_agents))
         if ctx.sink is not None:
             ctx.sink.append(gw)
         return gw
@@ -93,7 +111,8 @@ def _compose(first: Optional[Callable], second: Callable) -> Callable:
 
 
 def _base_hooks(ctx: RunContext, world: sl.World, n: int) -> sl.EpisodeHooks:
-    hooks = ctx.entry_factory(world.seed, n) if ctx.entry_factory else sl.EpisodeHooks()
+    hooks = (ctx.scenario_hooks(world.seed, n) if ctx.scenario_hooks is not None
+             else ctx.entry_factory(world.seed, n) if ctx.entry_factory else sl.EpisodeHooks())
     kw: dict = {}
     if ctx.adapter is not None:       # ground truth = the adapter's payload; the monitor still reads the tag
         kw.update(infection_marker=ctx.adapter.detect_ground_truth_payload,
@@ -118,8 +137,8 @@ def _static_zta(hooks: sl.EpisodeHooks, world: sl.World, ctx: RunContext) -> sl.
 
 
 def build_episode(arm: str, world: sl.World, swarm_cfg: sl.Config, ctx: RunContext) -> EpisodeSetup:
-    if arm not in DEFAULT_ARMS:
-        raise ValueError(f"unknown arm {arm!r}; choose from {DEFAULT_ARMS}")
+    if arm not in DEFAULT_ARMS + ALL_CONVENTIONAL_ARMS:
+        raise ValueError(f"unknown arm {arm!r}; choose from {DEFAULT_ARMS + ALL_CONVENTIONAL_ARMS}")
     cfg = equalized_swarm_cfg(arm, swarm_cfg, ctx.bcfg) if ctx.equalize else swarm_cfg
     hooks = _base_hooks(ctx, world, cfg.N)
     if arm == STATIC_ARM:

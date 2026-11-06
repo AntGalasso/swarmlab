@@ -15,10 +15,10 @@ import hashlib
 import json
 import math
 import os
-from pathlib import Path
 import re
 import subprocess
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 SOURCE_COMMIT = "a94ebe2fbabb6094254d2b3b34306ae000d580b1"
@@ -93,12 +93,17 @@ def source_state(repo):
                               text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         head = None
-    if head is not None:
+    manifest = repo / "UPSTREAM_SOURCE.json"
+    if manifest.is_file():
+        expected = json.loads(manifest.read_text(encoding="utf-8"))["verified_runtime_source_sha256"]
+        if hashes != expected:
+            raise PilotError("Runtime source differs from the verified private snapshot; validate changes and update UPSTREAM_SOURCE.json before running.")
+    elif head is not None:
         descendant = subprocess.run(["git", "merge-base", "--is-ancestor", SOURCE_COMMIT, head],
-                                    cwd=repo, capture_output=True).returncode == 0
+                                    cwd=repo, capture_output=True, check=False).returncode == 0
         if not descendant:
             raise PilotError("This pilot requires main " + SOURCE_COMMIT + " or a descendant checkout with full history.")
-    return {"expected_commit": SOURCE_COMMIT, "checkout_head": head, "source_sha256": hashes}
+    return {"upstream_base_commit": SOURCE_COMMIT, "checkout_head": head, "source_sha256": hashes}
 
 
 def run(args):
@@ -134,14 +139,14 @@ def run(args):
             raise PilotError("No key supplied; no request sent.")
         os.environ["ADAPTION_API_KEY"] = key
     os.environ["SWARMLAB_PROVIDER"] = "adaption"
-    import swarmlab as sl
     import bazt.runner as br
+    import swarmlab as sl
     from bazt.arms import RunContext
     from bazt.config import BaztConfig
     from llm_client import LLMBackend, SQLiteLLMCache
     if args.mode == "pilot":
         sl._kickoff_guard(SimpleNamespace(mode="llm", allow_live_llm=args.allow_live_llm))
-    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%S%fZ")
     out = Path(args.out).expanduser().resolve() if args.out else repo / "results" / ("ricardo_adaption_" + stamp)
     if out.exists():
         raise PilotError("Output directory already exists; choose a new one to preserve the previous run.")
@@ -193,7 +198,7 @@ def run(args):
     cache = SQLiteLLMCache(str(out / "request_cache.sqlite"))
     backend = LLMBackend(args.model, cache, transport=transport, max_concurrency=2,
                          temperature=0.0, max_tokens=MAX_OUTPUT_TOKENS, retries=0)
-    receipt = {"plan": plan, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+    receipt = {"plan": plan, "started_utc": dt.datetime.now(dt.UTC).isoformat(),
                "status": "started", "output_directory": str(out)}
     try:
         req = [("Reply with the single word READY.", "Ping.", "ricardo-ready-20261106")]
@@ -226,7 +231,7 @@ def run(args):
     finally:
         receipt["meter"] = meter.summary()
         receipt["cache"] = cache.stats()
-        receipt["finished_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        receipt["finished_utc"] = dt.datetime.now(dt.UTC).isoformat()
         (out / "receipt.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
         (out / "token_usage.json").write_text(json.dumps(meter.events, indent=2), encoding="utf-8")
         if api_client is not None:

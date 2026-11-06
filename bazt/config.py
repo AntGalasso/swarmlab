@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-BUDGET_MODES = ("pooled", "tiered")
+BUDGET_MODES = ("pooled", "tiered", "dual_pct")
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,10 @@ class BaztConfig:
     cost_restrict: int = 2
     cost_block: int = 2
     cost_isolate: int = 3
+    # dual_pct: both caps are FRACTIONS of the total episode edge deliveries ((T-1) * E_dir).
+    # None = uncapped. audit pays INSPECT; intervention pays every delivery-changing action.
+    audit_pct: Optional[float] = None
+    intervention_pct: Optional[float] = None
     # --- inspection / state lifetimes -----------------------------------------------------------
     q_inspect: float = 0.8                 # probability a paid inspection is conclusive
     inspect_ttl: int = 2                   # a verdict stays valid for this many steps (including its own)
@@ -71,12 +75,22 @@ class BaztConfig:
             raise ValueError("quarantine_ttl must be None or >= 1")
         if not 0.0 < self.stripped_edge_weight <= 1.0:
             raise ValueError("stripped_edge_weight must be in (0, 1]")
+        for name in ("audit_pct", "intervention_pct"):
+            v = getattr(self, name)
+            if v is not None and v < 0.0:
+                raise ValueError(f"{name} must be None (uncapped) or >= 0")
 
     @property
     def total_capacity(self) -> float:
-        """Total budget in cost units (inf when unlimited)."""
+        """Total budget in cost units (inf when unlimited).
+
+        dual_pct caps are fractions of an episode-dependent denominator, so they cannot be expressed here;
+        the ledger resolves them from the effective graph. `inf` keeps cost-per-arm comparisons honest.
+        """
         if self.unlimited:
             return float("inf")
         if self.budget_mode == "pooled":
             return float(self.B)
+        if self.budget_mode == "dual_pct":
+            return float("inf")
         return float(self.K_hard * self.cost_isolate + self.B_soft * self.cost_sanitize)
