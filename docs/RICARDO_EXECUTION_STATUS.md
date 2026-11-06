@@ -25,8 +25,12 @@ unknown usage. No unfinished episode is accepted. The alternate Gemma 26B
 campaign uses a fresh cache, paced requests and the same pre-evaluation gates.
 
 The H2/H3 analysis implementation, endpoints, comparison families and utility
-margin are frozen before evaluation. The main evaluation and reserved held-out
-evaluation are still pending completion of the alternate-model challenge gate.
+margin are frozen before evaluation. The alternate-model challenge gate passed:
+all 20 episodes completed, all ten attack-free controls contained zero markers,
+and untreated mean AUC was 0.4444 in small-world graphs and 0.9236 in hub graphs.
+Two HTTP 502 attempts were recovered with the predefined bounded retry policy;
+their usage remains explicitly unknown. The main evaluation is running. The
+separate held-out evaluation follows the main analysis.
 No superiority result, live GNN quality result or GPU benchmark is claimed.
 
 The private Overleaf report has been updated and compiled. It records completed
