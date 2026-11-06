@@ -23,7 +23,7 @@ manifests, tracking and the CLI of `EXPERIMENT_PLAN.md` (§1.1, §2.8, §5, §8,
 
 An LLM unit carries `block, platform, arm, audit, intervention, backbone, topology, attack, task, seed, conversations,
 agents, rounds, sanitize_mode` (`gnn_train`: `block, platform, arm="GNN", attack, task, edge_probability, attackers,
-backbone, conversations, agents, rounds, sanitize_mode`; `llm_adaptive_check` adds `condition` and has `task = "mmlu"`).
+backbone, conversations, agents, rounds, sanitize_mode`; `llm_adaptive_check` adds `condition`; its `task` is one of `llm.adaptive_check.tasks`, one unit per task).
 `conversations` is `llm.conversations_per_cell` (calibration: `llm.calibration_conversations_per_cell`) divided by
 `llm.seeds_per_cell`; a total that does not divide ends the launch with its message. An arm that sanitizes (BAZT, its
 ablations, BAZT_upstream) has one unit per mode of `llm.sanitize_modes` (D101); every other arm, and every calibration
@@ -171,7 +171,7 @@ it), `mock.legacy.matched_thresholds` (Matched-timing controls).
 `llm.agents`, `llm.rounds`, `llm.seeds_per_cell`, `llm.conversations_per_cell`,
 `llm.calibration_conversations_per_cell`, `llm.n_backbones`, `llm.backbones`, `llm.topologies`, `llm.attack_cells`,
 `llm.attack_free_tasks`, `llm.sanitize_modes`, `llm.headline_arms`, `llm.capped_arms`, `llm.capped_cells`,
-`llm.calibrated_arms`, `llm.judge_arms`, `llm.adaptive_check.arms`, `.families`, `.condition`, `.mock_cell`,
+`llm.calibrated_arms`, `llm.judge_arms`, `llm.adaptive_check.arms`, `.families`, `.tasks`, `.condition`, `.mock_cell`,
 `.mock_topology.<topology>`, `.start_clock`, `.mock_arm.<arm>` (only for an arm `mock.adaptive.arms` lacks).
 `gnn_train.families`, `.backbone`, `.conversations_per_setting`, `.agents`, `.rounds`, `.edge_probabilities`,
 `.attackers`, `.logs_dir` (sync); `gnn.artifacts_dir` (sync), `gnn.fallback_family` (the skip line).

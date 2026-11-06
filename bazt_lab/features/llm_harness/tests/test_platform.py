@@ -296,3 +296,81 @@ def test_tool_and_memory_attacks_run_end_to_end(families, tmp_path, attack, task
     rows = p.run_batch([unit(attack=attack, task=task)], arm(Passive), SETTINGS, core.CheckpointStore(tmp_path),
                        core.NullTracker())
     assert len(rows) == 2 and all(r[field] == 1.0 for r in rows)
+
+
+# ------------------------------------------------------------------ the live backend and judge are closed on every exit
+class _Closing:
+    def __init__(self, log, name):
+        self.log, self.name = log, name
+
+    def close(self):
+        self.log.append(self.name)
+
+
+def _live_stubs(monkeypatch, log, judge_fails=False):
+    from bazt_lab.features.judge import public as judge_feature
+    from bazt_lab.features.llm_harness.adapters import live
+    from bazt_lab.features.llm_harness.private import fake
+
+    class Backend(fake.FakeBackend, _Closing):
+        def __init__(self):
+            fake.FakeBackend.__init__(self)
+            self.log, self.name = log, "backend"
+
+    class Judge(_Closing):
+        def __init__(self):
+            super().__init__(log, "judge")
+
+        def score(self, texts):
+            return judge_feature.FakeJudge({}).score(texts)
+
+    monkeypatch.setattr(live, "backend", lambda settings, allow_live, cache_path: Backend())
+    monkeypatch.setattr(judge_feature, "live_judge", lambda settings, allow_live, cache_path: Judge())
+
+
+LIVE = {**SETTINGS, "llm": {**SETTINGS["llm"], "api": "live", "allow_live": True}}
+
+
+def test_run_batch_closes_the_backend_and_the_built_judge_on_success(tmp_path, monkeypatch):
+    from bazt_lab.features.llm_harness.private.platform import LLMPlatform
+    log = []
+    _live_stubs(monkeypatch, log)
+    p = LLMPlatform(sample=__import__("bazt_lab.features.llm_harness.private.fake", fromlist=["x"]).sample)
+    p.run_batch([], core.ArmSpec("x", Passive, platforms=("llm",)), LIVE, core.CheckpointStore(tmp_path / "b"), None)
+    p.run_batch([], core.ArmSpec("x", Passive, platforms=("llm",)), LIVE, core.CheckpointStore(tmp_path / "b"), None)
+    assert log.count("backend") == 2          # one backend per call, each closed; the judge was never built (no audit)
+
+
+def test_run_batch_closes_the_backend_when_a_unit_raises(tmp_path, monkeypatch):
+    from bazt_lab.features.llm_harness.private.platform import LLMPlatform
+    log = []
+    _live_stubs(monkeypatch, log)
+    p = LLMPlatform()
+    bad = unit(attack="no_such_attack")
+    with pytest.raises((ValueError, KeyError, RuntimeError)):
+        p.run_batch([bad], core.ArmSpec("x", Passive, platforms=("llm",)), LIVE, core.CheckpointStore(tmp_path / "b"), None)
+    assert log == ["backend"]
+
+
+def test_run_batch_closes_on_keyboard_interrupt_and_a_built_judge_too(tmp_path, monkeypatch):
+    from bazt_lab.features.llm_harness.private import platform as pf
+    log = []
+    _live_stubs(monkeypatch, log)
+    p = pf.LLMPlatform()
+
+    monkeypatch.setattr(pf.SeedRun, "__init__", lambda self, unit, arm, settings, env, *a, **k: setattr(self, "env", env))
+    monkeypatch.setattr(pf.SeedRun, "run", lambda self: (self.env.judge.score(["x"]), (_ for _ in ()).throw(KeyboardInterrupt))[1])
+    with pytest.raises(KeyboardInterrupt):
+        p.run_batch([unit()], core.ArmSpec("x", Passive, platforms=("llm",)), LIVE, core.CheckpointStore(tmp_path / "b"), None)
+    assert sorted(log) == ["backend", "judge"]
+
+
+def test_calibrate_closes_the_backend_on_success_and_on_an_exception(tmp_path, monkeypatch):
+    from bazt_lab.features.llm_harness.private.platform import LLMPlatform
+    log = []
+    _live_stubs(monkeypatch, log)
+    p = LLMPlatform()
+    arm = core.ArmSpec("x", Passive, platforms=("llm",))
+    with pytest.raises(ValueError):                              # the pass reports no statistic: raised after the build
+        p.calibrate([], arm, LIVE, core.CheckpointStore(tmp_path / "b"))
+    assert log == ["backend"]

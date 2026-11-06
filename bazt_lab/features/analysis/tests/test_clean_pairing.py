@@ -198,3 +198,39 @@ def test_nan_pairs_are_counted_before_the_seed_collapse(tmp_path):
 def test_the_report_fingerprint_changes_with_the_recovery_margin():
     from bazt_lab.features.analysis.private import report
     assert report.fingerprint(synth.settings()) != report.fingerprint(synth.settings(runtime__recovery_margin=0.5))
+
+
+# ------------------------------------------------------------------ adaptive twin: declared reference, never load order
+def _base(block, **kw):
+    return dict(block=block, platform="llm", arm="C", audit="uncapped", intervention="uncapped", topology="chain",
+                agents=12, seed=1, sink=0, conversation=0, task="mmlu", backbone="gpt", **kw)
+
+
+def _two_reference_rows():
+    def free(b, acc):
+        return dict(_base(b), attack="none", asr_final=math.nan, accuracy_attack=math.nan, accuracy_clean=acc)
+    att = dict(_base("llm_adaptive_check", condition="gray_box"), attack="insider_pi", asr_final=0.2, accuracy_attack=0.8,
+               accuracy_clean=math.nan, accuracy_by_round=[0.5, 0.9], accuracy_clean_reference=math.nan, nrp=math.nan,
+               recovery_time_accuracy=math.nan)
+    return [free("llm_headline", 0.90), free("llm_capped", 0.60), att]
+
+
+def _adaptive_reference(t):
+    i = next(j for j in range(t.n) if t.vocab["block"][t.codes["block"][j]] == "llm_adaptive_check")
+    return t.metrics["accuracy_clean_reference"][i]
+
+
+def test_the_adaptive_twin_comes_from_the_declared_reference_block_in_either_load_order(tmp_path):
+    synth.write_rows(tmp_path, _two_reference_rows())
+    for order in (("llm_headline", "llm_capped"), ("llm_capped", "llm_headline")):
+        t = tb.load(tmp_path, (*order, "llm_adaptive_check"), METRICS, clean_margin=0.01,
+                    reference_blocks=("llm_headline",))
+        assert _adaptive_reference(t) == 0.90
+
+
+def test_several_reference_blocks_holding_the_plain_unit_refuse_naming_them_in_either_order(tmp_path):
+    synth.write_rows(tmp_path, _two_reference_rows())
+    for order in (("llm_headline", "llm_capped"), ("llm_capped", "llm_headline")):
+        with pytest.raises(ValueError, match=r"ambiguous.*llm_capped.*llm_headline"):
+            tb.load(tmp_path, (*order, "llm_adaptive_check"), METRICS, clean_margin=0.01,
+                    reference_blocks=("llm_headline", "llm_capped"))

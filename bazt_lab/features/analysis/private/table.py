@@ -190,9 +190,11 @@ class _Builder:
         table.index = _group(table)
         return table
 
-    def pair_clean(self, t: Table, margin: float) -> None:
+    def pair_clean(self, t: Table, margin: float, reference_blocks: Sequence[str] = ()) -> None:
         """Fill the clean reference, NRP and recovery time of every attack row the platform could not pair (NaN
-        reference) from the attack-free row of the same unit and episode. A missing twin is an error."""
+        reference) from the attack-free row of the same unit and episode. A missing twin is an error. An adaptive block
+        (no attack-free unit of its own) takes the plain run of its declared `reference_blocks`; when several of them hold
+        that plain unit the clean reference would depend on which one, and the pairing refuses naming them."""
         if self.by_round is None or not t.n:
             return
         fields = [f for f in ("block", *RAW_FIELDS) if f != "attack"]       # the twin has the same ma_check
@@ -206,11 +208,24 @@ class _Builder:
         def plain(k: tuple) -> tuple:
             return (*k[:at_block], *k[at_block + 1:at_cond], none_code, *k[at_cond + 1:])
 
-        by_plain = {plain(k): v for k, v in twin.items() if k[at_cond] == none_code}
+        ref_codes = {t.vocab["block"].index(b): b for b in reference_blocks if b in t.vocab["block"]}
+        by_plain: Dict[tuple, Dict[int, float]] = {}
+        for k, v in twin.items():
+            if k[at_cond] == none_code and k[at_block] in ref_codes:
+                by_plain.setdefault(plain(k), {})[k[at_block]] = v
         ref, nrp, rec = (t.metrics[c] for c in CLEAN_COLUMNS)
         for i in np.flatnonzero(~free & np.isnan(ref)):
             k = tuple(ident[i])
-            clean = twin.get(k, by_plain.get(plain(k)))
+            clean = twin.get(k)
+            if clean is None:
+                found = by_plain.get(plain(k), {})
+                if len(found) > 1:
+                    unit = {f: t.vocab[f][t.codes[f][i]] for f in UNIT_FIELDS if f != "attack"}
+                    raise ValueError(f"the clean twin of the attack row of block {t.vocab['block'][k[at_block]]!r} "
+                                     f"{unit} is ambiguous: the plain attack-free unit is in several reference blocks "
+                                     f"{sorted(ref_codes[c] for c in found)}; list one block in "
+                                     "analysis.blocks.adaptive_reference")
+                clean = next(iter(found.values()), None)
             if clean is None:
                 unit = {f: t.vocab[f][t.codes[f][i]] for f in ("block", *UNIT_FIELDS, *EPISODE_FIELDS) if f != "attack"}
                 raise ValueError(f"no attack-free twin for the attack row {unit}; the clean reference, NRP and "
@@ -245,12 +260,13 @@ def _group(t: Table) -> Dict[Key, np.ndarray]:
             for s, e in zip(starts, ends, strict=True)}
 
 
-def load(results_dir, blocks: Sequence[str], metric_columns: Sequence[str], clean_margin: float | None = None) -> Table:
+def load(results_dir, blocks: Sequence[str], metric_columns: Sequence[str], clean_margin: float | None = None,
+         reference_blocks: Sequence[str] = ()) -> Table:
     """Read every committed row of the given blocks under `results_dir` (the directory that holds the block folders),
     from units/ and every worker shard (`core.committed_row_files`: a rows file without its done marker is a batch a crash
     cut before its done list or a unit still running or abandoned, and is counted in `uncommitted_files`, not read). A
     block with no units/ folder or no committed row is listed in `missing_blocks`. With `clean_margin` (runtime.recovery_margin) the attack rows are paired with their
-    attack-free twin (LLM platform)."""
+    attack-free twin (LLM platform); an adaptive block's twin comes from `reference_blocks`."""
     builder, missing, torn, uncommitted = _Builder(metric_columns, clean_margin is not None), [], 0, 0
     for block in blocks:
         if not (Path(results_dir) / block / "units").is_dir():
@@ -274,6 +290,6 @@ def load(results_dir, blocks: Sequence[str], metric_columns: Sequence[str], clea
             missing.append(block)
     table = builder.finish(missing, torn, uncommitted)
     if clean_margin is not None:
-        builder.pair_clean(table, clean_margin)
+        builder.pair_clean(table, clean_margin, reference_blocks)
         table.empty_metrics = [m for m, v in table.metrics.items() if table.n == 0 or np.isnan(v).all()]
     return table

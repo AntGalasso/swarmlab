@@ -128,7 +128,8 @@ def analyze(results_dir, settings: Mapping, out=None) -> dict:
     if not root.is_dir():
         raise FileNotFoundError(f"results directory {root} does not exist")
     tables = {p: table.load(root, cfg.all_blocks(p), cfg.metric_columns,
-                            cfg.recovery_margin if p == "llm" else None) for p in PLATFORMS}
+                            cfg.recovery_margin if p == "llm" else None,
+                            cfg.blocks["adaptive_reference"][p]) for p in PLATFORMS}
     report = jsonable(build(root, tables, cfg, settings))
     target = Path(out) if out else root / REPORT_NAME
     target.parent.mkdir(parents=True, exist_ok=True)

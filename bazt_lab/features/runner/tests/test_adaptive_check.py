@@ -15,7 +15,7 @@ from bazt_lab.features.runner.tests.test_commands import LLM, MOCK, blocks_run, 
 from bazt_lab.features.runner.tests.test_launch import block_dir, past_kickoff
 
 SCOPE = ["llm.agents=3", "llm.adaptive_check.arms=['A']", "llm.adaptive_check.families=['infection']",
-         "llm.adaptive_check.condition='gray_box'", "mock.adaptive.arms=['A']", "mock.adaptive.cells=[[10, 10]]",
+         "llm.adaptive_check.condition='gray_box'", "llm.adaptive_check.tasks=['mmlu']", "mock.adaptive.arms=['A']", "mock.adaptive.cells=[[10, 10]]",
          "mock.adaptive.conditions=['gray_box']"]
 REPLAY = ["llm.adaptive_check.mock_cell=[10, 10]", "llm.adaptive_check.mock_topology.hub_star='chain'",
           "llm.adaptive_check.start_clock='conversation'"]
@@ -90,6 +90,21 @@ def test_each_choice_of_the_mapping_is_an_owner_key_refused_while_unset(tmp_path
     past_kickoff(monkeypatch)
     s = fakes.settings(fakes.TINY_MOCK, LLM, SCOPE, [o for o in REPLAY if not o.startswith(key)])
     refused(s, tmp_path, fakes.FakeAdaptive({CELL: {}}), rf"setting not set in profiles.toml: {key}")
+
+
+def test_the_tasks_of_the_check_are_an_owner_key_refused_while_unset(tmp_path, monkeypatch):
+    past_kickoff(monkeypatch)
+    s = fakes.settings(fakes.TINY_MOCK, LLM, [o for o in SCOPE if "adaptive_check.tasks" not in o], REPLAY)
+    refused(s, tmp_path, fakes.FakeAdaptive({CELL: {}}), r"setting not set in profiles.toml: llm.adaptive_check.tasks")
+
+
+def test_the_units_of_the_check_run_the_configured_tasks_not_a_fixed_one():
+    s = settings(["llm.adaptive_check.tasks=['mmlu', 'csqa']"])
+    units = list(rx.units_llm_adaptive_check(s, True))
+    assert {u["task"] for u in units} == {"mmlu", "csqa"}
+    assert len(units) == 2 * len([u for u in units if u["task"] == "mmlu"])
+    only = list(rx.units_llm_adaptive_check(settings(["llm.adaptive_check.tasks=['gsm8k']"]), True))
+    assert {u["task"] for u in only} == {"gsm8k"}
 
 
 @pytest.mark.parametrize("bad,match", [

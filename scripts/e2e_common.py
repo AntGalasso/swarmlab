@@ -124,7 +124,7 @@ ANALYSIS_TEST_VALUES: dict[str, object] = {
 # by the plan itself, or belong to the owner (tracking).
 NOT_SET_BY_E2E = frozenset({
     "llm.backbones", "llm.calibration_conversations_per_cell", "llm.api", "gnn_train.backbone",
-    "llm.adaptive_check.arms", "llm.adaptive_check.families", "llm.adaptive_check.condition",
+    "llm.adaptive_check.arms", "llm.adaptive_check.families", "llm.adaptive_check.condition", "llm.adaptive_check.tasks",
     "llm.adaptive_check.mock_cell", "llm.adaptive_check.mock_topology", "llm.adaptive_check.start_clock",
     "llm.adaptive_check.mock_arm",
     "mock.epidemiology.arms", "mock.epidemiology.cells", "mock.ablations.arms", "mock.ablations.cells",

@@ -20,7 +20,7 @@ SEARCH = ["mock.adaptive.search_seeds=[9101, 9102]", "mock.adaptive.insider_sets
 CHECK = ["llm.api='fake'", "llm.agents=3", "llm.backbones=['fake/bb']", "llm.sanitize_modes=['redaction']",
          "llm.conversations_per_cell=4", "llm.calibration_conversations_per_cell=2", "calibration.mode='open_loop'",
          "llm.adaptive_check.arms=['B']", "llm.adaptive_check.families=['infection']",
-         "llm.adaptive_check.condition='gray_box'", "llm.adaptive_check.mock_cell=[10, 10]",
+         "llm.adaptive_check.condition='gray_box'", "llm.adaptive_check.tasks=['mmlu']", "llm.adaptive_check.mock_cell=[10, 10]",
          "llm.adaptive_check.mock_topology.hub_star='chain'", "llm.adaptive_check.start_clock='conversation'"]
 
 
