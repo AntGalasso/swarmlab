@@ -377,13 +377,14 @@ STRATUM_KEYS = ("scenario", "topology", "N", "audit_pct", "int_pct")
 
 
 def _pkey(r) -> tuple:
-    return (str(r.get("platform")), str(r.get("split")), str(r.get("scenario")), str(r.get("topology")),
-            int(r.get("N", 0)), r.get("audit_pct"), r.get("int_pct"), int(r.get("seed", 0)))
+    return (str(r.get("platform")), str(r.get("split")), str(r.get("stage")), str(r.get("scenario")),
+            str(r.get("topology")), int(r.get("N", 0)), r.get("audit_pct"), r.get("int_pct"),
+            int(r.get("seed", 0)))
 
 
 def _skey(r) -> tuple:
     return (str(r.get("scenario")), str(r.get("topology")), int(r.get("N", 0)), r.get("audit_pct"),
-            r.get("int_pct"))
+            r.get("int_pct"), str(r.get("stage")))
 
 
 def pair_arms(rows: Sequence[dict], arm_a: str = "arm_C", arm_b: str = "bazt"):
@@ -479,14 +480,18 @@ def _did_adaptive(rows: Sequence[dict], static: str = "infection", adaptive: str
 
     delta_C = ASR(adaptive, C) - ASR(static, C);  delta_B = ASR(adaptive, BAZT) - ASR(static, BAZT)
     DiD     = delta_C - delta_B  (> 0 means BAZT's safety advantage GROWS under best-response adaptation)
+
+    The static and the adaptive run are matched inside one cell (platform, split, stage, topology, N, budget,
+    seed), so topology, N and budget cancel and only the attacker's adaptation differs.
     """
-    by: Dict[tuple, Dict[str, dict]] = defaultdict(dict)
+    by: Dict[tuple, Dict[str, Dict[str, dict]]] = defaultdict(lambda: defaultdict(dict))
     for r in rows:
-        by[(str(r.get("scenario")), int(r.get("seed", 0)))][r["arm"]] = r
-    seeds = sorted({k[1] for k in by})
-    did, dc_all, db_all = [], [], []
-    for seed in seeds:
-        s, a = by.get((static, seed)), by.get((adaptive, seed))
+        cell = (str(r.get("platform")), str(r.get("split")), str(r.get("stage")), str(r.get("topology")),
+                int(r.get("N", 0)), r.get("audit_pct"), r.get("int_pct"), int(r.get("seed", 0)))
+        by[cell][str(r.get("scenario"))][r["arm"]] = r
+    did, dc_all, db_all, strata = [], [], [], []
+    for cell in sorted(by, key=str):
+        s, a = by[cell].get(static), by[cell].get(adaptive)
         if not s or not a or not {"arm_C", "bazt"} <= set(s) or not {"arm_C", "bazt"} <= set(a):
             continue
         dc = _num(a["arm_C"].get("asr_final")) - _num(s["arm_C"].get("asr_final"))
@@ -496,9 +501,10 @@ def _did_adaptive(rows: Sequence[dict], static: str = "infection", adaptive: str
         dc_all.append(dc)
         db_all.append(db)
         did.append(dc - db)
+        strata.append(cell[:-1])
     if not did:
         return {"available": False, "reason": f"no paired {static}/{adaptive} cells"}
-    res = _one_sided(did, [("all",)] * len(did))
+    res = _one_sided(did, strata)
     res.update({"available": True, "static_scenario": static, "adaptive_scenario": adaptive,
                 "delta_c_mean": float(np.mean(dc_all)), "delta_bazt_mean": float(np.mean(db_all)),
                 "did_mean": float(np.mean(did)), "n_seeds": len(did), "supported": bool(res["p_greater"] < 0.05)})
@@ -508,6 +514,8 @@ def _did_adaptive(rows: Sequence[dict], static: str = "infection", adaptive: str
 def _topology_scale(rows: Sequence[dict], ba: str = "barabasi_albert", ws: str = "watts_strogatz",
                     ns: Sequence[int] = (12, 100), margin_pp: float = 5.0) -> dict:
     """Topology x scale interaction on the safety gain, plus TOST equivalence on watts_strogatz."""
+    if any(r.get("stage") == "mock_topology_scale" for r in rows):      # one stage, one scenario per cell
+        rows = [r for r in rows if r.get("stage") == "mock_topology_scale"]
     gain: Dict[tuple, float] = {}
     for r in rows:
         key = (str(r.get("topology")), int(r.get("N", 0)), int(r.get("seed", 0)), r["arm"])
@@ -651,7 +659,7 @@ def confirmatory_bazt(root: str, ni_margin: float = 0.05, rank_threshold: float 
         "utility_non_inferiority": noninf,
         "p_joint": p_joint,
         "holm_family": per_scenario,
-        "mcnamara_exhaustion": exh,
+        "mcnemar_exhaustion": exh,
         "h_adaptive_diff_in_diffs": _did_adaptive(rows),
         "h_topology_scale": _topology_scale(rows),
         "rank_agreement": _rank_agreement(rows, rank_threshold),
@@ -682,7 +690,7 @@ def print_confirmatory(rep: dict) -> None:
     for k, v in rep["holm_family"].items():
         print(f"{k:<12}{v['n']:>6}{v['safety_mean_pp']:>12.2f}{v['safety_p']:>11.4g}"
               f"{v['utility_mean_pp']:>10.2f}{v['p_joint']:>10.4g}{v['p_joint_holm']:>10.4g}")
-    ex = rep["mcnamara_exhaustion"]
+    ex = rep.get("mcnemar_exhaustion") or rep["mcnamara_exhaustion"]   # old result files
     print(f"exhaustion McNemar: C-only={ex['c_exhausted_only']} BAZT-only={ex['bazt_exhausted_only']} "
           f"p_exact={ex['p_exact_mcnemar']:.4g}")
     did = rep["h_adaptive_diff_in_diffs"]

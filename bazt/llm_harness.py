@@ -226,6 +226,8 @@ class Tier1Cell:
     n: int = 12
     conversations: int = 8
     rounds: int = 3
+    stage: str = "llm_tier1"      # must equal the planned cell's stage/split so plan_key matches on --resume
+    split: str = "main"
 
 
 def run_tier1_conversation_block(cell: Tier1Cell, config: dict, thresholds: dict,
@@ -243,11 +245,13 @@ def run_tier1_conversation_block(cell: Tier1Cell, config: dict, thresholds: dict
     setup = build_scenario(cell.scenario, cell.seed, config, n=cell.n, topology=cell.topology)
     world = sl.make_world(cell.topology, cell.seed, setup.cfg)
     tau = float(thresholds.get("arm_B", {}).get("tau_alpha", 0.5))
-    zcfg = ZtaConfig(tau_alpha=tau, rate_limit_per_identity=int(config["rate_limit_per_identity"]),
+    off = float(thresholds.get("arm_C", {}).get("rl_offset", 0.0))
+    theta0 = float(thresholds.get("bazt", {}).get("theta0", BaztConfig().theta0))
+    zcfg = ZtaConfig(tau_alpha=tau, rl_offset=off, rate_limit_per_identity=int(config["rate_limit_per_identity"]),
                      alpha_clean_fpr=float(config["alpha_clean_fpr"]),
                      probe_score_hook=lambda i, t, v: judge.score_sync(v.observed_texts[i])[0]
                      if v.observed_texts[i] else None)
-    bcfg = conventional_bazt_config(zcfg, cell.audit_pct, cell.intervention_pct)
+    bcfg = replace(conventional_bazt_config(zcfg, cell.audit_pct, cell.intervention_pct), theta0=theta0)
     factory = _PersistentGatewayFactory(cell.arm, zcfg, bcfg)
 
     agent = LLMConversationAgent(backend, setup.cfg, compressed=(cell.scenario == "adaptive"))
@@ -271,7 +275,7 @@ def run_tier1_conversation_block(cell: Tier1Cell, config: dict, thresholds: dict
     gw = factory.gw
     spend = gw.ledger.spent if gw is not None else float("nan")
     return {
-        "platform": "llm", "stage": "llm_tier1", "scenario": cell.scenario, "topology": cell.topology,
+        "platform": "llm", "stage": cell.stage, "split": cell.split, "scenario": cell.scenario, "topology": cell.topology,
         "N": cell.n, "arm": cell.arm, "audit_pct": cell.audit_pct, "int_pct": cell.intervention_pct,
         "seed": cell.seed, "conversations": cell.conversations, "rounds": cell.rounds,
         "asr_final": float(np.mean(asrs)) if asrs else float("nan"),

@@ -249,7 +249,7 @@ def plan_frontier(config: dict, split: str, smoke: bool) -> List[dict]:
 
 def plan_topology_scale(config: dict, split: str, smoke: bool) -> List[dict]:
     out = []
-    ns = [12, 100]
+    ns = [int(v) for v in config["scale_N"]]
     if smoke:                                   # the N=100 cells are the slow ones; smoke keeps N=12 only
         ns = [12]
     for topology in config.get("scale_topologies", ["barabasi_albert", "star_hub", "watts_strogatz"]):
@@ -279,7 +279,8 @@ def plan_llm_pilot(config: dict, split: str) -> List[dict]:
     llm = config["llm"]
     return [{"platform": "llm", "stage": "llm_pilot", "split": split, "scenario": "infection",
              "topology": "barabasi_albert", "N": int(llm["N"]), "arm": "bazt", "audit_pct": None,
-             "int_pct": None, "seed": int(s)}
+             "int_pct": None, "seed": int(s), "conversations": int(llm["pilot_conversations"]),
+             "rounds": int(llm["rounds_per_conversation"])}
             for s in _seeds(config, split, False)[:int(llm["pilot_seeds"])]]
 
 
@@ -288,6 +289,7 @@ def plan_llm_tier1(config: dict, split: str) -> List[dict]:
     seeds = _seeds(config, split, False)[:int(llm["tier1_seeds"])]
     budgets: List[Tuple[Optional[float], Optional[float]]] = [(None, None)]
     budgets += [tuple(b) for b in llm.get("tier1_capped_budgets", [])]
+    conv, rounds = int(llm["tier1_conversations"]), int(llm["rounds_per_conversation"])
     out = []
     for scenario in llm["tier1_scenarios"]:
         for topology in llm["tier1_topologies"]:
@@ -295,13 +297,14 @@ def plan_llm_tier1(config: dict, split: str) -> List[dict]:
                 for seed in seeds:
                     out.append({"platform": "llm", "stage": "llm_tier1", "split": split, "scenario": scenario,
                                 "topology": topology, "N": int(llm["N"]), "arm": arm, "audit_pct": None,
-                                "int_pct": None, "seed": seed})
+                                "int_pct": None, "seed": seed, "conversations": conv, "rounds": rounds})
             for arm in llm["tier1_capped_arms"]:
                 for (a, i) in budgets[1:]:
                     for seed in seeds:
                         out.append({"platform": "llm", "stage": "llm_tier1", "split": split,
                                     "scenario": scenario, "topology": topology, "N": int(llm["N"]),
-                                    "arm": arm, "audit_pct": a, "int_pct": i, "seed": seed})
+                                    "arm": arm, "audit_pct": a, "int_pct": i, "seed": seed,
+                                    "conversations": conv, "rounds": rounds})
     return out
 
 
@@ -327,7 +330,8 @@ def execute(cells: Sequence[dict], config: dict, out_dir: str, resume: bool, thr
             block = Tier1Cell(cell["scenario"], cell["topology"], cell["arm"], cell.get("audit_pct"),
                               cell.get("int_pct"), int(cell["seed"]), n=int(cell["N"]),
                               conversations=int(cell.get("conversations", config["llm"]["tier1_conversations"])),
-                              rounds=int(cell.get("rounds", config["llm"]["rounds_per_conversation"])))
+                              rounds=int(cell.get("rounds", config["llm"]["rounds_per_conversation"])),
+                              stage=cell["stage"], split=cell["split"])
             row = run_tier1_conversation_block(block, config, thresholds, backend=backend)
         else:
             row = run_episode_cell(cell, config, thresholds, matched_steps=extra)
@@ -344,7 +348,11 @@ def execute(cells: Sequence[dict], config: dict, out_dir: str, resume: bool, thr
 def stage_calibrate(args, config: dict) -> int:
     from bazt.calibration import calibrate_thresholds
     out = os.path.join(args.out, "frozen_thresholds.json")
-    calibrate_thresholds(config, platform=args.platform, split=args.split, out_path=out)
+    seeds = None
+    if args.platform == "llm":                      # documented: 3 tune seeds x 8 conversations per cell
+        lo = int(config.get("splits", {}).get("tune", [9001, 9030])[0])
+        seeds = [lo, lo + 1, lo + 2]
+    calibrate_thresholds(config, platform=args.platform, split=args.split, out_path=out, seeds=seeds)
     return 0
 
 
@@ -399,9 +407,12 @@ def stage_llm_pilot(args, config: dict) -> int:
     backend = _backend(args)
     cells = plan_llm_pilot(config, args.split)
     print(f"llm-pilot: {len(cells)} episodes x {config['llm']['pilot_conversations']} conversations")
-    rep = execute(cells, config, args.out, args.resume, thresholds, backend=backend, verbose=not args.quiet)
-    print(json.dumps(rep, indent=2))
-    _close(backend)
+    try:
+        rep = execute(cells, config, args.out, args.resume, thresholds, backend=backend,
+                      verbose=not args.quiet)
+        print(json.dumps(rep, indent=2))
+    finally:
+        _close(backend)
     return 0
 
 
@@ -411,9 +422,12 @@ def stage_llm_tier1(args, config: dict) -> int:
     backend = _backend(args)
     cells = plan_llm_tier1(config, args.split)
     print(f"llm-tier1: {len(cells)} episode blocks x {config['llm']['tier1_conversations']} conversations")
-    rep = execute(cells, config, args.out, args.resume, thresholds, backend=backend, verbose=not args.quiet)
-    print(json.dumps(rep, indent=2))
-    _close(backend)
+    try:
+        rep = execute(cells, config, args.out, args.resume, thresholds, backend=backend,
+                      verbose=not args.quiet)
+        print(json.dumps(rep, indent=2))
+    finally:
+        _close(backend)
     return 0
 
 
@@ -503,7 +517,7 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     os.makedirs(args.out, exist_ok=True)
     config = load_config(args.config)                 # fail fast, before anything else
-    if args.stage in ("mock-frontier", "mock-topology-scale", "mock-adaptive"):
+    if args.stage in ("mock-frontier", "mock-topology-scale", "mock-adaptive", "llm-pilot", "llm-tier1"):
         guard_split(args.split, args.confirm_frozen_analysis)
     if args.stage in ("llm-pilot", "llm-tier1"):
         guard_llm("llm", args.allow_live_llm, bool(args.fake_backend))   # first thing: no backend exists yet
