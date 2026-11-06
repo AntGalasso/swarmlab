@@ -1,0 +1,474 @@
+# Settings for the experiments (spec: EXPERIMENT_PLAN.md), launched with run_experiments.py.
+#
+# Nothing in bazt_lab has a default for an experiment value: every value it uses comes from this file.
+#
+#   switch profile for one launch     python run_experiments.py --profile research --dry-run
+#   switch the default profile        edit `active_profile` below
+#   change a value inside a profile   edit [profiles.sprint] or [profiles.research]
+#   override one value for one launch --set llm.conversations_per_cell=80   (any key, dotted path)
+#   see the size of a choice          python run_experiments.py --dry-run
+#
+# A key that is commented out is UNSET. A block that needs an unset key refuses to run and says which key.
+
+active_profile = "sprint"
+
+# ---------------------------------------------------------------------------------------- profiles
+# The two profiles differ only in the size of the LLM grid (spec §1.1). The mock grid is the same in both.
+
+[profiles.sprint]
+"llm.conversations_per_cell" = 60          # 5 seeds x 12 conversations
+"llm.capped_cells" = [[10, 10]]            # (audit %, intervention %) for capped C and capped BAZT
+"llm.sanitize_modes" = ["redaction"]       # D101: fixed redaction, no extra call
+"llm.ma_correctness" = ["rule"]            # D103: deterministic normalised-containment rule
+
+[profiles.research]
+"llm.conversations_per_cell" = 100         # 5 seeds x 20 conversations
+"llm.capped_cells" = [[2, 2], [10, 10], [50, 50]]
+"llm.sanitize_modes" = ["redaction", "llm_rewrite"]   # D101: redaction and an LLM rewrite that strips instructions
+"llm.ma_correctness" = ["rule", "llm_judge"]          # D103: the rule and the upstream LLM judge, both reported
+
+# ---------------------------------------------------------------------------------- run-time variables
+# Spec §10. No value is specified; every --run refuses to start until all of them are set.
+# ni_margin_accuracy and rank_agreement_threshold are pre-registered: they are copied into every manifest
+# before any result exists.
+
+[runtime]
+# n_insiders = <int>                       # insider attackers per episode
+# rate_limit_per_identity = <int>          # B: messages per identity per round
+# horizon_constant = <float>               # mock T = horizon_constant x effective diameter
+# eps_correct = <float>                    # mock: agent correct iff |estimate - true mean| <= eps_correct
+# recovery_margin = <float>                # accuracy margin for recovery time
+# ni_margin_accuracy = <float>             # non-inferiority margin on accuracy (pre-registered)
+# rank_agreement_threshold = <float>       # rank-agreement test threshold (pre-registered)
+# random_edge_probability = <float>        # random directed topology
+# ba_m = <int>                             # Barabasi-Albert: edges per new node
+# ws_k = <int>                             # Watts-Strogatz (both platforms): neighbours
+# ws_rewire_p = <float>                    # Watts-Strogatz (both platforms): rewiring probability
+# llm_seeds = [<int>, ...]                 # 5 values
+# llm_calibration_seeds = [<int>, ...]     # 5 values, disjoint from llm_seeds
+# sanitize_success = <float>               # probability a sanitize / degraded delivery loses its payload (mock);
+                                           # BAZT reads it on both platforms to price sanitize
+# insider_bias = <float>                   # mock insider: shift of the reported value
+# ta_detectability = <float>               # mock TA insider: mean monitor score of its messages
+# ma_detectability = <float>               # mock MA insider: mean monitor score of its messages
+# aitm_rewrite_strength = <float>          # mock AiTM: probability a rewritten delivery carries the payload
+
+[runtime.llm_sink_positions]               # agent indices per LLM topology, one list per topology
+# random_directed = [<int>, ...]
+# hub_star = [<int>, ...]
+# barabasi_albert = [<int>, ...]
+# watts_strogatz = [<int>, ...]
+
+# ------------------------------------------------------------------------------------------- LLM side
+
+[llm]
+agents = 12
+rounds = 4                                 # 1 initial round + 3 updates
+seeds_per_cell = 5
+temperature = 0.0
+n_backbones = 2                            # the grid uses 2 of the 3 candidates
+# backbones = ["...", "..."]               # 2 of: openai/gpt-4o-mini, meta-llama/llama-3.3-70b-instruct,
+                                           # deepseek/deepseek-v4.1-flash (decided outside the experiment track)
+topologies = ["random_directed", "hub_star", "barabasi_albert", "watts_strogatz"]
+attack_cells = [
+    ["insider_pi", "mmlu"], ["insider_pi", "csqa"], ["insider_pi", "gsm8k"],
+    ["insider_ta", "injecagent"],
+    ["insider_ma", "poisonedrag_msmarco"],
+    ["infection", "mmlu"], ["infection", "csqa"], ["infection", "gsm8k"],
+    ["aitm", "mmlu"], ["aitm", "csqa"], ["aitm", "gsm8k"],
+]
+attack_free_tasks = ["mmlu", "csqa", "gsm8k", "injecagent", "poisonedrag_msmarco"]
+headline_arms = ["A", "B", "C", "BAZT", "BAZT_upstream", "GNN", "GNN_recalibrated"]   # all uncapped (D106)
+capped_arms = ["C", "BAZT", "BAZT_upstream"]
+judge_arms = ["B", "C", "BAZT", "BAZT_upstream"]   # arms that send texts to the judge (also their capped variants)
+calibrated_arms = ["B", "C", "BAZT", "BAZT_upstream", "GNN_recalibrated"]   # D106, D107: calibrated on the uncapped arm, threshold reused at every cap
+# calibration_conversations_per_cell = 100 # not specified yet (spec §11)
+ma_judge_model = "openai/gpt-4o-mini"             # upstream G-Safeguard MA judge: vendor/G-safeguard/MA/evaluate_output.py:31
+cache = true                               # identical requests served from the SQLite cache
+# api = "fake"                             # tests and offline e2e only: fake backend, fake judge, synthetic items
+# providers = { "<backbone slug>" = "<provider>" }   # pinned OpenRouter provider per backbone (decided with the backbones)
+
+[llm_data.revisions]                       # Hub commit of each dataset (configuration: pins the data)
+mmlu = "c30699e8356da336a370243923dbaf21066bb9fe"
+csqa = "94630fe30dad47192a8546eb75f094926d47e155"
+gsm8k = "740312add88f781978c0658806c59bc2815b9866"
+
+[llm_data.vendored_sha256]                 # sha256 of each vendored G-Safeguard file
+injecagent = "3465082b1d5bd32f60ba5e319a305f4b05bdb75dc00189e16ed6dc2937056998"
+poisonedrag_msmarco = "d6bf508ebb0e31e09095995061bd483678e2ae8634f6ba5de1611e4adf9b1987"
+
+[llm.judge]
+model = "qwen/qwen3.8-27b"
+prompt = "promptarmor"
+score = "logprob_yes"
+thinking = false
+# provider = ""                            # not specified yet; must return logprobs (spec §11)
+# top_logprobs = <int>                     # alternatives returned per token (OpenRouter maximum 20)
+# floor_probability = <float>              # P("yes") assigned when no yes-token is among the top_logprobs
+
+[llm.adaptive_check]                       # the one held-out LLM adaptive check (spec §3); scope not specified
+# arms = []
+# families = []
+# condition = ""                           # D110: the LLM harness runs "gray_box" only (the mock's best response replayed)
+# mock_cell = [<audit>, <intervention>]    # OPEN: the cell of mock.adaptive.cells whose best response is replayed (the
+                                           # LLM check runs uncapped), e.g. ["uncapped", "uncapped"] if that cell is searched
+# mock_topology = { random_directed = "...", hub_star = "...", barabasi_albert = "...", watts_strogatz = "..." }
+                                           # OPEN: per LLM topology, the mock topology (one of mock.topologies) it replays
+# start_clock = "..."                      # OPEN: "seed_run" (start_frac of the seed run's rounds, the LLM episode of D54)
+                                           # or "conversation" (start_frac of each conversation's rounds)
+# mock_arm = { <llm arm> = "<mock arm>" }  # OPEN, only for an arm mock.adaptive.arms lacks (e.g. GNN_recalibrated:
+                                           # "GNN_standin"): the mock arm whose best response it replays
+
+# ------------------------------------------------------------------------------------- GNN training
+
+[gnn_train]                                # upstream G-Safeguard setup (spec §2.7)
+families = [
+    ["insider_pi", "mmlu"], ["insider_pi", "csqa"], ["insider_pi", "gsm8k"],
+    ["insider_ta", "injecagent"],
+    ["insider_ma", "poisonedrag_msmarco"],
+]
+agents = 8
+rounds = 4
+edge_probabilities = [0.2, 0.4, 0.6, 0.8, 1.0]
+attackers = [1, 2, 3, 4]
+keep_checkpoints = 5                       # configuration: training checkpoints the gnn feature keeps on disk
+conversations_per_setting = 40             # 5 edge probabilities x 4 attacker counts x 40 = 800 per family
+graphs_per_setting = 20                    # upstream PI/gen_graph.py: 20 random graphs per setting, each with its own attackers
+# backbone = ""                            # not specified yet (spec §11)
+logs_dir = "results/experiments/gnn/logs"   # configuration: training conversation logs
+# Upstream G-Safeguard training setup (D82: as the original)
+hidden_dim = 1024
+num_heads = 8
+num_layers = 2
+dropout = 0.2
+aggr_type = "mean"                         # upstream MyGAT default (main script)
+epochs = 20
+lr = 0.001
+weight_decay = 0.0002
+batch_size = 32
+scheduler_t_max = 10                       # cosine annealing
+scheduler_eta_min = 1e-5
+train_fraction = 0.8
+train_node_index = "source"                # D82: upstream PI/train.py:24 trains on edge_index[0]; validation (line 54) and deployment use edge_index[1]
+# split = "..."                            # not specified yet: see gnn CONTRACT.md for the options
+# seed = <int>                             # training seed
+
+[gnn]                                      # deployed GNN arm (LLM platform only)
+cut = 0.5                                  # published cut on sigmoid(logit) (spec §2.7)
+artifacts_dir = "results/experiments/gnn/checkpoints"   # configuration
+carry_flags = true                         # D99: the flag is kept until the conversation ends
+# fallback_family = "..."                  # OPEN: GNN family for a cell whose attack has none of its own (D105):
+                                           # "pi_same_task" (the insider_pi GNN of the cell's task) | "none" (refuse)
+
+[gnn.embedding]                            # upstream sentence encoder, pinned
+model = "sentence-transformers/all-MiniLM-L6-v2"
+revision = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+batch_size = 64                            # performance only
+
+# ------------------------------------------------------------------------------------------ mock side
+
+[mock.model]                               # swarmlab's model (swarmlab.Config), implemented by the torch engine
+T = 12                                     # base horizon; the engine scales it with the effective diameter
+m = 2                                      # rolling window of the cheap monitor
+a = 2.5                                    # monitor calibration p = sigmoid(a * rolling - b)
+b = 2.0
+mu_inf = 2.0                               # mean monitor score of a payload-carrying message
+mu_dec = 2.8                               # mean monitor score of a decoy message (1-2 round burst)
+sd = 0.65                                  # monitor noise
+beta = 0.35                                # per-exposure adoption probability
+p_stay = 0.8                               # probability an infected agent keeps the payload
+p_decoy = 0.9                              # probability a decoy writes its header inside its burst
+decoys = 3                                 # decoy agents per episode
+reading_mean = 50.0                        # private readings ~ N(reading_mean, reading_sd^2)
+reading_sd = 10.0
+bias = 8.0                                 # reported-number shift of an infected agent (swarmlab.Config)
+burst_span = 1                             # decoy work-cycle offsets 1..burst_span (swarmlab.Config)
+
+[mock.auditor]
+binormal_method = "shared_threshold"       # D91: one threshold, both FPR classes hold at it
+
+[mock]
+batch_size = 512                           # episodes per vectorised batch (performance only; results do not
+                                           # depend on it: every episode has its own streams)
+topologies = ["star_hub", "star_leaf", "chain", "small_world", "barabasi_albert"]   # small_world = Watts-Strogatz
+families = ["insider_pi", "insider_ta", "insider_ma", "infection", "aitm"]
+frontier_agents = [12]
+epidemiology_agents = [12, 100]
+every_sink = true
+main_seeds = [1, 30]                       # inclusive range
+heldout_seeds = [31, 60]                   # run only after the analysis is frozen
+tune_seeds = [9001, 9030]                  # calibration
+uncapped_arms = ["A", "B", "C", "BAZT", "BAZT_upstream", "GNN_standin"]
+capped_arms = ["B", "C", "BAZT", "BAZT_upstream"]
+allocation_arms = ["random_alloc", "oracle_alloc", "bra_greedy"]   # run at the same cells as the capped arms
+# D107 (and D96: oracle_alloc takes random_alloc's audit_score threshold, so random_alloc and bra_greedy are calibrated too)
+calibrated_arms = ["B", "C", "BAZT", "BAZT_upstream", "GNN_standin", "BAZT_no_budget", "BAZT_no_topology",
+                   "BAZT_no_graduated", "random_alloc", "bra_greedy"]
+
+# Scope of these blocks is not specified yet (spec §11). Set `arms` and `cells` to enable a block.
+[mock.epidemiology]
+topologies = ["barabasi_albert", "star_hub", "small_world"]
+# arms = []
+# cells = []
+
+[mock.ablations]
+# arms = ["BAZT_no_budget", "BAZT_no_topology", "BAZT_no_graduated"]
+# cells = []
+
+[mock.adaptive]
+conditions = ["gray_box", "white_box", "embedding_evasion", "attack_rate"]
+# search_seeds = [<int>, <int>]           # best-response search seeds, disjoint from main/heldout/tune
+# insider_sets = "..."                     # "contiguous" or "all"
+# start_fractions = [<float>, ...]        # attack start, fraction of T
+# rates = [<float>, ...]                  # attack-rate condition
+# detectabilities = [<float>, ...]        # embedding-evasion condition
+# evasion_cost = <float>                  # potency = 1 - evasion_cost x (1 - detectability)
+# max_candidates = <int>                  # refuse a strategy space larger than this
+# knowledge = { gray_box = "cell", white_box = "seed", embedding_evasion = "cell", attack_rate = "cell" }
+# arms = []
+# cells = []
+
+[mock.presets_robustness]
+presets = ["strong_model", "weak_judge", "adaptive"]
+# arms = []
+# cells = []
+
+[mock.costs_robustness]
+# arms = []
+# cells = []
+
+[mock.legacy]                              # existing swarmlab arms with matched-timing controls
+# arms = []                                # from swarmlab.POLICIES: fixed_early, fixed_mid, fixed_late, score_only,
+                                           # centrality_only, random_capped, risk_aware, risk_aware_tiered
+# cells = []
+# confirm_steps = <int>                    # score_only            (swarmlab.Config: 2)
+# lam = <float>                            # risk_aware*           (swarmlab.Config: 1.0)
+# gamma = <float>                          # centrality, risk_aware* (swarmlab.Config: 0.7)
+# dmax = <int>                             # centrality, risk_aware* (swarmlab.Config: 3)
+# tau_san = <float>                        # risk_aware_tiered     (swarmlab.Config: 0.05)
+# tau_central = <float>                    # risk_aware_tiered     (swarmlab.Config: 0.75)
+# tau_confirm = <float>                    # risk_aware_tiered     (swarmlab.Config: 0.85)
+# random_steps = <int>                     # random_capped         (swarmlab.Config: K = 3)
+matched_thresholds = "base"                # D120: a calibrated *_matched arm uses the thresholds calibrated for the
+                                           # legacy arm it wraps, same cell | "own" (its own calibration, the
+                                           # open-loop mode only; list it in mock.calibrated_arms)
+
+# --------------------------------------------------------------------------------- budgets and costs
+
+[compute]                                  # configuration: where and how the tensors run (results must not change)
+device = "cpu"                             # "cpu" | "cuda" | "cuda:N"; per launch: --device cuda or --set compute.device=cuda
+compile = false                            # torch.compile the hot kernels; the first call is checked against eager and
+                                           # falls back to eager on any mismatch or compile error (logged once)
+deterministic = true                       # CUDA: torch.use_deterministic_algorithms(True), CUBLAS_WORKSPACE_CONFIG set
+dtype = "float32"                          # D117: every run is float32 | "float64" (reference; float32 is checked against float64 on a
+                                           # slice before use); budgets and costs stay exact; bfloat16/float16 refused
+workers = 1                                # parallel worker processes per block (one per physical core is best);
+                                           # per launch: --workers N; results do not depend on it
+
+[calibration]
+# mode = "..."                             # OPEN: "closed_loop" (calibrate the arm acting on its own thresholds, a
+                                           # fixed point) | "open_loop" (collect the statistic while the arm never acts)
+tolerance = 0.1                            # closed loop: converged when the realised rate is within 10% of alpha
+max_passes = 40                            # closed loop: calibration passes before the closest pass is returned
+
+[budgets]
+# Budget cells are [audit %, intervention %]; each value is a percent of all edge deliveries in the episode,
+# or "uncapped". The mock frontier crosses every level below (plus "uncapped") for both budgets.
+levels_percent = [1, 2, 5, 10, 20, 50]
+alpha = 0.02                               # deny rate on attack-free calibration runs
+
+[conventional.c]                           # Bradatsch additive trust (arm C)
+# judge_score_bins = { mock = [[<upper>, <weight>], ...], llm = [[<upper>, <weight>], ...] }   # not specified yet (spec §11);
+                                           # score units differ: mock binormal z, LLM log P(yes) <= 0
+# presence_window_rounds = <int>           # history window; the reference uses 7 days
+
+[bazt]                                     # BAZT (spec §2.5); every value is the owner's (D0e)
+# katz_decay = <float>                     # fraction of 1/spectral radius, in (0, 1)
+# eigen_iterations = <int>                 # >= 1: power iterations for the eigen-drop
+# sink_weight = <float>                    # >= 1: weight of the protected sink in the reach
+# utility_weight = <float>                 # >= 0: weight of the utility loss in an action's net value
+# flag_logodds = <float>                   # > 0: log-odds added by a flagging verdict
+# clear_logodds = <float>                  # > 0: log-odds removed by a clearing verdict
+# memory_decay = <float>                   # [0, 1): per-round decay of the verdict memory
+# prior = <float>                          # (0, 1): free evidence on the LLM side (no monitor)
+# inspect_conclusive = <float>             # (0, 1]: probability a paid audit is conclusive
+
+[bazt.utility_loss]                        # >= 0: utility lost per affected delivery, per action
+# sanitize = <float>
+# delay = <float>
+# edge_quarantine = <float>
+# rate_limit = <float>
+# privilege_degradation = <float>
+# isolation = <float>
+
+[bazt_upstream]                            # adapter to the architecture track's bazt/ package (D86)
+verdict_probability = 0.98                 # p' of a conclusive audit verdict: upstream bazt/evidence.py P_POSITIVE
+
+[costs.main]                               # cost per affected delivery
+inspect = 1
+edge_quarantine = 1
+rate_limit = 1
+delay = 1
+sanitize = 1
+privilege_degradation = 1
+isolation = 1
+reinstatement = 1
+deny = 1                                   # D22a: every affected delivery costs 1
+
+[costs.robustness]                         # CAGE-4 action durations
+inspect = 1
+edge_quarantine = 1
+rate_limit = 1
+delay = 1
+sanitize = 2
+privilege_degradation = 2
+isolation = 3
+reinstatement = 5
+# deny = <int>                             # not in the CAGE-4 mapping (D23); owner
+
+[auditor_presets]                          # TPR, FPR benign, FPR suspicious-looking benign
+main = "good_classifier"
+strong_model = [0.99, 0.005, 0.03]
+good_classifier = [0.95, 0.02, 0.12]
+weak_judge = [0.80, 0.20, 0.45]
+adaptive_tpr = [0.05, 0.30]                # FPRs as the matching non-adaptive preset
+
+# ------------------------------------------------------------------------------------------- analysis
+# Spec section 7. Commented keys are not decided yet; the analysis refuses to run until they are set.
+
+[analysis]
+alpha = 0.05                               # stats_check.ALPHA; pareto_label labels at this level, any other value is refused
+bootstrap_resamples = 1000                 # spec section 7
+ci_level = 0.95                            # spec section 7
+baseline = "C"                             # H-budget compares with capped C
+ladder = ["A", "B", "C"]                   # secondary analysis A > B > C, weakest first
+ablations = ["BAZT_no_budget", "BAZT_no_topology", "BAZT_no_graduated"]   # spec 2.6
+ablation_reference = "BAZT"
+containment_reference = "A"                # spec section 6: the paired no-defense / A run
+# challengers = ["BAZT"]                   # OPEN: ["BAZT"] or ["BAZT", "BAZT_upstream"]
+# containment_metrics = ["agents_reached_auc"]   # OPEN: gain columns, any of agents_reached_auc, asr_final, protected_sink_harm
+# efficiency_tolerance = <float>           # OPEN: ASR gap to uncapped C that still counts as reaching it (0 = no worse)
+# adaptive_contrast = "..."                # OPEN: "advantage_shrinks_less_than_c_security" or "challenger_degrades_less_than_c"
+# rank_agreement_statistic = "..."         # OPEN: "spearman" or "kendall"
+# rank_agreement_arms = [["A", "A"], ["B", "B"], ["C", "C"], ["BAZT", "BAZT"], ["GNN_standin", "GNN"]]   # OPEN: [mock arm, llm arm], at least 3
+# utility_endpoint = "..."                 # OPEN: "accuracy_clean" or "accuracy_attack"
+# split_by = ...                           # OPEN, see [analysis.split_by]
+
+[analysis.pair_unit]
+mock = "seed"                              # spec section 7: mock pairs are seeds
+llm = "episode"                            # spec section 7: LLM pairs are conversations
+
+# [analysis.extra_metrics]                 # OPEN: metric = [kind, rows]; kind continuous|binary, rows attacked|attack_free
+# protected_sink_harm = ["binary", "attacked"]
+
+# [analysis.split_by]                      # OPEN: fields analysed separately; any of attack, task, backbone
+# mock = []
+# llm = ["attack"]
+
+# [analysis.topology_classes.mock]         # OPEN: spec 7 names Barabasi-Albert and hub-centred against Watts-Strogatz
+# heterogeneous = ["barabasi_albert", "star_hub"]
+# homogeneous = ["small_world"]
+# [analysis.topology_classes.llm]          # OPEN: the LLM grid has random_directed, hub_star, barabasi_albert, watts_strogatz
+# heterogeneous = ["barabasi_albert", "hub_star"]
+# homogeneous = ["watts_strogatz"]
+
+# [analysis.blocks]                        # OPEN: runner blocks that feed each analysis, per platform
+# budget = { mock = ["mock_frontier"], llm = ["llm_capped"] }
+# efficiency = { mock = ["mock_frontier"], llm = [] }
+# topology = { mock = ["mock_epidemiology"], llm = ["llm_headline"] }
+# adaptive = { mock = ["mock_adaptive"], llm = ["llm_adaptive_check"] }
+# adaptive_reference = { mock = ["mock_frontier"], llm = ["llm_headline"] }   # non-adaptive runs of the same episodes
+# ladder = { mock = ["mock_frontier"], llm = ["llm_headline"] }
+# ablations = { mock = ["mock_ablations"], llm = [] }
+# rank = { mock = ["mock_frontier"], llm = ["llm_headline"] }
+# containment = { mock = ["mock_frontier"], llm = ["llm_capped", "llm_headline"] }
+
+# ---------------------------------------------------------------------------------------------- sync
+# Background upload of the checkpoints (features/sync): one low-priority process beside each block when `enabled` is
+# true, on the block's results folder (and gnn.artifacts_dir during gnn_train). Needs HF_TOKEN.
+
+[sync]
+# enabled = <bool>                         # OPEN (owner): true uploads checkpoints in a low-priority background process
+# repo_id = "<owner>/<repo>"               # OPEN (owner): the Hugging Face repository the checkpoints go to
+repo_type = "dataset"                      # configuration
+private = true                            # configuration
+every_minutes = 10                         # configuration: upload interval
+include = []                               # configuration: glob filters inside the synced folders
+exclude = [".launch.lock"]                 # configuration
+priority = "below_normal"                  # configuration: process priority of the uploader
+final_push_timeout_seconds = 600           # configuration: how long stop() waits for the last upload
+
+# ------------------------------------------------------------------------------------------- tracking
+# Weights & Biases (D87). The runner starts one tracking run per block and logs progress per batch. Unless
+# `enabled` is true it uses a tracker that records nothing. Which feature runs a block is no longer a setting: the
+# composition root (bazt_lab/app.py) wires the platforms and arms.
+
+[tracking]
+# enabled = <bool>                         # left for the owner: true starts W&B runs (needs the tracking feature)
+project = "bazt-experiments"               # configuration: the W&B project
+# entity = "<team>"                        # left for the owner: the W&B team or user
+mode = "offline"                           # configuration: offline before kickoff (D87), "online" after
+flush_rows = 3600                          # configuration (performance only): rows buffered per W&B table before one
+                                           # flush; about 60 MB of RAM is held per 36000 rows
+
+# ------------------------------------------------------------------------------- dry-run estimates only
+# Used to print sizes and hours in --dry-run. They never reach an experiment.
+
+[estimates]
+calls_per_second = 50
+aitm_adversary_calls_per_round = 4         # about the victim's in-degree
+input_tokens_per_agent_call = 1620         # mid estimate, history included (77.8k / 48)
+output_tokens_per_agent_call = 150
+input_tokens_per_judge_call = 400
+rewrite_calls_share_of_agent_calls = 0.1   # assumption: llm_rewrite sanitize calls, about one per sanitized delivery
+ma_judge_calls_per_agent = 1               # assumption: one MA judge call per agent per conversation (llm_judge mode)
+mock_checkpoint_seconds_per_unit = 0.00025 # batch checkpoint API (CheckpointStore.append_batch): 1.72 ms/unit with store vs 1.47 ms null, 2026-11-05
+
+# CPU seconds per mock episode of one process, by arm and by whether the budget is capped, per number of agents. Source: the
+# profiler campaign (scratchpad/campaign/perf, 2026-11-06): N=12 capped = mean of the 360-episode batches over the five topologies
+# (sweepFinal.jsonl; BAZT_upstream from the 16..96-episode sweeps), N=12 uncapped = mean of the uncapped sweeps, N=100 = the
+# 64-episode batches (sweepN100.jsonl). An arm without a value (the legacy arms) takes the slowest arm of the same row set.
+[estimates.mock_seconds_per_episode_by_arm."12"]
+"A|capped" = 0.001962
+"A|uncapped" = 0.001642
+"B|capped" = 0.002613
+"B|uncapped" = 0.002771
+"C|capped" = 0.003030
+"C|uncapped" = 0.002814
+"BAZT|capped" = 0.012899
+"BAZT|uncapped" = 0.010968
+"BAZT_upstream|capped" = 0.044843
+"BAZT_upstream|uncapped" = 0.072680
+"GNN_standin|capped" = 0.002153
+"GNN_standin|uncapped" = 0.001709
+"random_alloc|capped" = 0.002352
+"random_alloc|uncapped" = 0.001965
+"oracle_alloc|capped" = 0.002240
+"oracle_alloc|uncapped" = 0.001904
+"bra_greedy|capped" = 0.002543
+"bra_greedy|uncapped" = 0.002087
+
+[estimates.mock_seconds_per_episode_by_arm."100"]
+"A|uncapped" = 0.035400
+"B|capped" = 0.069092
+"B|uncapped" = 0.064209
+"C|capped" = 0.073730
+"C|uncapped" = 0.061279
+"BAZT|capped" = 0.411621
+"BAZT|uncapped" = 0.338623
+"BAZT_upstream|capped" = 0.921875
+"BAZT_upstream|uncapped" = 0.414063
+"GNN_standin|capped" = 0.047363
+"GNN_standin|uncapped" = 0.039307
+"random_alloc|capped" = 0.052490
+"random_alloc|uncapped" = 0.044434
+"oracle_alloc|capped" = 0.051025
+"oracle_alloc|uncapped" = 0.044189
+"bra_greedy|capped" = 0.055176
+"bra_greedy|uncapped" = 0.046143
+
+[estimates.usd_per_million_tokens]         # OpenRouter list prices, 2026-11-04: [input, output]
+"openai/gpt-4o-mini" = [0.15, 0.60]
+"meta-llama/llama-3.3-70b-instruct" = [0.10, 0.32]
+"deepseek/deepseek-v4.1-flash" = [0.045, 0.50]
+"qwen/qwen3.8-27b" = [0.15, 1.875]

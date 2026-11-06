@@ -1,0 +1,97 @@
+diff --git a/MA/agents.py b/MA/agents.py
+--- a/MA/agents.py
++++ b/MA/agents.py
+@@ -1,4 +1,5 @@
+ import os
++import copy
+ import asyncio
+ import numpy as np
+ import re
+@@ -37,6 +38,7 @@ class Agent:
+         self.system_prompt = system_prompt 
+         self.memory = []
+         self.memory.append({"role": "system", "content": system_prompt})
++        self.outbox = []  # what this agent sent each round, kept apart from its chat memory
+         self.role = "normal"
+ 
+     def parser(self, response):
+@@ -49,6 +51,7 @@ class Agent:
+ 
+         else:
+             self.last_response = {"answer": None, "reason": response}
++        self.outbox.append(copy.deepcopy(self.last_response))
+  
+     def chat(self, prompt): 
+         user_msg = {"role": "user", "content": prompt}
+diff --git a/PI/agents.py b/PI/agents.py
+--- a/PI/agents.py
++++ b/PI/agents.py
+@@ -1,4 +1,5 @@
+ import os
++import copy
+ import asyncio
+ import threading
+ import numpy as np
+@@ -40,6 +41,7 @@ class Agent:
+         self.system_prompt = system_prompt 
+         self.memory = []
+         self.memory.append({"role": "system", "content": system_prompt})
++        self.outbox = []  # what this agent sent each round, kept apart from its chat memory
+         self.role = "normal"
+ 
+     def parser(self, response):
+@@ -52,6 +54,7 @@ class Agent:
+ 
+         else:
+             self.last_response = {"answer": None, "reason": response}
++        self.outbox.append(copy.deepcopy(self.last_response))
+  
+     def chat(self, prompt): 
+         user_msg = {"role": "user", "content": prompt}
+diff --git a/PI/agents_for_gsm8k.py b/PI/agents_for_gsm8k.py
+--- a/PI/agents_for_gsm8k.py
++++ b/PI/agents_for_gsm8k.py
+@@ -1,4 +1,5 @@
+ import os
++import copy
+ import asyncio
+ import threading
+ import numpy as np
+@@ -40,6 +41,7 @@ class Agent:
+         self.system_prompt = system_prompt 
+         self.memory = []
+         self.memory.append({"role": "system", "content": system_prompt})
++        self.outbox = []  # what this agent sent each round, kept apart from its chat memory
+         self.role = "normal"
+ 
+     def parser(self, response):
+@@ -52,6 +54,7 @@ class Agent:
+ 
+         else:
+             self.last_response = {"answer": None, "reason": response}
++        self.outbox.append(copy.deepcopy(self.last_response))
+  
+     def chat(self, prompt): 
+         user_msg = {"role": "user", "content": prompt}
+diff --git a/TA/agents.py b/TA/agents.py
+--- a/TA/agents.py
++++ b/TA/agents.py
+@@ -1,4 +1,5 @@
+ import os
++import copy
+ import asyncio
+ import threading
+ import numpy as np
+@@ -41,10 +42,12 @@ class Agent:
+         self.system_prompt = system_prompt 
+         self.memory = []
+         self.memory.append({"role": "system", "content": system_prompt})
++        self.outbox = []  # what this agent sent each round, kept apart from its chat memory
+         self.role = "normal"
+ 
+     def parser(self, response):
+         self.last_response = response
++        self.outbox.append(copy.deepcopy(self.last_response))
+  
+     def chat(self, prompt): 
+         user_msg = {"role": "user", "content": prompt}

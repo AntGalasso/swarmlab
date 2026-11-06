@@ -1,0 +1,73 @@
+[project]
+name = "swarmlab"
+version = "0.1.0"
+description = "BAZT vs conventional zero trust experiments (swarmlab, bazt, bazt_lab)"
+requires-python = "==3.11.*"
+# Exact pins. uv.lock records the full resolved set with hashes; install with `uv sync`.
+dependencies = [
+    "numpy==2.4.6",
+    "scipy==1.17.1",
+    "matplotlib==3.11.0",
+    "networkx==3.6.1",
+    "openai==2.24.0",
+    "python-dotenv==1.2.2",
+    "filelock==4.2.9",
+    "einops==0.8.2",                     # imported by the pinned G-Safeguard PI/MA model.py
+    "datasets==5.1.0",
+    "huggingface-hub==2.4.0",
+    "transformers==5.22.1",
+    "sentence-transformers==6.2.0",
+    "torch-geometric==2.8.1",
+    "wandb==0.31.0",
+    "psutil==7.2.2",                     # scripts/e2e_common.py freezes the launcher tree with it (also a dependency of wandb)
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.17.3",
+]
+cpu = ["torch==2.14.0"]          # the default build, installed unless a CUDA extra replaces it
+
+# torch comes from the official PyTorch indexes. Default: the CPU build (group `cpu`, on by default). Optional CUDA build
+# of the same release: `uv sync --extra cu126 --no-group cpu` (older drivers) or `uv sync --extra cu130 --no-group cpu`
+# (current drivers). The CPU group and the two extras exclude each other. Everything else comes from PyPI.
+[project.optional-dependencies]
+cu126 = ["torch==2.14.0"]
+cu130 = ["torch==2.14.0"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", group = "cpu" },
+    { index = "pytorch-cu126", extra = "cu126" },
+    { index = "pytorch-cu130", extra = "cu130" },
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev", "cpu"]
+conflicts = [
+    [{ group = "cpu" }, { extra = "cu126" }],
+    [{ group = "cpu" }, { extra = "cu130" }],
+    [{ extra = "cu126" }, { extra = "cu130" }],
+]
+
+[tool.pytest.ini_options]
+# `.` makes a bare `pytest` find bazt_lab and swarmlab; `scripts` lets the tests under scripts/tests import the scripts.
+testpaths = ["tests", "bazt_lab", "scripts"]
+pythonpath = [".", "scripts"]
