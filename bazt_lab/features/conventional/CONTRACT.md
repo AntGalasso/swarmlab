@@ -27,8 +27,8 @@ calibration run collects the statistic and acts only through A's rules.
 ### B's rate limit
 
 The excess deliveries of a sender (those beyond `rate_limit_per_identity` among the ones that passed the judge) are
-denied for the round. Which receivers are kept is a keyed random draw (`rate_limit|<step>`, per episode): receiver order
-carries no meaning, an index rule would favour low indices. Each denied delivery costs one `deny` unit.
+denied for the round. Which receivers are kept is a keyed random draw (stream `B|rate_limit`, counter `step`, per episode):
+receiver order carries no meaning, an index rule would favour low indices. Each denied delivery costs one `deny` unit.
 
 ### C: trust score against risk level (Bradatsch et al. 2023, Eqs. 1 to 3)
 
@@ -93,8 +93,9 @@ round whose charges exhaust a budget (or the first round, if a cap is zero) emit
 request, all statistics NaN, C's histories frozen. Other episodes of the batch are unaffected. Uncapped episodes (inf)
 never emit. A never emits.
 
-When the intervention budget cannot pay all wanted denies, the arm keeps the highest-statistic deliveries first, ties
-broken by a keyed random draw (`fund|<step>`); the platform charges them and never sees an unaffordable deny.
+When the intervention budget cannot pay all wanted denies, the arm keeps the highest-statistic deliveries first (D94), ties
+broken by a keyed random draw (stream `<arm>|fund`, counter `step`); the platform charges them and never sees an
+unaffordable deny.
 
 ## Invariants
 
@@ -102,7 +103,7 @@ broken by a keyed random draw (`fund|<step>`); the platform charges them and nev
   are ignored.
 - Every B or C denial is of an evaluated delivery (attempted, on `ctx.adj`, authentic, sender checked). Only A's rules
   drop anything else, and they are free.
-- Every random draw comes from `ctx.arm_stream(f"{namespace}|{step}", b)`; `step` counts `decide` calls since `reset`, so
+- Every random draw comes from `core.keyed_uniform` keyed by the episode id (see Device and precision); `step` counts `decide` calls since `reset`, so
   it keeps growing across the conversations of an LLM seed run. Decisions of an episode depend on its own inputs only:
   batch size and chunking change nothing.
 - `state_dict()` holds tensors and plain values and copies them. B: `step`, `exhausted`. C adds `recipients`, `rate_lo`,
@@ -123,51 +124,19 @@ Costs from `ctx.costs`: `inspect` and `deny` (B, C). A missing cost raises `core
 
 ## Open questions
 
-1. Judge-score bins and weight (spec section 11). Their values are the owner's. The units differ by platform: the LLM
-   judge returns log P("yes") (at most 0), the mock auditor a binormal score on a z scale (reference threshold near 2.05
-   at FPR 0.02), so one list cannot serve both. Resolved: C reads the entry of `ctx.platform`. The placeholder in profiles.toml shows `{ mock = [<float>, ...], llm = [...] }`; C expects each entry as `[[upper, weight], ...]` pairs (a flat float list carries no weights), so the placeholder text should say so.
-2. Presence window `W`. The spec gives "rounds since i was last active" without a window; the reference's is 7 days.
-   Until an isolating arm runs, `active` is always true for A, B and C and the attribute is constant.
-3. Decided (D92: C grants at an exact tie, TS >= RL). Tie convention. D80 fixes the strict `TS > RL`; the core contract fixes `deny iff statistic > threshold`. They agree
-   everywhere except at an exact tie with the offset, where C grants (as `additive.go:157`). The statistic is a lattice
-   (integer weights), so a tie at a calibrated threshold is common; the platform's calibration must use the same `>`.
-4. Decided (D93: the judge score is the input attribute on both platforms). Input behaviour feature. The spec says "message features within i's usual range". The only content feature present
-   on both platforms is the judge score, so C uses it, and the judge score also enters RL through the bins. The cheap
-   monitor (mock only, free) would make C platform-dependent. One line in `arm_c.py` (`feature = audited`) selects it.
-5. Decided (D95: the number of agents C has wanted to deny, never decaying, saturating at 10, counted once). Network threat level. "Number of agents flagged so far" is read as the count of agents C has wanted to deny, never
-   decaying, saturating at level 10 (so for N = 12 or 100 it saturates early), counted once.
-6. Calibration of a stateful arm. A calibration run collects `rl_minus_ts` without acting, so nobody is flagged and the
-   threat level stays 0 and the histories are cold; in an evaluation run flags raise RL, so the deny rate of an open-loop
-   calibrated C on attack-free runs is far above alpha (17-100% observed). The fix is a closed-loop calibration in the
-   platforms (section "Calibration of C"); the attack-free false-positive rate (spec 6) measures the result.
-7. Decided (D94: the most suspicious are funded first). Funding order. Under a cap, the denies funded are the most suspicious first (a generous rule for the baselines).
-   First-come order is the alternative.
-8. Rate limit. B's limit is a per-round, per-sender cap realised as `deny` (stateless per hop). The persistent
-   `RATE_LIMIT` action belongs to BAZT.
-9. Exhaustion. "Reaches zero" is implemented as "cannot pay one more unit", which differs only for fractional caps (a
-   remainder that buys nothing would otherwise never raise the warning).
+1. Judge-score bins and weights (spec section 11) are the owner's: `conventional.c.judge_score_bins` is unset in
+   `experiments/profiles.toml`. The units differ by platform: the LLM judge returns log P("yes") (at most 0), the mock
+   auditor a binormal score on a z scale (reference threshold near 2.05 at FPR 0.02), so one list cannot serve both. C
+   reads the list of `ctx.platform`.
+2. Presence window `W` (`conventional.c.presence_window_rounds`, unset in `experiments/profiles.toml`, owner's value). The
+   spec gives "rounds since i was last active" without a window; the reference's is 7 days. A, B and C never isolate an
+   agent, so `active` is always true for them and the attribute is constant.
 
 ## Requests (for the coordinator; this feature edits no other file)
 
-1. `experiments/profiles.toml`: add `[conventional.c]` with `judge_score_bins` and `presence_window_rounds`, unset like the
-   `[runtime]` keys (values are the owner's, open questions 1 and 2). The runner's required-key check must include both
-   for every block that runs C or BAZT (BAZT builds A, B and C), and `runtime.rate_limit_per_identity` for every block
-   that runs B or BAZT.
-2. `experiments/profiles.toml`: add `deny` to `[costs.main]` and `[costs.robustness]`. `ActionKind.DENY` is an action the
-   engine prices (`mock_engine.enforce.costs_of` reads `costs.<condition>.deny`), and B, C and every allocation arm read
-   it. D22a gives 1 for the main condition; CAGE-4 has no deny duration, so the robustness value is the owner's.
-3. mock_engine and llm_harness `calibrate()`: ignore NaN entries of a statistic. `judge` and `rl_minus_ts` are per
-   delivery `[B, N, N]`; alpha is the share of deliveries with a finite statistic that exceed the threshold. Calibrate on
-   the uncapped arm with no thresholds set.
-4. mock_engine and llm_harness `obs.audit`: when a request exceeds the affordable number, grant a keyed random subset
-   instead of the lowest sender indices (`mock_engine/private/engine.py` grants `want.cumsum(1) <= floor(remaining /
-   cost)`). Low indices are the hubs of Barabasi-Albert and `star_hub` graphs, so index order audits the most central
-   senders first. B and C request every deliverable sender and leave the choice to the platform (BAZT's pipeline relies
-   on this), so the fix belongs there.
-5. core `EpisodeContext`: add `platform: str` (`"mock"` or `"llm"`), or have the runner resolve
-   `conventional.c.judge_score_bins` per platform before it builds the settings (open question 1).
-6. LLM platform: supply `Observation.authentic` (False for a delivery altered in transit, as in AiTM) and keep `active`
-   False only for isolated agents; `None` means every delivery is authenticated.
+1. `experiments/profiles.toml`: `[costs.robustness]` has no `deny` value. `deny` is priced at 1 in `[costs.main]` (D22a) and
+   `mock_engine.enforce.costs_of` reads `costs.<condition>.deny`. CAGE-4 has no deny duration (D23), so the robustness
+   value is the owner's.
 
 ## Calibration of C (closed loop)
 
@@ -175,17 +144,44 @@ C is stateful: its own denials raise the network threat level and its histories 
 attack-free run depends on the thresholds C acts on. C supports a closed-loop calibration: it reports `rl_minus_ts` and
 acts on `ctx.thresholds` in the same pass, and `reset(ctx)` clears every trace of an earlier pass (tested), so a
 platform can replay the same episodes with a candidate threshold on one instance or on fresh ones. The search for the
-threshold at deny rate alpha belongs to the platform (`calibration.mode`).
+threshold at deny rate alpha belongs to the platform (`calibration.mode`, `calibration.tolerance`,
+`calibration.max_passes`; when no pass lands within the tolerance, the pass with the highest rate not above alpha (1 +
+tolerance) is used, D112).
 
 ### Tie-breaking jitter of C's statistic
 
 `rl_minus_ts` is a sum of weights that are multiples of one unit `u` (the gcd of the reference weights, the threat table
 and `conventional.c.judge_score_bins[platform]`; 1 for integer bins), so many deliveries tie exactly and one threshold
-cannot reach alpha inside a step. C therefore adds `(U - 0.5) * 0.9 * u` to every evaluated delivery's statistic, with
-`U` uniform in [0, 1) from `ctx.arm_stream(f"jitter|{step}", b)` (one `[N, N]` draw per episode and round, so the value
-of delivery (i, j) is keyed by round, sender, receiver and episode, never by the batch). The jitter is below `u / 2`, so
-distinct values keep their order; ties are split at the threshold, as in a randomized Neyman-Pearson test. The value
-reported in `Actions.statistics` is the value compared with `ctx.thresholds`, so calibration and evaluation use the same
-statistic. Funding priority uses it too. `ArmC.jitter = False` removes it (the tests with hand-computed values do).
-B's `judge` is not jittered: a judge score is continuous (and one score covers all deliveries of a sender), so it has no
-gap to stay inside.
+cannot reach alpha inside a step. C therefore adds `(U - 0.5) * 2 * a` to every evaluated delivery's statistic, with
+`a = 64 * core.tie_jitter_scale(ctx.dtype, bound)`, where `bound` = 42 + 25 + the largest bin weight is an upper bound on
+|RL - TS| (42 is the sum of the trust weights, 25 the largest threat weight). With a largest bin weight of 12 (`bound` 79),
+`a` is about 9 x 10^-12 for float64 and 4.8 x 10^-3 for float32, so it survives the dtype's rounding. `U` is uniform in [0, 1) from the keyed stream
+`"C|jitter"` at counter `step`. Delivery number r of an episode in row-major (sender, receiver) order, among the
+evaluated deliveries of the round, takes element r, so the draw depends on the episode id, the round and r only (never on
+the batch, its order or the device) and costs K draws per episode instead of N*N. `reset` refuses when `2a >= u`: the
+jitter must stay below half the gap, so distinct values keep their order; ties are split at the threshold, as in a
+randomized Neyman-Pearson test. The value reported in `Actions.statistics` is the value compared with `ctx.thresholds`,
+so calibration and evaluation use the same statistic. Funding priority uses it too. `ArmC.JITTER` (class attribute,
+default True) is copied to the instance field `jitter` in `reset(ctx)`, so one run uses one value; the tests with
+hand-computed values set it False. B's `judge` is not jittered: a judge score is continuous (and one score covers all
+deliveries of a sender), so it has no gap to stay inside.
+
+### threshold_restricted (D108)
+
+Alpha counts only deliveries restricted because a calibrated statistic crossed its threshold. `Actions.threshold_restricted`
+(bool `[B, N, N]`) is set by B to its funded judge denies (`judge > threshold`) and by C to its funded threshold denies
+(`rl_minus_ts > threshold`). B's rate-limit denies and A's rules are never in it. It is all False while a threshold is
+missing (calibration pass) and for episodes that are exhausted. With B at the open-loop 98% quantile when no feedback is
+present, the closed-loop judge threshold equals it (1.945 small_world N=12, 2.035 barabasi_albert N=30 in the repro).
+
+## Device and precision
+
+Every tensor an arm creates lives on `ctx.device`; scores, statistics and the C histories use `ctx.dtype` (the platform
+supplies `obs.audit` scores in that dtype). Budget and cost accounting stays float64 / int64 whatever the dtype. Random
+draws (B's rate limit, the funding tie break, C's jitter) come from `core.keyed_uniform` keyed by
+`core.episode_keys(ctx.unit_ids)` with streams `"<arm>|<namespace>"` and counter = `step`: one batched call, no
+per-episode generator. Funding and rate-limit scores are always float64, so the order never depends on the dtype. Mask
+algebra of the per-round path goes through `core.as_uint8`/`as_bool` (identical results, faster on CPU). `torch.compile` is
+not wrapped around any kernel of this lane (the measured gain would be small next to the engine; open). float32 agrees with
+float64 on the number of denies within 2%, and each statistic agrees with float64 to within one lattice unit after
+rounding, while the accounting is identical (tests/test_compute.py).

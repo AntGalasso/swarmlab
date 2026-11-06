@@ -31,8 +31,6 @@ from bazt_lab.features.mock_engine.private.model import load_model
 
 Tensor = torch.Tensor
 CALIBRATION_MODES = ("open_loop", "closed_loop")
-CLOSED_LOOP_TOLERANCE = 0.1       # closed loop stops when |realised deny rate - alpha| <= 10% of alpha (relative)
-CLOSED_LOOP_PASSES = 40           # bisection passes at most; the closest level seen is returned if none is within tolerance
 REQUIRED = ("id", "arm", "audit", "intervention", "topology", "attack", "agents", "seed")
 
 
@@ -58,6 +56,10 @@ def check_units(units: Sequence[Mapping], arm: core.ArmSpec) -> None:
         missing = [f for f in REQUIRED if f not in u]
         if missing:
             raise ValueError(f"unit {k} has no {missing}; a mock unit carries {list(REQUIRED)}")
+        sink = u.get("sink")
+        if sink is not None and (isinstance(sink, bool) or not isinstance(sink, int) or not 0 <= sink < u["agents"]):
+            raise ValueError(f"unit {u['id']}: sink must be an agent index in [0, {u['agents']}) or None, got {sink!r}")
+        W._params(u)                                   # attack_params: refused here, not in a later chunk
         engine.fraction(u, "audit")
         engine.fraction(u, "intervention")
     first = units[0]
@@ -80,6 +82,16 @@ def _batch_size(settings: Mapping) -> int:
     return size
 
 
+def closed_loop_params(settings: Mapping) -> Tuple[float, int]:
+    """(tolerance, max passes) of the closed loop: owner/coordinator settings calibration.tolerance and calibration.max_passes."""
+    tol, passes = core.get(settings, "calibration.tolerance"), core.get(settings, "calibration.max_passes")
+    if isinstance(tol, bool) or not isinstance(tol, (int, float)) or not 0 < tol < 1:
+        raise ValueError(f"calibration.tolerance must be a number in (0, 1), got {tol!r}")
+    if isinstance(passes, bool) or not isinstance(passes, int) or passes < 1:
+        raise ValueError(f"calibration.max_passes must be an integer >= 1, got {passes!r}")
+    return float(tol), passes
+
+
 def _horizon_constant(settings: Mapping) -> float:
     c = core.get(settings, "runtime.horizon_constant")
     if isinstance(c, bool) or not isinstance(c, (int, float)) or not c > 0:
@@ -91,7 +103,39 @@ def clean_accuracy(clean: core.EpisodeTrace, attackers: Tensor) -> Tensor:
     """float64 [B]: share of the attack run's victims (agents that are not insiders) correct at the last round of the
     paired attack-free run."""
     victims = ~attackers
-    return ((clean.correct[:, -1] & victims).sum(1) / victims.sum(1)).to(torch.float64)
+    return (clean.correct[:, -1] & victims).sum(1).to(torch.float64) / victims.sum(1).to(torch.float64)
+
+
+TWIN_SCHEDULE = "twin_timing_schedule"
+
+
+def clean_schedule(unit: Mapping) -> dict:
+    """The unit as its attack-free run sees it: a matched-timing unit acts at the rounds of the grid's attack-free unit
+    (BAZT's record of that unit, D116), which the runner hands over as `twin_timing_schedule`."""
+    clean = {k: v for k, v in unit.items() if k not in ("timing_schedule", TWIN_SCHEDULE)}
+    if TWIN_SCHEDULE in unit:
+        clean["timing_schedule"] = unit[TWIN_SCHEDULE]
+    return clean
+
+
+def check_clean_schedules(units: Sequence[Mapping]) -> None:
+    """A unit with a timing schedule whose attack-free run must be simulated needs the schedule of that run."""
+    lacking = [u["id"] for u in units if "timing_schedule" in u and TWIN_SCHEDULE not in u]
+    if lacking:
+        raise ValueError(f"unit {lacking[0]!r} carries timing_schedule but no {TWIN_SCHEDULE}: its attack-free run acts at "
+                         f"the rounds of the attack-free unit (D116), which must be handed over")
+
+
+def twin_unit(unit: Mapping) -> dict:
+    """The attack-free twin of an attacked unit (D109): the same unit with attack 'none' and the twin's id, its
+    attack_params cut to the keys an attack-free run reads (W.ATTACK_FREE_PARAMS: the adaptive auditor's detection rate),
+    and its own timing schedule (`clean_schedule`). That is the grid's own attack-free unit: the variant's auditor_tpr
+    stays, the attacker's strategy goes."""
+    twin = {k: v for k, v in clean_schedule(unit).items() if k != "twin_id"}
+    twin.update(id=unit["twin_id"], attack="none")
+    if isinstance(unit.get("attack_params"), Mapping):
+        twin["attack_params"] = {k: v for k, v in unit["attack_params"].items() if k in W.ATTACK_FREE_PARAMS}
+    return twin
 
 
 def threshold_at(values: Tensor, alpha: float) -> float:
@@ -108,15 +152,25 @@ def pool(pools: Dict[str, List[Tensor]], statistics: Mapping[str, Tensor], attem
     deliveries), so it contributes once per delivery. NaN (not requested, not affordable) contributes nothing."""
     B, N, _ = attempts.shape
     for name, v in statistics.items():
-        if not isinstance(v, torch.Tensor) or v.dtype != torch.float64 or tuple(v.shape) not in ((B, N, N), (B, N)):
-            raise ValueError(f"Actions.statistics[{name!r}] must be a float64 tensor of shape {(B, N, N)} or {(B, N)}")
-        if v.dim() == 3:
-            values = v[attempts]
+        if not isinstance(v, torch.Tensor) or v.dtype not in (torch.float64, torch.float32) or tuple(v.shape) not in ((B, N, N), (B, N)):
+            raise ValueError(f"Actions.statistics[{name!r}] must be a float tensor (ctx.dtype) of shape {(B, N, N)} or {(B, N)}")
+        stat = v.to(device="cpu", dtype=torch.float64)             # thresholds are float64 whatever the compute dtype
+        attempts = attempts.to("cpu")
+        if stat.dim() == 3:
+            values = stat[attempts]
         else:
-            sent, flat = attempts.sum(2).reshape(-1), v.reshape(-1)
+            sent, flat = attempts.sum(2).reshape(-1), stat.reshape(-1)
             keep = ~torch.isnan(flat)
             values = flat[keep].repeat_interleave(sent[keep])
         pools.setdefault(name, []).append(values[~torch.isnan(values)])
+
+
+def pick_pass(seen: Sequence[tuple], alpha: float, tolerance: float) -> tuple:
+    """D112, the same rule as the LLM platform: of the closed-loop passes (level, rate, thresholds), the one with the
+    highest rate not above alpha (1 + tolerance), the first on a tie; when every pass is above it, the lowest rate. A pass
+    within the band is that pass (the search stops at it, and every earlier pass not above the band was below it)."""
+    below = [x for x in seen if x[1] <= alpha * (1.0 + tolerance)]
+    return max(below, key=lambda x: x[1]) if below else min(seen, key=lambda x: x[1])
 
 
 def uniform_keys(rows: Sequence[Mapping]) -> List[dict]:
@@ -128,6 +182,12 @@ def uniform_keys(rows: Sequence[Mapping]) -> List[dict]:
 class MockPlatform:
     """Mock platform: a batch of episodes vectorised over B; the only Python loop is over rounds."""
     name = "mock"
+
+    @property
+    def adaptive_conditions(self) -> tuple:
+        """Every condition the adaptive feature searches: its best responses reach the engine as attack_params."""
+        from bazt_lab.features.adaptive import public as adaptive
+        return tuple(adaptive.CONDITIONS)
 
     def __init__(self, rows_fn: Optional[Callable] = None) -> None:
         self._rows_fn = rows_fn or metrics.rows_from_trace
@@ -141,11 +201,18 @@ class MockPlatform:
         rows: Dict[str, dict] = {}
         with one_thread():
             for start in range(0, len(todo), size):
-                for group, trace in self._simulate_chunk(todo[start:start + size], arm, settings, c, with_clean=True):
+                chunk = [u for u in todo[start:start + size] if not store.is_done(u["id"])]     # a twin may have been saved meanwhile
+                if not chunk:
+                    continue
+                for group, trace, twins in self._simulate_chunk(chunk, arm, settings, c, with_clean=True, store=store):
                     made = self._rows(trace, settings)
                     self._save(store, group, made, rows)
+                    if twins is not None:                      # the twin units' own results, never simulated twice
+                        fresh = [(t, r) for t, r in zip(twins[0], self._rows(twins[1], settings), strict=True)
+                                 if not store.is_done(t["id"])]
+                        self._save(store, [t for t, _ in fresh], [r for _, r in fresh], {})
                     tracker.log_rows("mock_units", uniform_keys(made))
-        return [rows[u["id"]] for u in todo]
+        return [rows[u["id"]] for u in todo if u["id"] in rows]
 
     # ------------------------------------------------------------------------------------------------ calibrate
     def calibrate(self, units: List[dict], arm: core.ArmSpec, settings: Mapping, store) -> Dict[str, float]:
@@ -166,7 +233,7 @@ class MockPlatform:
         collect = lambda statistics, attempts, active: pool(pools, statistics, attempts)      # noqa: E731
         with one_thread():
             for start in range(0, len(units), size):
-                for group, trace in self._simulate_chunk(units[start:start + size], arm, settings, c, collect=collect):
+                for group, trace, _ in self._simulate_chunk(units[start:start + size], arm, settings, c, collect=collect):
                     if not pools:
                         raise ValueError(f"arm {arm.name!r} reported no Actions.statistics: there is nothing to calibrate")
                     fresh = [u for u in group if not store.is_done(u["id"])]
@@ -181,15 +248,37 @@ class MockPlatform:
                     raise ValueError(f"statistic {name!r} has no value to calibrate on (all NaN or no live delivery)")
             at = lambda level: {name: threshold_at(v, 1.0 - level) for name, v in values.items()}      # noqa: E731
             if mode == "open_loop":
-                self.last_calibration = {"mode": mode, "passes": 1, "simulated": 1}
+                self.last_calibration = {"mode": mode, "passes": 1, "simulated": 1, "alpha": float(alpha), "converged": True}
                 return at(1.0 - float(alpha))
             return self._closed_loop(units, arm, settings, store, c, size, float(alpha), at)
+
+    def realised_rate(self, units: Sequence[Mapping], arm: core.ArmSpec, settings: Mapping,
+                      thresholds: Mapping[str, float]) -> Tuple[float, float]:
+        """(deny rate, largest single-episode deny rate) of the arm acting with `thresholds` on these units: the quantity the
+        closed loop drives to alpha. D108: when the arm reports Actions.threshold_restricted only those deliveries count
+        (threshold_restricted & attempts & ~delivered), else every restricted or lost delivery (attempts & ~delivered)."""
+        size, c = _batch_size(settings), _horizon_constant(settings)
+        counted_total = sent_total = 0
+        worst = 0.0
+        with one_thread():
+            for start in range(0, len(units), size):
+                extras: dict = {}
+                for _, trace, _ in self._simulate_chunk(list(units)[start:start + size], arm, settings, c,
+                                                     thresholds=thresholds, extras=extras):
+                    lost = trace.attempts & ~trace.delivered           # restricted or lost (isolation included)
+                    counted = extras["threshold_restricted"] & lost if "threshold_restricted" in extras else lost
+                    counted, sent = counted.sum((1, 2, 3)), trace.attempts.sum((1, 2, 3))
+                    counted_total += int(counted.sum())
+                    sent_total += int(sent.sum())
+                    worst = max(worst, float((counted / sent).max()))
+        return counted_total / sent_total, worst
 
     def _closed_loop(self, units, arm, settings, store, horizon_constant, size, alpha, at) -> Dict[str, float]:
         """Closed-loop calibration (CONTRACT.md): the arm acts with candidate thresholds {name: quantile_level(statistic)}
         on the attack-free episodes; bisect the common level until the realised deny rate is alpha within tolerance.
         Every pass is saved in the store (state key below), so a resumed calibration repeats none of them."""
-        key = f"calibration-{arm.name}-{core.seed_of(alpha, *[u['id'] for u in units])}"
+        tolerance, max_passes = closed_loop_params(settings)
+        key = f"calibration2-{arm.name}-{core.seed_of(alpha, *[u['id'] for u in units])}"
         saved = store.load_state(key) or {}
         cache = dict(saved.get("passes", {}))
         simulated = 1                                           # the statistics pass above
@@ -202,36 +291,27 @@ class MockPlatform:
             if hit is not None and hit["thresholds"] == th and "worst" in hit:
                 worst[repr(level)] = hit["worst"]
                 return hit["rate"], th
-            denied = attempts = 0
-            top = 0.0
-            for start in range(0, len(units), size):
-                for _, trace in self._simulate_chunk(units[start:start + size], arm, settings, horizon_constant, thresholds=th):
-                    lost, sent = (trace.attempts & ~trace.delivered).sum((1, 2, 3)), trace.attempts.sum((1, 2, 3))
-                    denied += int(lost.sum())
-                    attempts += int(sent.sum())
-                    top = max(top, float((lost / sent).max()))
+            rate, top = self.realised_rate(units, arm, settings, th)
             simulated += 1
-            rate = denied / attempts
             cache[repr(level)] = {"rate": rate, "thresholds": th, "worst": top}
             worst[repr(level)] = top
             store.save_state(key, {"passes": cache})
             return rate, th
 
         lo, hi, level, seen = 0.0, 1.0, 1.0 - alpha, []
-        for n in range(1, CLOSED_LOOP_PASSES + 1):  # noqa: B007
+        for n in range(1, max_passes + 1):  # noqa: B007
             rate, th = rate_at(level)
             seen.append((level, rate, th))
-            if abs(rate - alpha) <= CLOSED_LOOP_TOLERANCE * alpha or hi - lo < 1e-12:
+            if abs(rate - alpha) <= tolerance * alpha or hi - lo < 1e-12:
                 break
             lo, hi = (level, hi) if rate > alpha else (lo, level)          # a higher level means a higher threshold: fewer denies
             level = 0.5 * (lo + hi)
-        # The realised rate can jump over the tolerance band (one more denial raises the next statistics): then the level
-        # with the highest rate not above the band is returned, never one that denies more than alpha (1 + tolerance).
-        ceiling = alpha * (1.0 + CLOSED_LOOP_TOLERANCE)
-        below = [x for x in seen if x[1] <= ceiling]
-        best = max(below, key=lambda x: x[1]) if below else min(seen, key=lambda x: x[1])
-        self.last_calibration = {"mode": "closed_loop", "level": best[0], "rate": best[1], "passes": n, "simulated": simulated,
-                                 "within_tolerance": abs(best[1] - alpha) <= CLOSED_LOOP_TOLERANCE * alpha,
+        # Not converged (the rate moves in steps over the band, or alpha is unreachable): D112, the highest pass not above
+        # alpha (1 + tolerance), as on the LLM platform; `converged` (alias within_tolerance) says whether it is in the band.
+        best = pick_pass(seen, alpha, tolerance)
+        converged = abs(best[1] - alpha) <= tolerance * alpha
+        self.last_calibration = {"mode": "closed_loop", "level": best[0], "rate": best[1], "alpha": alpha, "passes": n,
+                                 "simulated": simulated, "converged": converged, "within_tolerance": converged,
                                  "worst_episode_rate": worst[repr(best[0])]}
         return best[2]
 
@@ -246,22 +326,22 @@ class MockPlatform:
     def _save(store, group: Sequence[Mapping], rows: Sequence[dict], into: Dict[str, dict]) -> None:
         """Save a group's rows and mark its units done: one batch file and one done list when the store has the batch API,
         else one file per unit. A unit that an interrupted run already saved rows for (per-unit files) is only marked done."""
-        batch = {}
+        if hasattr(store, "append_batch"):                  # one file, one fsync, one done list; no per-unit file system calls
+            for u, row in zip(group, rows, strict=True):
+                into[u["id"]] = row
+            store.append_batch({u["id"]: [row] for u, row in zip(group, rows, strict=True)})
+            return
         for u, row in zip(group, rows, strict=True):
             into[u["id"]] = row
             if store.resume_rows(u["id"]):
                 store.mark_done(u["id"])
-            elif hasattr(store, "append_batch"):
-                batch[u["id"]] = [row]
             else:
                 store.append_rows(u["id"], [row])
                 store.mark_done(u["id"])
-        if batch:
-            store.append_batch(batch)
 
     def _simulate_chunk(self, chunk: Sequence[Mapping], arm: core.ArmSpec, settings: Mapping, horizon_constant: float,
                         with_clean: bool = False, collect: Optional[Callable] = None,
-                        thresholds: Optional[Mapping[str, float]] = None) -> Iterator[Tuple[List[Mapping], core.EpisodeTrace]]:
+                        thresholds: Optional[Mapping[str, float]] = None, extras: Optional[dict] = None, store=None) -> Iterator[Tuple[List[Mapping], core.EpisodeTrace]]:
         """Simulate a chunk of one arm / topology / attack / N: one (units, trace) per distinct horizon, in input order within
         the group."""
         first = chunk[0]
@@ -276,11 +356,34 @@ class MockPlatform:
             units, adj_t = [chunk[i] for i in rows.tolist()], adj[rows]
             draws = W.draw_noise(units, topology, N, T)
 
-            def run(fam: str, defender: core.Defender, units=units, adj_t=adj_t, T=T, draws=draws) -> core.EpisodeTrace:
-                world = W.build_world(units, settings, topology, N, fam, adj_t, T, draws)
-                ctx = engine.make_context(units, world, arm.name, settings, thresholds)
-                return engine.simulate(world, model, defender, ctx, arm.needs_truth, collect, units)[0]
+            def run(fam: str, defender: core.Defender, us=units, adj_t=adj_t, T=T, draws=draws) -> core.EpisodeTrace:
+                world = W.build_world(us, settings, topology, N, fam, adj_t, T, draws)
+                ctx = engine.make_context(us, world, arm.name, settings, thresholds)
+                return engine.simulate(world, model, defender, ctx, arm.needs_truth, collect, us, extras if fam == family else None)[0]
             trace = run(family, arm.factory())
+            twins = None
             if with_clean and family != "none":
-                trace.meta["clean_accuracy"] = clean_accuracy(run("none", clean_reference_defender(arm)), trace.attackers)
-            yield units, trace
+                twin_units = [twin_unit(u) for u in units] if all("twin_id" in u for u in units) else None
+                reference = self._stored_reference(store, twin_units) if twin_units and family not in W.INSIDERS else None
+                if reference is not None:                      # D109: the twin's own finished run
+                    trace.meta["clean_accuracy"] = reference
+                elif twin_units is not None:                   # D109: simulate the twin keyed by its own id, save it as its result
+                    check_clean_schedules(units)
+                    clean = run("none", clean_reference_defender(arm), twin_units)
+                    trace.meta["clean_accuracy"] = clean_accuracy(clean, trace.attackers)
+                    twins = (twin_units, clean)
+                else:
+                    check_clean_schedules(units)
+                    clean = run("none", clean_reference_defender(arm), [clean_schedule(u) for u in units])
+                    trace.meta["clean_accuracy"] = clean_accuracy(clean, trace.attackers)
+            yield units, trace, twins
+
+    @staticmethod
+    def _stored_reference(store, twin_units: Sequence[Mapping]) -> Optional[Tensor]:
+        """float64 [B]: the finished twins' accuracy_clean, when every twin of the group is done and the store can give its row."""
+        if store is None or not hasattr(store, "rows_of") or not all(store.is_done(t["id"]) for t in twin_units):
+            return None
+        rows = [store.rows_of(t["id"]) for t in twin_units]
+        if any(len(r) != 1 or not isinstance(r[0].get("accuracy_clean"), (int, float)) for r in rows):
+            return None
+        return torch.tensor([r[0]["accuracy_clean"] for r in rows], dtype=torch.float64)

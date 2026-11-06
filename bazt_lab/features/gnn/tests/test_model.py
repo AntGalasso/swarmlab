@@ -109,3 +109,8 @@ def test_mygat_matches_the_upstream_class_both_ways(aggr):
     ref = up.MyGAT(**args).eval()                                  # and an upstream-initialised state loads here
     ours.load_state_dict(ref.state_dict())
     torch.testing.assert_close(ours(x, EDGE_INDEX, ea), ref(x, EDGE_INDEX, ea))
+
+
+def test_zero_layers_are_refused():
+    with pytest.raises(ValueError, match="num_layers"):
+        small_model(num_layers=0)

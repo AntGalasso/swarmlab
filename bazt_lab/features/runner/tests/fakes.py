@@ -4,7 +4,11 @@ The runner never builds a defender, so every ArmSpec factory here fails loudly i
 """
 from __future__ import annotations
 
-from types import MappingProxyType
+import math
+import os
+from types import MappingProxyType, SimpleNamespace
+
+import torch
 
 from bazt_lab.core import public as core
 from bazt_lab.features.runner import public as rx
@@ -35,11 +39,18 @@ def threshold_of(cell) -> float:
     return sum(ord(c) for c in "|".join(map(str, cell))) / 1000
 
 
+# What the real platforms run (Platform.adaptive_conditions): the mock the adaptive feature's conditions, the LLM the
+# replayed gray-box best response (D110).
+ADAPTIVE_CONDITIONS = {"mock": ("gray_box", "white_box", "embedding_evasion", "attack_rate"), "llm": ("gray_box",)}
+
+
 class FakePlatform:
     """Writes rows the way a real platform must: appended as produced, resumed after the last saved row, then done."""
 
-    def __init__(self, name="mock", rows_per_unit=1, crash_on=None, calibrate_result=None, raises=None):
+    def __init__(self, name="mock", rows_per_unit=1, crash_on=None, calibrate_result=None, raises=None,
+                 adaptive_conditions=None):
         self.name = name
+        self.adaptive_conditions = ADAPTIVE_CONDITIONS[name] if adaptive_conditions is None else adaptive_conditions
         self.rows_per_unit = rows_per_unit
         self.crash_on = crash_on                  # unit -> bool: crash after the first row of that unit
         self.calibrate_result = calibrate_result  # overrides the returned thresholds
@@ -48,6 +59,7 @@ class FakePlatform:
         self.raises = raises                      # exception raised by run_batch before anything is written
         self.batches = []                         # (arm name, units as received)
         self.probes = []                          # preflight probes: (arm name, units, store root name)
+        self.probe_settings = []                  # the settings each preflight probe ran with
         self.probe_raises = None                  # exception raised by a preflight probe
         self.calibrations = []
         self.trackers = []
@@ -55,6 +67,7 @@ class FakePlatform:
     def run_batch(self, units, arm, settings, store, tracker):
         if store.root.name == "preflight-probe":
             self.probes.append((arm.name, [dict(u) for u in units], store.root.name))
+            self.probe_settings.append(settings)
             if self.probe_raises:
                 raise self.probe_raises
             return []
@@ -114,13 +127,39 @@ class RecordingTracker:
         return [e[0] for e in self.events]
 
 
+# The fields of a mock_adaptive unit that make its best-response cell (adaptive table.cell_of keeps every field but the
+# episode and the runner's annotations).
+CELL = ("platform", "arm", "audit", "intervention", "topology", "attack", "agents", "condition")
+
+
+def cell_of(unit) -> tuple:
+    return tuple(unit.get(k) for k in CELL)
+
+
+class FakeTable:
+    """BestResponses: `choice(unit).attack_params` of the unit's cell, LookupError when the cell has no entry."""
+
+    def __init__(self, entries):
+        self.entries = entries
+
+    def choice(self, unit):
+        key = cell_of(unit)
+        if key not in self.entries:
+            raise LookupError(f"no best response for cell {key}")
+        return SimpleNamespace(attack_params=dict(self.entries[key]))
+
+
 class FakeAdaptive:
-    """The adaptive feature's public surface: run_search returns a table that annotates units with attack_params."""
+    """The adaptive feature's public surface: run_search returns a table that annotates units with attack_params and
+    keeps the best responses that load_best_responses returns (`table` = {cell_of(unit): attack_params} gives a saved
+    table up front; None = nothing searched yet)."""
 
     PARAMS = MappingProxyType({"start_frac": 0.5})
 
-    def __init__(self):
+    def __init__(self, table=None):
         self.searches = []                        # (units, thresholds of the first cell, out_dir)
+        self.table = None if table is None else dict(table)
+        self.loads = []                           # (out_dir, settings) of each load_best_responses call
 
     def search_episodes(self, units, settings):
         return 7 * len(list(units))
@@ -130,10 +169,46 @@ class FakeAdaptive:
         cell = {k: units[0][k] for k in ("arm", "topology", "agents")}
         self.searches.append((units, dict(thresholds_of(cell)), out_dir))
         arm_of(units[0]["arm"])
+        self.table = {**(self.table or {}), **{cell_of(u): dict(self.PARAMS) for u in units if u["attack"] != "none"}}
         return self
 
     def annotate(self, unit):
         return {**unit, "attack_params": {} if unit["attack"] == "none" else dict(self.PARAMS)}
+
+    def load_best_responses(self, out_dir, settings):
+        self.loads.append((out_dir, settings))
+        if self.table is None:
+            raise FileNotFoundError(f"{out_dir}/best_responses/meta.json does not exist: run the adaptive search first")
+        return FakeTable(self.table)
+
+    @staticmethod
+    def attack_rounds(T, start_frac=0.0, rate=1.0):
+        """The reference schedule's start (adaptive rounds.attack_rounds) with every round from it on."""
+        start = math.floor(start_frac * T + 1e-9)
+        return torch.arange(T) >= start
+
+
+class FakeGnn:
+    """The gnn feature's public surface: deploy_family, training_finished, train_pending."""
+
+    def __init__(self, finished=True, finished_after_pending=None):
+        self.finished, self.after, self.asked, self.pending_calls = finished, finished_after_pending, [], 0
+
+    def deploy_family(self, attack, task, settings):
+        if (attack, task) in {tuple(f) for f in core.get(settings, "gnn_train.families")}:
+            return f"{attack}__{task}"
+        if attack == "none" or core.get(settings, "gnn.fallback_family") == "pi_same_task":
+            return f"insider_pi__{task}"             # attack-free cells take their task's GNN
+        return None
+
+    def training_finished(self, settings, family):
+        self.asked.append(family)
+        return self.finished
+
+    def train_pending(self, settings):
+        self.pending_calls += 1
+        if self.after is not None:
+            self.finished = self.after
 
 
 class FakeAnalysis:
@@ -155,18 +230,45 @@ class FakeSync:
 
     def __init__(self):
         self.started, self.stopped = [], 0
+        self.summary = None                       # what the handle reports after stop()
 
     def start(self, settings, paths):
         self.started.append((settings, list(paths)))
         outer = self
 
         class Handle:
+            summary = None
+
             def stop(self):
                 outer.stopped += 1
+                self.summary = outer.summary
         return Handle()
 
 
-def wiring(platforms=None, arms=None, tracker=None, adaptive=None, analysis=None, sync=None):
+REBUILD = "bazt_lab.features.runner.tests.fakes:worker_wiring"
+
+
+class TwinChecking(FakePlatform):
+    """A worker's platform: an attacked unit must find its attack-free twin done (what the mock engine relies on), and
+    FAKE_CRASH_SEED makes the batch that holds that seed crash."""
+
+    def run_batch(self, units, arm, settings, store, tracker):
+        if store.root.name != "preflight-probe":
+            store.refresh()
+            for u in units:
+                if u["attack"] != "none" and not store.is_done(u["twin_id"]):
+                    raise AssertionError(f"twin {u['twin_id']} of {u['id']} is not done")
+                if str(u["seed"]) == os.environ.get("FAKE_CRASH_SEED", "-"):
+                    raise RuntimeError("simulated worker crash")
+        return super().run_batch(units, arm, settings, store, tracker)
+
+
+def worker_wiring():
+    """What a spawned worker rebuilds: the same fakes, no tracker."""
+    return wiring({"mock": TwinChecking("mock"), "llm": FakePlatform("llm")})
+
+
+def wiring(platforms=None, arms=None, tracker=None, adaptive=None, analysis=None, sync=None, gnn=None, rebuild=None):
     """A Wiring over fakes. `tracker` is returned by Wiring.tracker only when tracking is enabled."""
     platforms = {"mock": FakePlatform("mock"), "llm": FakePlatform("llm")} if platforms is None else platforms
     arms = ARMS if arms is None else arms
@@ -194,7 +296,8 @@ def wiring(platforms=None, arms=None, tracker=None, adaptive=None, analysis=None
         return get
 
     return rx.Wiring(arm=arm, platform=platform, tracker=lambda settings: tracker, adaptive=adaptive_feature,
-                     analysis=optional("analysis", analysis), sync=optional("sync", sync))
+                     analysis=optional("analysis", analysis), sync=optional("sync", sync), gnn=optional("gnn", gnn),
+                     rebuild=rebuild)
 
 
 # ------------------------------------------------------------------------------ settings for the tests

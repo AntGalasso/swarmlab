@@ -216,3 +216,25 @@ def test_a_sender_whose_text_was_not_checked_is_not_rate_limited():
     assert unchecked.sum() == 3
     assert not actions.deny[0][unchecked].any()                   # only checked senders are rate limited
     assert (actions.deny[0][~unchecked].sum(-1) == 3).all()
+
+
+def test_threshold_restricted_marks_only_the_judge_denies_funded():
+    ctx, arm, fake = _run(N=4, adj=adj_of(1, [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (1, 0)], 4),
+                          thresholds={"judge": 0.5}, rate_limit=1)
+    attempts = fake.obs(1).attempts.clone()
+    attempts[0, 2, 0] = True                                      # off the allowlist: A's rule
+    actions = arm.decide(fake.obs(1, attempts, scores=[0.9, 0.1, 0.1, 0.1]))
+    marked = actions.threshold_restricted
+    assert marked.dtype == torch.bool and marked.shape == (1, 4, 4)
+    assert torch.equal(marked, actions.deny & attempts & fake.ctx.adj & (torch.tensor([0.9, 0.1, 0.1, 0.1])[:, None] > 0.5))
+    assert marked[0, 0].sum() == 3                                # sender 0 crossed the threshold on all its deliveries
+    assert actions.deny[0, 1].sum() == 2 and not marked[0, 1].any()       # rate limit (1 of 3 kept) is not counted
+    assert actions.deny[0, 2, 0] and not marked[0, 2, 0]          # A's rule is not counted
+
+
+def test_threshold_restricted_is_empty_while_calibrating_and_counts_only_funded_denies():
+    ctx, arm, fake = _run(thresholds={})
+    assert not arm.decide(fake.obs(1, scores=[9.0, 9.0, 9.0])).threshold_restricted.any()
+    ctx, arm, fake = _run(thresholds={"judge": 0.5}, intervention_cap=2.0)
+    a = arm.decide(fake.obs(1, scores=[0.9, 0.8, 0.7]))
+    assert a.threshold_restricted.sum() == 2 and torch.equal(a.threshold_restricted, a.deny)

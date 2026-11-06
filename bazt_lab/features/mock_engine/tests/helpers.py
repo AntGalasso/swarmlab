@@ -102,11 +102,6 @@ class FakeStore:
         self.rows.setdefault(uid, []).extend(rows)
         self.appends.append(uid)
 
-    def append_batch(self, rows_by_unit):
-        for uid, rows in rows_by_unit.items():
-            self.append_rows(uid, rows)
-            self.done.add(uid)
-
     def resume_rows(self, uid):
         return list(self.rows.get(uid, []))
 

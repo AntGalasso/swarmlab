@@ -33,7 +33,7 @@ def full_adj(B: int, N: int) -> torch.Tensor:
     return (~torch.eye(N, dtype=torch.bool)).expand(B, N, N).clone()
 
 
-def make_ctx(adj, arm, *, platform="mock", thresholds=None, audit_cap=INF, intervention_cap=INF, settings=None, costs=None, T=4,
+def make_ctx(adj, arm, *, platform="mock", dtype=torch.float64, device="cpu", thresholds=None, audit_cap=INF, intervention_cap=INF, settings=None, costs=None, T=4,
              ids=None):
     B, N, _ = adj.shape
     ids = tuple(f"u{b}" for b in range(B)) if ids is None else tuple(ids)
@@ -42,7 +42,7 @@ def make_ctx(adj, arm, *, platform="mock", thresholds=None, audit_cap=INF, inter
         audit_cap=torch.full((B,), float(audit_cap), dtype=torch.float64),
         intervention_cap=torch.full((B,), float(intervention_cap), dtype=torch.float64),
         costs=dict(COSTS if costs is None else costs), thresholds=dict(thresholds or {}),
-        settings=make_settings() if settings is None else settings, arm=arm, platform=platform, unit_ids=ids,
+        settings=make_settings() if settings is None else settings, arm=arm, platform=platform, unit_ids=ids, dtype=dtype, device=torch.device(device),
         arm_stream=lambda ns, b: core.stream(ns, arm, ids[b]))
 
 
@@ -52,11 +52,11 @@ class Fake:
         self.remaining_audit = ctx.audit_cap.clone()
         self.remaining_intervention = ctx.intervention_cap.clone()
         self.audit_calls = []
-        self.scores = torch.zeros(ctx.B, ctx.N, dtype=torch.float64)
+        self.scores = torch.zeros(ctx.B, ctx.N, dtype=ctx.dtype)
 
     def audit(self, mask):
         self.audit_calls.append(mask.clone())
-        out = torch.full(mask.shape, NAN, dtype=torch.float64)
+        out = torch.full(mask.shape, NAN, dtype=self.ctx.dtype)
         for b in range(mask.shape[0]):
             for i in range(mask.shape[1]):
                 if mask[b, i] and self.remaining_audit[b] >= 1.0:
@@ -67,7 +67,7 @@ class Fake:
     def obs(self, t, attempts=None, *, scores=None, authentic=None, monitor=None, active=None):
         ctx = self.ctx
         if scores is not None:
-            self.scores = torch.as_tensor(scores, dtype=torch.float64).expand(ctx.B, ctx.N).clone()
+            self.scores = torch.as_tensor(scores, dtype=ctx.dtype).expand(ctx.B, ctx.N).clone()
         self.attempts = ctx.adj.clone() if attempts is None else attempts
         self.authentic = authentic
         active = torch.ones(ctx.B, ctx.N, dtype=torch.bool) if active is None else active

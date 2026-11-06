@@ -2,6 +2,7 @@
 raises core.Unset naming it, a bad value raises SyncError naming it."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Mapping, Optional, Tuple
 
@@ -34,8 +35,8 @@ def _bad(key: str, why: str, value) -> SyncError:
 
 def _number(settings: Mapping, key: str) -> float:
     value = _get(settings, key)
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not value > 0:
-        raise _bad(key, "must be a number greater than 0", value)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not value > 0:
+        raise _bad(key, "must be a finite number greater than 0", value)
     return float(value)
 
 

@@ -159,6 +159,8 @@ class MyGAT(nn.Module):
     def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, heads: int, edge_dim: Tuple[int, int],
                  num_layers: int, dropout: float, aggr_type: str, concat: bool = True, residual: bool = False):
         super().__init__()
+        if num_layers < 1:
+            raise ValueError(f"num_layers must be at least 1, got {num_layers}")
         if not concat:
             raise ValueError("MyGAT needs concat=True: layer 2 expects heads * head_channels inputs")
         if hidden_channels % heads:

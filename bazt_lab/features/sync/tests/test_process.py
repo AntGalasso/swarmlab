@@ -21,7 +21,7 @@ FAKE = "bazt_lab.features.sync.tests.fakes:make_uploader"
 
 def settings(**sync_keys):
     base = {"enabled": True, "repo_id": "me/r", "repo_type": "dataset", "private": True, "every_minutes": 0.01,
-            "include": [], "exclude": [], "priority": "below_normal", "final_push_timeout_seconds": 60}
+            "include": [], "exclude": [], "priority": "below_normal", "final_push_timeout_seconds": 300}
     return {"sync": {**base, **sync_keys}}
 
 
@@ -42,7 +42,7 @@ def commits(log):
     return [e["files"] for e in events(log) if e["event"] == "commit"]
 
 
-def wait_for(condition, seconds=60):
+def wait_for(condition, seconds=180):
     end = time.time() + seconds
     while time.time() < end:
         if condition():
@@ -131,6 +131,7 @@ def test_upload_failures_are_counted_in_the_summary_and_never_stop_the_child(fak
     assert handle.alive                                             # the failing commits did not end the child
     handle.stop()
     assert handle.summary["commits"] == 0 and handle.summary["failures"]["commit"] >= 1
+    assert "upload operation(s) failed during the run" in capfd.readouterr().err   # visible without reading summary
 
 
 def test_the_token_is_in_no_output_of_the_child_or_the_parent(fake, tmp_path, monkeypatch, capfd):

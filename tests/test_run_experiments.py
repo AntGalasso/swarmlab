@@ -9,6 +9,7 @@ import run_experiments
 from bazt_lab import app
 from bazt_lab.core import public as core
 from bazt_lab.features.runner import public as rx
+from bazt_lab.features.runner.private import sizing
 from bazt_lab.features.runner.private import units as units_mod
 from bazt_lab.features.runner.tests import fakes
 
@@ -185,10 +186,12 @@ def test_dry_run_sizes_every_block(capsys):
     assert "LLM calls:" in out and "with the request cache" in out
     frontier = next(line for line in out.splitlines() if line.startswith("mock_frontier"))
     settings = rx.load_settings()
-    per_episode = core.get(settings, "estimates.mock_seconds_per_episode")["12"]
+    grid = rx.units_mock_frontier(settings, False)
+    n = len(grid)
     io = core.get(settings, "estimates.mock_checkpoint_seconds_per_unit")
-    n = len(rx.units_mock_frontier(settings, False))
-    assert f"{n:,}" in frontier and f"{n * (per_episode + io) / 3600:.1f}" in frontier
+    cpu = sum(c * (sizing.seconds_per_episode(settings, a, kind, size) + io)
+              for (a, kind, size), c in grid.cost_groups().items()) / 3600
+    assert f"{n:,}" in frontier and f"{cpu:.2f}" in frontier
     assert "scope not set: mock.ablations.arms" in next(ln for ln in out.splitlines() if ln.startswith("mock_ablations"))
 
 
@@ -356,3 +359,20 @@ def test_wiring_hands_the_runner_the_adaptive_feature_lazily(monkeypatch):
     fake_features(monkeypatch)
     with pytest.raises(rx.FeatureMissing, match="feature adaptive is not built"):
         app.build_wiring().adaptive()
+
+
+def test_a_worker_wiring_imports_only_the_feature_that_holds_the_arm(monkeypatch):
+    """A spawned worker needs one arm: importing every arm feature (gnn, torch_geometric, bazt) cost it about 20 s."""
+    loaded = []
+    empty = SimpleNamespace(ARMS=())
+
+    def load(name):
+        loaded.append(name)
+        return SimpleNamespace(ARMS=(fakes.ARMS["A"],)) if name == "conventional" else empty
+    monkeypatch.setattr(app, "_feature", load)
+    wiring = app.build_worker_wiring()
+    assert wiring.arm("A") is fakes.ARMS["A"] and loaded == ["conventional"]
+    assert app.build_wiring().rebuild == "bazt_lab.app:build_worker_wiring"
+    assert wiring.rebuild == "bazt_lab.app:build_worker_wiring"
+    with pytest.raises(LookupError, match="no feature exports an arm named 'nope'"):
+        wiring.arm("nope")

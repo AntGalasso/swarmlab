@@ -20,8 +20,12 @@ def containment(t: Table, cfg: Cfg, platform: str) -> dict:
         return status
     ref, entries, skipped = cfg.containment_reference, [], []
     for key in sorted((k for k in t.index if k.block in blocks and not k.attack_free and k.arm != ref), key=sort_key):
-        ref_key = key._replace(arm=ref, audit=UNCAPPED, intervention=UNCAPPED)
-        rows = t.aligned([key, ref_key])
+        rows = None
+        for block in (key.block, *blocks):                       # the reference may run in another block (A: headline)
+            rows = t.aligned([key, key._replace(arm=ref, audit=UNCAPPED, intervention=UNCAPPED, block=block)])
+            if rows is not None and len(rows[0]):
+                break
+            rows = None
         if rows is None:
             skipped.append({"arm": key.arm, "context": compare.describe(key.ctx),
                             "reason": f"no uncapped {ref} run to pair with"})

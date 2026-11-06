@@ -54,6 +54,7 @@ def make_records(n: int, n_agents: int = 6, rounds: int = 4, p: float = 0.6, k: 
 
 
 TEST_SETTINGS = {
+    "compute": {"device": "cpu", "dtype": "float64", "compile": False, "deterministic": True},
     "llm": {"rounds": 4},
     "gnn": {
         "cut": 0.5,

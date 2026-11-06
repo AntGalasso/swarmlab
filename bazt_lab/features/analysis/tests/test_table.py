@@ -161,3 +161,11 @@ def test_context_of_a_key_drops_the_arm_and_the_attack_flag():
 def test_sort_key_orders_mixed_values_without_error():
     mixed = [tb.sort_key((None, "b", 0.5, "a", 1)), tb.sort_key((None, "a", 0.5, "a", 1))]
     assert sorted(mixed)[0] == tb.sort_key((None, "a", 0.5, "a", 1))
+
+
+def test_a_metric_column_that_holds_a_list_is_refused_with_its_name(tmp_path):
+    """A per-round column (asr_by_round, accuracy_by_round, ...) named as a metric, for example in
+    analysis.containment_metrics: a ValueError naming the column, as analyze documents, not a bare TypeError."""
+    synth.write_rows(tmp_path, [row(asr_by_round=[0.1, 0.2])])
+    with pytest.raises(ValueError, match=r"'asr_by_round'.*not a number.*\[0\.1, 0\.2\]"):
+        tb.load(tmp_path, ("b",), ("asr_final", "asr_by_round"))

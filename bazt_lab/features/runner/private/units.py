@@ -18,8 +18,10 @@ from typing import Dict, Iterator, List, Mapping, Sequence
 from bazt_lab.core import public as core
 from bazt_lab.features.runner.private import needs
 
-# What the runner adds to a unit before handing it to a platform. Neither takes part in the unit's identity.
-ANNOTATIONS = ("id", "thresholds")
+# What the runner adds to a unit before handing it to a platform. None takes part in the unit's identity (the replayed
+# schedule of llm_adaptive_check and the BAZT rounds of the matched-timing controls are pinned in their block directory
+# instead, private/replay.py and private/matched.py).
+ANNOTATIONS = ("id", "thresholds", "twin_id", "attack_schedule", "timing_schedule", "twin_timing_schedule")
 # The fields the units of one Platform.run_batch call share (absent fields count as None).
 GROUP_FIELDS = ("arm", "audit", "intervention", "topology", "attack", "agents", "cost_condition", "preset",
                 "condition", "attack_params")
@@ -42,6 +44,15 @@ def cell_key(unit: Mapping) -> tuple:
 
 
 # ==================================================================================================== containers
+def _once(values) -> list:
+    """The values that are not None, in order, each once; equality, not hashing (a value may be a list)."""
+    out: list = []
+    for v in values:
+        if v is not None and v not in out:
+            out.append(v)
+    return out
+
+
 class UnitList(list):
     """The units of a block that is small enough to hold: every LLM block and the mock calibration."""
 
@@ -69,6 +80,18 @@ class UnitList(list):
 
     def seed_set(self) -> set:
         return {u["seed"] for u in self if "seed" in u}
+
+    def conditions(self) -> list:
+        """The adaptive conditions the units carry, in unit order, each once (a condition may be any settings value)."""
+        return _once(u.get("condition") for u in self)
+
+    def cost_groups(self) -> Dict[tuple, int]:
+        out: Dict[tuple, int] = {}
+        for u in self:
+            kind = "uncapped" if u.get("audit") == "uncapped" and u.get("intervention") == "uncapped" else "capped"
+            key = (u["arm"], kind, u["agents"])
+            out[key] = out.get(key, 0) + 1
+        return out
 
 
 def _flag(value) -> bool:
@@ -102,11 +125,16 @@ class MockGrid:
         return dict(block=self.block, platform="mock", arm=arm, audit=audit, intervention=interv, topology=topo,
                     attack=fam, agents=n, seed=seed, sink=sink, **extra)
 
+    def _ordered_families(self) -> list:
+        """Attack-free first (D109): an attacked episode's clean reference is its attack-free twin's own run."""
+        return sorted(self.families, key=lambda f: f != "none")
+
     def __iter__(self) -> Iterator[dict]:
         for variant in self.variants:
             extra = self._extra(variant)
-            for (arm, (audit, interv)), topo, fam, n, seed in itertools.product(
-                    self.arms_cells, self.topologies, self.families, self.agent_counts, self.seeds):
+            for fam, ((arm, (audit, interv)), topo, n, seed) in itertools.product(
+                    self._ordered_families(),
+                    itertools.product(self.arms_cells, self.topologies, self.agent_counts, self.seeds)):
                 for sink in (range(n) if self.every_sink else (None,)):
                     yield self._unit(arm, audit, interv, topo, fam, n, seed, sink, extra)
 
@@ -149,6 +177,21 @@ class MockGrid:
 
     def seed_set(self) -> set:
         return set(self.seeds) if len(self) else set()
+
+    def conditions(self) -> list:
+        """The adaptive conditions the units carry, in grid order, each once; counted from the variants."""
+        return _once(self._extra(v).get("condition") for v in self.variants) if len(self) else []
+
+    def cost_groups(self) -> Dict[tuple, int]:
+        """{(arm, "capped" | "uncapped", N): episodes}, counted from the axes."""
+        per = len(self.topologies) * len(self.families) * len(self.seeds) * len(self.variants)
+        out: Dict[tuple, int] = {}
+        for arm, (audit, interv) in self.arms_cells:
+            kind = "uncapped" if audit == "uncapped" and interv == "uncapped" else "capped"
+            for n in self.agent_counts:
+                key = (arm, kind, n)
+                out[key] = out.get(key, 0) + per * (n if self.every_sink else 1)
+        return out
 
 
 # ======================================================================================================== helpers
@@ -235,7 +278,7 @@ def units_llm_calibration(s, strict):
     return UnitList(
         dict(block="llm_calibration", platform="llm", arm=arm, audit="uncapped", intervention="uncapped",
              backbone=b, topology=t, attack="none", task=task, seed=seed, conversations=conv,
-             agents=core.get(s, "llm.agents"), rounds=core.get(s, "llm.rounds"))
+             agents=core.get(s, "llm.agents"), rounds=core.get(s, "llm.rounds"), sanitize_mode=sanitize_modes(s, arm)[0])
         for arm, b, t, task, seed in itertools.product(
             core.get(s, "llm.calibrated_arms"), _backbones(s, strict), core.get(s, "llm.topologies"),
             core.get(s, "llm.attack_free_tasks"), _llm_seeds(s, "llm_calibration_seeds", strict)))
@@ -251,7 +294,8 @@ def units_gnn_train(s, strict):
     return UnitList(
         dict(block="gnn_train", platform="llm", arm="GNN", attack=attack, task=task, edge_probability=p,
              attackers=k, backbone=backbone, conversations=core.get(s, "gnn_train.conversations_per_setting"),
-             agents=core.get(s, "gnn_train.agents"), rounds=core.get(s, "gnn_train.rounds"))
+             agents=core.get(s, "gnn_train.agents"), rounds=core.get(s, "gnn_train.rounds"),
+             sanitize_mode=sanitize_modes(s, "GNN")[0])
         for (attack, task), p, k in itertools.product(
             [tuple(f) for f in core.get(s, "gnn_train.families")], core.get(s, "gnn_train.edge_probabilities"),
             core.get(s, "gnn_train.attackers")))

@@ -7,7 +7,7 @@ launch. Offline until the hackathon kickoff. Results never live only in W&B: the
 
 | name | what |
 |---|---|
-| `WandbTracker(settings=None)` | implements `core.Tracker`. `WandbTracker()` builds without arguments, imports nothing, touches no file and no network (the runner's `--list` builds it). `WandbTracker(settings)` checks the `tracking.*` settings, the kickoff rule and the key at once, so a launch can refuse before it writes anything. Property `mode`: the mode of the current run after the kickoff rule (`None` before `start`). Property `failures`: operation name -> how many times it failed during the run (`{}` on a clean run) |
+| `WandbTracker(settings=None)` | implements `core.Tracker`. `WandbTracker()` builds without arguments, imports nothing, touches no file and no network. `WandbTracker(settings)` checks the `tracking.*` settings, the kickoff rule and the key at once, so a launch can refuse before it writes anything; `app.py` builds it this way. Property `mode`: the mode of the current run after the kickoff rule (`None` before `start`, kept after `finish()`). Property `failures`: operation name -> how many times it failed during the run (`{}` on a clean run) |
 | `TrackingError` | the one error type: tracking cannot be set up as the settings ask. A `RuntimeError`; the message names the setting or the variable and never contains a secret |
 
 `core.Unset` (naming the dotted key) is raised for a missing required setting, as everywhere in `bazt_lab`.
@@ -16,9 +16,9 @@ launch. Offline until the hackathon kickoff. Results never live only in W&B: the
 
 | call | behaviour |
 |---|---|
-| `start(block, config, resume_id) -> run_id` | reads the settings from `config` (the runner passes the resolved settings plus `manifest`), applies the kickoff rule, then `wandb.init(project, entity, group=config["profile"], job_type=block, config=<cleaned config>, id=resume_id, resume="allow", mode=<effective mode>, dir, reinit="create_new", save_code=False, settings={"disable_git": True})`. Returns the run id; the runner stores it and passes it back next launch. Raises `TrackingError` or `core.Unset` and writes nothing when the run cannot be set up. Calling it twice without `finish()` raises `TrackingError` |
+| `start(block, config, resume_id) -> run_id` | reads the settings from `config` (the runner passes the resolved settings plus `manifest`), applies the kickoff rule, then `wandb.init(project, entity, group=config["profile"], job_type=block, config=<cleaned config>, id=resume_id, resume="allow", mode=<effective mode>, dir, reinit="create_new", save_code=False, settings={"disable_git": True}, allow_val_change=True)`, then `define_metric("tracking/step")` and `define_metric("*", step_metric="tracking/step")`. Returns the run id; the runner stores it and passes it back next launch. Raises `TrackingError` or `core.Unset` and starts no run when the run cannot be set up (`tracking.dir` is created first when set). Calling it twice without `finish()` raises `TrackingError` |
 | `log(metrics, step)` | `run.log({**metrics, "tracking/step": int(step)})`. `tracking/step` is declared the x-axis of every metric (`define_metric("*", step_metric="tracking/step")`), so the runner's step (units done plus skipped) is the axis, not wandb's call counter |
-| `log_rows(table, rows)` | buffers the rows per table name (cells cleaned at once) and, every `tracking.flush_rows` buffered rows, logs them as ONE `wandb.Table(allow_mixed_types=True)` part: `<table>`, then `<table>_part1`, `<table>_part2`, ... (a flush larger than `wandb.Table.MAX_ARTIFACT_ROWS`, 200000, is split further). `finish()` flushes what is left before it ends the run, so a table is complete only after `finish()`. Rows are put into `Table.data` directly: `add_data` re-infers every cell's type and was most of the cost. The columns are those of the first call's rows. A row lacking a column gets `None`; a column the table does not have is dropped and reported once. A part that fails to log is reported and its rows are not retried. Cells: `None`, bool, int, float (NaN and infinity kept), str as they are; numpy and torch scalars become Python scalars; lists, dicts and arrays become JSON text |
+| `log_rows(table, rows)` | buffers the rows per table name (cells cleaned at once) and, every `tracking.flush_rows` buffered rows, logs them as ONE `wandb.Table(allow_mixed_types=True)` part: `<table>`, then `<table>_part1`, `<table>_part2`, ... (a flush larger than `wandb.Table.MAX_ARTIFACT_ROWS`, 200000, is split further). `finish()` flushes what is left before it ends the run, so a table is complete only after `finish()`. Rows are put into `Table.data` directly: `add_data` re-infers every cell's type and was most of the cost. The columns are those of the first call's rows. A row lacking a column gets `None`; a column the table does not have is dropped and reported once. A part that fails to log is reported; the later parts of that flush are not logged, and no row is retried. Cells: `None`, bool, int, float (NaN and infinity kept), str as they are; numpy and torch scalars become Python scalars; lists, dicts and arrays become JSON text |
 | `artifact(path, name, kind)` | logs a file or a directory as `wandb.Artifact(name, type=kind)`; `name` and `kind` have every character outside `[A-Za-z0-9_.-]` replaced by `_` |
 | `finish()` | ends the run and prints one summary line when any operation failed. Idempotent; a no-op before `start`. After it the tracker can `start` again |
 
@@ -52,22 +52,27 @@ launch. Offline until the hackathon kickoff. Results never live only in W&B: the
 
 ## What leaves the process
 
-- Config: the resolved settings plus `manifest` as plain JSON. Any key whose last word is `token`, `api_key`, `secret` or `password` is removed at every depth, in any spelling: `api_key`, `API_KEY`, `apiKey`, `api-key`, `accessToken`, `clientSecret`; a `.` in a key becomes `_` (W&B config keys cannot contain periods); two
-  or `password` is removed at every depth; a `.` in a key becomes `_` (W&B config keys cannot contain periods); two
-  keys that would merge are refused with `TrackingError`. Settings hold no secret (architecture gate); this is a second
-  guard.
+- Config: the resolved settings plus `manifest` as plain JSON. Any key whose last word is `token`, `api_key`, `secret`
+  or `password` is removed at every depth, in any spelling: `api_key`, `API_KEY`, `apiKey`, `api-key`, `accessToken`,
+  `clientSecret`. A `.` in a key becomes `_` (W&B config keys cannot contain periods); two keys that would merge are
+  refused with `TrackingError`. Settings hold no secret (architecture gate); this is a second guard.
 - No code and no git state (`save_code=False`, `disable_git`).
 - Tables and artifacts: only what the runner and the platforms hand to `log_rows` and `artifact`.
 
 ## Settings keys read
 
-Required: `profile` (the W&B group), `tracking.mode`, `tracking.project`, `tracking.flush_rows` (whole number >= 1: rows buffered per table before one table part is logged; performance only, never changes a result).
+Required: `profile` (the W&B group), `tracking.mode`, `tracking.project`, `tracking.flush_rows` (whole number >= 1: rows
+buffered per table before one table part is logged; performance only, never changes a result). `profiles.toml` sets
+`flush_rows = 3600`. Measured offline with the real library, 360 rows x 70 columns per `log_rows` call: 0.50 s per call
+at `flush_rows` 360, 0.36 s at 3600, 0.30 s at 36000. A larger value holds more rows in RAM (about 60 MB per 36000 rows
+at 70 columns), and a crash loses the unflushed rows from W&B (not from disk).
 Optional: `tracking.entity` (required when the effective mode is `online`), `tracking.dir` (where `wandb/` is
 created), `tracking.allow_online_before_kickoff` (bool, default false when unset).
 `tracking.enabled` is read by the runner, not here.
 
 Environment (process first, then the repo-root `.env`, never `profiles.toml`): `WANDB_API_KEY` (online only),
 `SWARMLAB_KICKOFF_UTC` (optional). Loaded with python-dotenv without override, inside `adapters/env.py` only.
+`.env.example` names `WANDB_API_KEY`, and `docs/EXPERIMENTS_HOWTO.md` says how to run `wandb sync` after the kickoff.
 
 ## Layout
 
@@ -99,21 +104,17 @@ the environment, to prove the explicit mode wins) and reads the run back from it
 
 1. Where should offline runs live? Unset `tracking.dir` leaves them in `./wandb/` of the launch directory
    (git-ignored). A `tracking.dir` under `results/` keeps them next to the block they describe. Owner's call; the
-   code works with either.
+   code works with either. `profiles.toml` has no `tracking.dir` line, so it is unset.
 2. `tracking.entity` (the W&B team or user) is commented out in `profiles.toml` as left for the owner. Online runs
    refuse without it, on purpose: a missing entity would send runs to the key owner's default account.
 
 ## Requests
 
-- runner: add `flush_rows = 3600` (or the owner's value) under `[tracking]` in profiles.toml; the key is required and has no default in code. Measured with the real library, offline, 360 rows x 70 columns per `log_rows` call: 3.4 s per call before; 0.50 s (flush_rows=360), 0.36 s (3600), 0.30 s (36000) per call after. A larger value costs memory (rows wait in RAM; at 70 columns about 60 MB per 36000 rows) and means a crash loses the unflushed rows from W&B (not from disk).
-- runner: `app.py` builds `WandbTracker()` without settings; pass the settings (`WandbTracker(settings)`) so a bad mode, a missing key or entity, or a missing `flush_rows` refuses before the launch writes anything.
 - runner/metrics (owner decision): even at about 0.3 s per 360 rows, mock_frontier's about 10,260 calls cost roughly 0.9 h to 1.4 h of tracker time against a 2.1 h block. If that is too much, log per-unit rows to W&B only for a subset or only summary rows; the full rows are in the CheckpointStore anyway.
-
-- quality: add `WANDB_API_KEY=` to `.env.example` (the missing-key error points there) and a line to
-  `docs/EXPERIMENTS_HOWTO.md` on `wandb sync <run dir>` after the kickoff.
-- metrics, mock_engine, llm_harness (anything that calls `tracker.log_rows`): every row of one table name carries the
-  same keys, `None` where a value does not apply. A W&B table cannot gain a column after its first rows, so a key that
-  first appears later is dropped from W&B (reported once; the row on disk is complete).
+- callers of `tracker.log_rows` (mock_engine does, `platform.py` `uniform_keys`; llm_harness and metrics do not yet):
+  every row of one table name carries the same keys, `None` where a value does not apply. A W&B table cannot gain a
+  column after its first rows, so a key that first appears later is dropped from W&B (reported once; the row on disk is
+  complete).
 - core (optional): `Tracker.finish(exit_code=0)`. `finish()` takes no status, so a block that crashes still ends its
   W&B run as finished (the runner calls it in `finally`); the crash is visible in the runner's output and the missing
   `.done` marks, not on the W&B page.

@@ -29,6 +29,7 @@ class Meter:
 
     def __init__(self) -> None:
         self.tokens: Dict[str, int] = {"agent": 0, "adversary": 0, "sanitizer": 0, "ma_judge": 0}
+        self.empty: Dict[str, int] = dict.fromkeys(self.tokens, 0)      # D114: replies whose text is empty, per part
         self.start = time.perf_counter()
         self.providers: set = set()
         self.quantizations: set = set()
@@ -41,6 +42,8 @@ class Meter:
         async def invoke(messages, model):
             done = await backend.complete(messages, model)
             self.tokens[part] += int(done.prompt_tokens) + int(done.completion_tokens)
+            if not str(done.text).strip():
+                self.empty[part] += 1
             if done.provider:
                 self.providers.add(done.provider)
             if done.quantization:

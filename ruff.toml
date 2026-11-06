@@ -38,6 +38,7 @@ select = [
 ]
 ignore = [
     "UP006", "UP007", "UP035", "UP045",   # typing.List / Optional: valid on 3.11 and used by core's contracts
+    "UP042",                              # core's ActionKind(str, enum.Enum): StrEnum changes str(member) and format()
     "C408",                               # dict(a=1) is how rows are written here
     "S603", "S607",                       # subprocess with a fixed argv list (git, ruff, python) is intended
     "SIM108", "SIM300",                   # a ternary is not always clearer; `assert 0 == x` reads fine

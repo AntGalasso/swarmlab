@@ -20,6 +20,17 @@ def _uploader(config: dict):
     return getattr(importlib.import_module(module), attribute)(config)
 
 
+def emit(summary: dict, out=None) -> bool:
+    """The last line of the child. A parent that is already gone (closed pipe) is not an error: the final push is done."""
+    out = out or sys.stdout
+    try:
+        out.write(json.dumps(summary) + "\n")
+        out.flush()
+    except OSError:                                  # BrokenPipeError and friends
+        return False
+    return True
+
+
 def main(argv: list) -> int:
     config = json.loads(argv[1])
     env.load()
@@ -35,7 +46,7 @@ def main(argv: list) -> int:
 
     threading.Thread(target=wait_for_stop, daemon=True).start()
     loop.run(uploads, stop)
-    print(json.dumps({"commits": uploads.commits, "failures": uploads.failures}), flush=True)
+    emit({"commits": uploads.commits, "failures": uploads.failures})
     return 0
 
 

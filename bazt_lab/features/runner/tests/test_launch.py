@@ -217,7 +217,7 @@ def test_a_calibration_that_returns_nothing_is_refused(tmp_path):
 def test_gnn_training_goes_through_the_llm_platform_without_thresholds(tmp_path, monkeypatch):
     past_kickoff(monkeypatch)
     s = fakes.settings(fakes.RUNTIME_LLM, fakes.TINY_LLM, ["gnn_train.backbone='bb1'"])
-    plat = launch(s, "gnn_train", tmp_path, platform_name="llm", allow_live_llm=True)
+    plat = launch(s, "gnn_train", tmp_path, platform_name="llm", allow_live_llm=True, gnn=fakes.FakeGnn())
     assert len(plat.batches) == 100 and {arm for arm, _ in plat.batches} == {"GNN"}
     assert all(u["thresholds"] == {} for _, (u,) in plat.batches)
 
@@ -488,11 +488,12 @@ def test_run_time_variables_of_every_run_are_refused_by_name(tmp_path):
 
 
 # ============================================================================================ matched-timing arms
-def test_a_matched_timing_arm_is_refused_because_no_schedule_is_recorded(tmp_path):
+def test_a_matched_timing_arm_outside_a_block_with_a_timing_source_is_refused(tmp_path):
+    """D116: only mock_legacy hands a matched control BAZT's rounds (tests/test_matched_timing.py)."""
     arms = {**fakes.ARMS, "fixed_early_matched": fakes._arm("fixed_early_matched", platforms=("mock",))}
     s = fakes.settings(*MOCK_A, ["mock.uncapped_arms=['A', 'fixed_early_matched']"])
     plat = fakes.FakePlatform("mock")
-    with pytest.raises(SystemExit, match=r"Refusing mock_frontier: arm 'fixed_early_matched'.*timing_schedule"):
+    with pytest.raises(SystemExit, match=r"Refusing mock_frontier: arm 'fixed_early_matched'.*D116.*mock_legacy"):
         launch(s, "mock_frontier", tmp_path, platform=plat, arms=arms)
     assert plat.batches == [] and not any(tmp_path.iterdir())
 
@@ -558,7 +559,8 @@ def test_the_live_flag_becomes_the_llm_allow_live_setting_the_platform_reads(tmp
 
     class Spy(fakes.FakePlatform):
         def run_batch(self, units, arm, settings, store, tracker):
-            seen.append(core.get(settings, "llm.allow_live"))
+            if store.root.name != "preflight-probe":          # the probes run on the fake API, never live
+                seen.append(core.get(settings, "llm.allow_live"))
             return super().run_batch(units, arm, settings, store, tracker)
 
     s = fakes.settings(*LLM, ["llm.headline_arms=['A']"])
@@ -601,21 +603,7 @@ GNN = [fakes.RUNTIME_LLM, fakes.TINY_LLM, ["llm.headline_arms=['A', 'GNN']", "gn
                                             "gnn.carry_flags=true", "gnn.fallback_family='pi_same_task'"]]
 
 
-class FakeGnn:
-    def __init__(self, finished=True):
-        self.finished, self.asked = finished, []
-
-    def deploy_family(self, attack, task, settings):
-        """The gnn feature's rule: the cell's own family, else the fallback the setting names."""
-        if (attack, task) in {tuple(f) for f in core.get(settings, "gnn_train.families")}:
-            return f"{attack}__{task}"
-        if core.get(settings, "gnn.fallback_family") == "pi_same_task":
-            return f"insider_pi__{task}"
-        return None
-
-    def training_finished(self, settings, family):
-        self.asked.append(family)
-        return self.finished
+FakeGnn = fakes.FakeGnn
 
 
 def gnn_launch(s, tmp_path, gnn, monkeypatch):
@@ -633,11 +621,19 @@ def test_each_cell_deploys_the_gnn_of_its_own_family_and_the_fallback_covers_the
     assert set(gnn.asked) == {"insider_pi__mmlu"}              # insider_pi/mmlu itself, attack-free via the fallback
 
 
-def test_a_family_without_a_gnn_and_no_fallback_is_refused_naming_the_setting(tmp_path, monkeypatch):
-    s = fakes.settings(*GNN, ["gnn.fallback_family='none'"])
-    with pytest.raises(SystemExit, match=r"Refusing llm_headline: no GNN family.*attack 'none'"):
-        gnn_launch(s, tmp_path, FakeGnn(), monkeypatch)
-    assert not any(tmp_path.iterdir())
+def test_cells_with_no_gnn_are_skipped_not_refused_and_recorded(tmp_path, monkeypatch, capsys):
+    past_kickoff(monkeypatch)
+    s = fakes.settings(*GNN, ["gnn.fallback_family='none'", "llm.attack_cells=[['insider_pi', 'mmlu'], ['infection', 'mmlu']]"])
+    plat = gnn_launch(s, tmp_path, FakeGnn(), monkeypatch)
+    sent = [u for _, (u,) in plat.batches]
+    gnn_cells = {(u["attack"], u["task"]) for u in sent if u["arm"] == "GNN"}
+    assert gnn_cells == {("insider_pi", "mmlu"), ("none", "mmlu")}                      # no GNN for infection
+    assert {(u["attack"]) for u in sent if u["arm"] == "A"} == {"insider_pi", "infection", "none"}
+    assert ("llm_headline: skipped: no GNN for this cell (gnn.fallback_family = none): attack=infection task=mmlu"
+            in capsys.readouterr().out)
+    skipped = json.loads((tmp_path / "sprint" / "skipped_cells.json").read_text())
+    assert skipped["llm_headline"]["units"] == 4 and skipped["llm_headline"]["cells"] == [
+        "GNN: attack=infection task=mmlu"]
 
 
 @pytest.mark.parametrize("key", ["gnn.cut", "gnn.carry_flags", "gnn.fallback_family"])
@@ -720,7 +716,47 @@ def test_an_adaptive_search_that_refuses_with_a_value_error_is_a_refusal(tmp_pat
 def test_the_recalibrated_gnn_runs_on_its_own_calibrated_threshold(tmp_path, monkeypatch):
     past_kickoff(monkeypatch)
     s = fakes.settings(*GNN, ["llm.headline_arms=['GNN_recalibrated']", "llm.calibrated_arms=['GNN_recalibrated']"])
-    launch(s, "llm_calibration", tmp_path, platform_name="llm", allow_live_llm=True)
+    launch(s, "llm_calibration", tmp_path, platform_name="llm", allow_live_llm=True, gnn=FakeGnn())
     plat = gnn_launch(s, tmp_path, FakeGnn(), monkeypatch)
     assert plat.batches and all(u["thresholds"] == {"deny_score": fakes.threshold_of(rx.cell_key(u))}
                                 for _, (u,) in plat.batches)
+
+
+# ================================================================================ gnn_train completes the training
+GNN_TRAIN = [fakes.RUNTIME_LLM, fakes.TINY_LLM, ["gnn_train.backbone='bb1'"]]
+
+
+def train(tmp_path, monkeypatch, gnn):
+    past_kickoff(monkeypatch)
+    plat = fakes.FakePlatform("llm")
+    rx.run_block(fakes.settings(*GNN_TRAIN), "gnn_train", True, wiring=fakes.wiring({"llm": plat}, gnn=gnn),
+                 results_root=tmp_path)
+    return plat
+
+
+def test_every_gnn_train_launch_finishes_the_training_even_with_no_unit_left(tmp_path, monkeypatch):
+    gnn = FakeGnn()
+    train(tmp_path, monkeypatch, gnn)
+    assert gnn.pending_calls == 1
+    assert set(gnn.asked) == {"insider_pi__mmlu", "insider_pi__csqa", "insider_pi__gsm8k",
+                                      "insider_ta__injecagent", "insider_ma__poisonedrag_msmarco"}
+    again = fakes.FakePlatform("llm")
+    rx.run_block(fakes.settings(*GNN_TRAIN), "gnn_train", True, wiring=fakes.wiring({"llm": again}, gnn=gnn),
+                 results_root=tmp_path)
+    assert again.batches == [] and gnn.pending_calls == 2                 # all units done, the training still resumes
+
+
+def test_a_training_that_is_not_finished_after_train_pending_is_not_complete(tmp_path, monkeypatch):
+    with pytest.raises(SystemExit, match=r"gnn_train: GNN training is not finished for.*insider_pi__mmlu"):
+        train(tmp_path, monkeypatch, FakeGnn(finished=False))
+    gnn = FakeGnn(finished=False, finished_after_pending=True)
+    train(tmp_path, monkeypatch, gnn)                                     # the relaunch finishes what the crash left
+    assert gnn.finished and gnn.pending_calls == 1
+
+
+def test_gnn_train_without_the_gnn_feature_is_refused_before_anything_is_written(tmp_path, monkeypatch):
+    past_kickoff(monkeypatch)
+    with pytest.raises(SystemExit, match=r"Refusing gnn_train: feature gnn is not built"):
+        rx.run_block(fakes.settings(*GNN_TRAIN), "gnn_train", True,
+                     wiring=fakes.wiring({"llm": fakes.FakePlatform("llm")}), results_root=tmp_path)
+    assert not any(tmp_path.iterdir())

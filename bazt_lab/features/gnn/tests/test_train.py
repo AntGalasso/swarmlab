@@ -17,7 +17,9 @@ from bazt_lab.features.gnn.private.train import (
     evaluate,
     split_examples,
     train_family,
+    train_pending,
     train_unit,
+    training_finished,
 )
 from bazt_lab.features.gnn.tests.conftest import FakeEncoder, make_records
 
@@ -38,7 +40,7 @@ def unit(uid="GNN-aaa"):
 def test_the_sequential_split_is_the_upstream_positional_split():
     items = list(range(10))
     assert split_examples(items, "sequential", 0.8, FAMILY, 7) == (list(range(8)), [8, 9])
-    assert split_examples(list(range(7)), "sequential", 0.8, FAMILY, 7) == (list(range(5)), [5, 6])   # int(7 * 0.8)
+    assert split_examples(list(range(7)), "sequential", 0.8, FAMILY, 7) == (list(range(6)), [6])   # round(7 * 0.8)
 
 
 def test_the_shuffled_split_partitions_the_items_and_depends_only_on_its_key():
@@ -52,7 +54,7 @@ def test_the_shuffled_split_partitions_the_items_and_depends_only_on_its_key():
 
 def test_a_split_that_leaves_one_side_empty_is_refused():
     with pytest.raises(ValueError, match="train_fraction"):
-        split_examples([1, 2, 3], "sequential", 0.2, FAMILY, 7)          # int(3 * 0.2) = 0 training graphs
+        split_examples([1, 2, 3], "sequential", 0.1, FAMILY, 7)          # round(3 * 0.1) = 0 training graphs
     with pytest.raises(ValueError, match="validation"):
         split_examples([1, 2, 3], "sequential", 1.0, FAMILY, 7)
 
@@ -358,3 +360,86 @@ def test_keep_checkpoints_must_be_set_and_positive(settings):
     del settings["gnn_train"]["keep_checkpoints"]
     with pytest.raises(core.Unset, match=r"gnn_train\.keep_checkpoints"):
         train_family(settings, FAMILY, records(), embed=CachedEmbedder(FakeEncoder()))
+
+
+def test_the_split_rounds_instead_of_truncating():
+    assert [len(p) for p in split_examples(list(range(9)), "sequential", 0.7, FAMILY, 7)] == [6, 3]    # 6.3 -> 6
+    assert [len(p) for p in split_examples(list(range(19)), "sequential", 0.8, FAMILY, 7)] == [15, 4]  # 15.2 -> 15
+    assert [len(p) for p in split_examples(list(range(14)), "sequential", 0.9, FAMILY, 7)] == [13, 1]  # 12.6 -> 13
+
+
+def test_the_refusal_to_resume_names_the_epoch_directory_too(settings):
+    meta = train_family(settings, FAMILY, records(), embed=CachedEmbedder(FakeEncoder()))
+    checkpoint_path(settings, FAMILY).unlink()
+    with pytest.raises(RuntimeError, match=r"epochs.*" + meta["unit_id"]):
+        train_family(settings, FAMILY, records(), embed=CachedEmbedder(FakeEncoder()))
+
+
+# ----------------------------------------------------------------------------- training identity
+def test_a_checkpoint_trained_with_other_settings_or_other_logged_data_is_not_finished(settings):
+    log_all(settings, records())
+    train_unit(unit(), settings, embed=CachedEmbedder(FakeEncoder()))
+    assert training_finished(settings, FAMILY)
+    other = copy.deepcopy(settings)
+    other["gnn_train"]["lr"] = 0.02
+    assert not training_finished(other, FAMILY)
+    log_conversations(settings, unit("GNN-zzz"), make_records(1, n_agents=6, rounds=4, seed=77))
+    assert not training_finished(settings, FAMILY)
+
+
+# ------------------------------------------------------------------------------------ train_pending
+def test_train_pending_trains_the_complete_families_and_is_a_no_op_afterwards(settings):
+    enc = FakeEncoder()
+    assert train_pending(settings, embed=CachedEmbedder(enc)) == []         # nothing logged: nothing pending
+    log_all(settings, records())
+    done = train_pending(settings, embed=CachedEmbedder(enc))
+    assert [m["family"] for m in done] == [FAMILY] and training_finished(settings, FAMILY)
+    calls = len(enc.calls)
+    assert train_pending(settings, embed=CachedEmbedder(enc)) == [] and len(enc.calls) == calls
+
+
+def test_train_pending_skips_an_incomplete_family_and_resumes_a_crashed_training(settings, monkeypatch):
+    log_all(settings, records()[:18])
+    assert train_pending(settings, embed=CachedEmbedder(FakeEncoder())) == []
+    log_all(settings, records())
+    real, calls = epochs.save_epoch, {"n": 0}
+
+    def crashing(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise RuntimeError("simulated crash")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(epochs, "save_epoch", crashing)
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        train_pending(settings, embed=CachedEmbedder(FakeEncoder()))
+    monkeypatch.undo()
+    assert not training_finished(settings, FAMILY)
+    assert len(train_pending(settings, embed=CachedEmbedder(FakeEncoder()))) == 1
+    assert training_finished(settings, FAMILY)
+
+
+# --------------------------------------------------------------------------------- robustness
+def test_train_pending_refuses_foreign_logs_before_training_anything_and_names_the_file(settings):
+    log_all(settings, records())
+    foreign = make_records(1, n_agents=4, rounds=4, seed=50)
+    log_conversations(settings, unit("GNN-foreign"), foreign)
+    enc = FakeEncoder()
+    with pytest.raises(ValueError, match=r"GNN-foreign\.jsonl.*" + foreign[0]["id"] + r".*agents"):
+        train_pending(settings, embed=CachedEmbedder(enc))
+    assert enc.calls == [] and not checkpoint_path(settings, FAMILY).exists()
+
+
+def test_the_checkpoint_and_epoch_writes_go_through_the_retrying_replace(settings, monkeypatch):
+    seen = []
+    real = core.atomic_replace
+
+    def spy(src, dst):
+        seen.append(Path(dst).name)
+        return real(src, dst)
+
+    monkeypatch.setattr(epochs.core, "atomic_replace", spy)
+    from bazt_lab.features.gnn.private import checkpoint as ckpt
+    monkeypatch.setattr(ckpt.core, "atomic_replace", spy)
+    train_family(settings, FAMILY, records(), embed=CachedEmbedder(FakeEncoder()))
+    assert any(n.startswith("epoch_") for n in seen) and any(n.startswith("gnn_") for n in seen)

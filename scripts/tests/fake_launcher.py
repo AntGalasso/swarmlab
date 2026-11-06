@@ -9,6 +9,9 @@ show the harness catches it:
   duplicate  a restart writes the rows of an unfinished unit again from the first row
   torn       a restart leaves half a line in the middle of a unit file
   range      a ratio metric above 1
+  resume_shift  the part of a unit written after a restart differs from a straight run (benign_delivery_rate, in
+                every row of an attack or attack-free unit; still a valid row)
+  crn        one arm sees another number of attackers than the others in the same scenario
 """
 from __future__ import annotations
 
@@ -34,8 +37,10 @@ ATTACK_ONLY = ("asr_final", "agents_reached_final", "agents_reached_auc", "time_
 CLEAN_ONLY = ("accuracy_clean", "fpr_message", "fpr_agent")
 ARMS = {
     "A": dict(), "B": dict(calibrated=True), "C": dict(calibrated=True), "BAZT": dict(calibrated=True),
-    "BAZT_upstream": dict(), "GNN_standin": dict(platforms=("mock",)), "GNN": dict(platforms=("llm",)),
-    "random_alloc": dict(), "oracle_alloc": dict(needs_truth=True), "bra_greedy": dict(),
+    "BAZT_upstream": dict(calibrated=True), "GNN_standin": dict(platforms=("mock",), calibrated=True), "GNN": dict(platforms=("llm",)),
+    "random_alloc": dict(calibrated=True), "oracle_alloc": dict(needs_truth=True), "bra_greedy": dict(calibrated=True),
+    "BAZT_no_budget": dict(calibrated=True), "BAZT_no_topology": dict(calibrated=True),
+    "BAZT_no_graduated": dict(calibrated=True),
 }
 
 
@@ -74,6 +79,10 @@ class FakePlatform:
             first = 0 if BUG == "duplicate" and saved else len(saved)
             for _ in range(first, self.rows_per_unit(unit)):
                 row = fake_row(unit)
+                if BUG == "resume_shift" and saved:
+                    row["benign_delivery_rate"] = 0.9
+                if BUG == "crn" and unit["arm"] == "C" and not row["attack_free"]:
+                    row["n_attackers"] = 2.0
                 store.append_rows(uid, [row])
                 out.append(row)
                 time.sleep(DELAY)
@@ -85,7 +94,7 @@ class FakePlatform:
 
     def calibrate(self, units, arm, settings, store):
         time.sleep(DELAY)
-        return {"deny_score": 0.5, "flag_score": 1.25}
+        return {"deny_score": 0.5, "flag_score": 1.25, "audit_score": 1.0}
 
 
 def wiring() -> rx.Wiring:

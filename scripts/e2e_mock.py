@@ -22,6 +22,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--quick", action="store_true", help="smaller default grid (2 seeds, 3 agents)")
     ap.add_argument("--seeds", type=int, default=None, help="seeds per cell (default 3, 2 with --quick)")
     ap.add_argument("--agents", type=int, default=None, help="agents per episode (default 4, 3 with --quick)")
+    ap.add_argument("--workers", type=int, default=1, help="compute.workers for the run (default 1)")
     return ap
 
 
@@ -33,6 +34,7 @@ def build_plan(args: argparse.Namespace) -> e2e.Plan:
         **e2e.ARM_TEST_VALUES,
         **e2e.runtime_sets(),
         **e2e.tiny_mock_sets(agents, seeds),
+        "compute.workers": args.workers,
     }
     settings = rx.load_settings(overrides=e2e.override_items(sets))
     calibration = rx.units_mock_calibration(settings, True)

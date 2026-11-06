@@ -276,7 +276,9 @@ def test_rows_are_plain_json_with_a_fixed_column_set():
     assert set(metrics.COLUMNS) <= set(r)
     extra = set(r) - set(metrics.COLUMNS)
     assert extra <= {"unit_id", "tokens_judge"} | {k for k in r if k.startswith("meta_")}
-    assert all(type(v) in (float, int, bool, str, list) for v in r.values())
+    # D116: intervened_by_round is None (JSON null) when the platform records no intervention rounds
+    assert all(type(v) in (float, int, bool, str, list) for k, v in r.items() if k != "intervened_by_round")
+    assert r["intervened_by_round"] is None
 
 
 def test_every_column_is_documented_in_contract_md():
@@ -358,7 +360,8 @@ def test_a_malformed_tampered_mask_raises(bad):
 @pytest.mark.parametrize("field", ["attackers", "infected", "payload_delivered", "goal_reached"])
 def test_an_attack_free_trace_with_attack_ground_truth_is_refused(field):
     tr = make(attack_free=True)
-    getattr(tr, field)[(0,) * getattr(tr, field).ndim] = True
+    tr.attempts[0, 0, 0, 1] = True
+    getattr(tr, field)[(0, 0, 0, 1)[:getattr(tr, field).ndim]] = True
     with pytest.raises(ValueError, match="attack-free"):
         rows(tr)
 
@@ -518,3 +521,128 @@ def test_protected_sink_harm_is_nan_when_the_sink_is_an_insider():
 
 def test_empty_token_mapping_is_nan_not_zero():
     assert nan(one(make(meta={"tokens": {}}))["tokens"])
+
+
+# ------------------------------------------------------------------ R2: events belong to their own episode
+def events_trace(B=3):
+    tr = make(B=B, T=2, N=3)
+    tr.unit_ids = tuple({"id": f"u{b}"} for b in range(B))
+    tr.meta = {"events": [{"event": "budget_exhausted", "arm": "B", "b": b, "unit_id": f"u{b}", "budget": "audit", "t": 1}
+                          for b in range(B)] + [{"event": "budget_exhausted", "arm": "B", "b": 0, "unit_id": "u0",
+                                                  "budget": "intervention", "t": 2}]}
+    return tr
+
+
+def test_a_row_carries_only_the_events_of_its_own_episode_without_the_batch_local_index():
+    got = rows(events_trace())
+    assert [len(r["meta_events"]) for r in got] == [2, 1, 1]
+    assert all("b" not in e and e["unit_id"] == r["id"] for r in got for e in r["meta_events"])
+
+
+def test_rows_with_events_do_not_depend_on_batch_size():
+    tr = events_trace()
+    full = rows(tr)
+    for b in range(3):
+        one_b = make(B=1, T=2, N=3)
+        one_b.unit_ids = tr.unit_ids[b:b + 1]
+        one_b.meta = {"events": [dict(e, b=0) for e in tr.meta["events"] if e["b"] == b]}
+        assert same(full[b], one(one_b)), b
+
+
+def test_an_event_that_cannot_be_assigned_to_an_episode_is_refused():
+    tr = events_trace()
+    tr.meta["events"] = [{"event": "x"}]
+    with pytest.raises(ValueError, match="events"):
+        rows(tr)
+
+
+# ------------------------------------------------------------------ R2: minors
+def test_non_numeric_meta_raises_value_error():
+    with pytest.raises(ValueError):
+        rows(make(meta={"tokens": "abc"}))
+
+
+def test_the_recovery_helper_without_a_clean_reference_is_nan():
+    assert nan(metrics.recovery_time_accuracy([0.5, 1.0], None, 0.1))
+
+
+@pytest.mark.parametrize("margin", [float("inf"), float("nan")])
+def test_a_non_finite_margin_is_refused(margin):
+    with pytest.raises(ValueError):
+        metrics.recovery_time_accuracy([0.5], 0.9, margin)
+
+
+def test_a_numpy_margin_is_accepted():
+    np = pytest.importorskip("numpy")
+    assert metrics.recovery_time_accuracy([0.5, 1.0], 0.9, np.float32(0.1)) == 1.0
+
+
+def test_sink_exposed_is_nan_for_an_insider_sink():
+    tr = make(N=3, sink=torch.tensor([2]))
+    tr.attackers[0, 2] = True
+    tr.payload_delivered[0, 1, 1, 2] = True
+    r = one(tr)
+    assert nan(r["sink_exposed"]) and nan(r["protected_sink_harm"])
+
+
+def test_a_payload_delivery_nobody_attempted_is_refused():
+    tr = make()
+    tr.attempts[0, 0, 0, 1] = False
+    tr.delivered[0, 0, 0, 1] = False
+    tr.payload_delivered[0, 0, 0, 1] = True
+    with pytest.raises(ValueError, match="payload_delivered"):
+        rows(tr)
+
+
+@pytest.mark.parametrize("name", ["tokens", "latency", "nrp", "asr_final", "meta_dtype"])
+def test_a_unit_field_that_collides_with_a_computed_column_is_refused(name):
+    tr = make()
+    tr.unit_ids = ({"id": "u", name: 7},)
+    with pytest.raises(ValueError, match=name):
+        rows(tr)
+
+
+# ------------------------------------------------------------------ tensors in meta are never copied into rows
+def test_threshold_restricted_is_not_copied_into_the_row():
+    tr = make(T=1, N=3, meta={"threshold_restricted": torch.zeros(1, 1, 3, 3, dtype=torch.bool)})
+    assert not any("threshold_restricted" in k for k in one(tr))
+
+
+def test_any_other_tensor_valued_meta_is_refused_naming_its_key():
+    tr = make(meta={"mystery": torch.zeros(1, 2, 2)})
+    with pytest.raises(ValueError, match="mystery"):
+        rows(tr)
+
+
+# ------------------------------------------------------------- D111: an isolated infected agent stays infected
+def test_d111_an_infected_isolated_agent_counts_for_harm_and_its_deliveries_as_malicious_not_for_containment():
+    """The platforms keep `infected` set while an infected agent is isolated (D111). Read as written: the sink is harmed,
+    the isolated sender's attempted deliveries are malicious (not benign deliveries lost), containment is unaffected."""
+    tr = make(T=3, N=4)                               # 12 deliveries per round, 36 in all
+    tr.sink = torch.tensor([1])
+    tr.infected[0, :, 1] = True                       # the sink takes the payload at round 0 ...
+    tr.active[0, 1:, 1] = False                       # ... and is isolated after it
+    tr.delivered[0, :, 1, :] = False                  # its own deliveries: cut (round 0's by the isolation decision)
+    tr.delivered[0, 1:, :, 1] = False                 # deliveries into it: lost
+    r = one(tr)
+    assert r["protected_sink_harm"] == 1.0
+    assert (r["time_to_containment"], r["contained"]) == (1.0, 1.0)
+    assert (r["benign_deliveries"], r["benign_delivered"]) == (36 - 9, 36 - 9 - 6)
+    assert r["agents_reached_final"] == 1.0
+
+
+# ---------------------------------------------------------------- D114: replies that stayed empty after the retries
+def test_d114_empty_replies_is_the_per_episode_count_from_meta_and_zero_without_replies():
+    assert one(make())["empty_replies"] == 0                                   # mock: no replies, none empty
+    r = one(make(meta={"empty_replies": 3}))                                   # LLM: one conversation is one episode
+    assert r["empty_replies"] == 3 and type(r["empty_replies"]) is int and "meta_empty_replies" not in r
+    a, b = rows(make(B=2, meta={"empty_replies": [0, 2]}))
+    assert (a["empty_replies"], b["empty_replies"]) == (0, 2)
+    a, b = rows(make(B=2, meta={"empty_replies": torch.tensor([1, 0])}))
+    assert (a["empty_replies"], b["empty_replies"]) == (1, 0)
+
+
+@pytest.mark.parametrize("value", [2, [1, 2, 3], [-1, 0], [1.5, 0], [float("nan"), 0], [True, False], "two"])
+def test_d114_a_malformed_or_ambiguous_empty_replies_count_is_refused(value):
+    with pytest.raises(ValueError, match="empty_replies"):
+        rows(make(B=2, meta={"empty_replies": value}))

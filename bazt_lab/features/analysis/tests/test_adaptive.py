@@ -92,3 +92,22 @@ def test_adaptive_rows_without_a_condition_are_skipped_with_the_reason_and_the_h
     r = hyp.h_adaptive(t, cfg, "mock")["challengers"]["BAZT"]
     assert r["summary"]["n_comparisons"] == 0 and r["summary"]["complete"] is False
     assert "condition" in r["skipped"][0]["reason"]
+
+
+def test_a_listed_llm_adaptive_check_the_runner_could_not_run_is_a_block_without_data(tmp_path):
+    """analysis.blocks.adaptive.llm = [llm_adaptive_check] while the runner marks that block not runnable (no folder on
+    disk): H-adaptive on the LLM is no_data naming the block, and the rest of the report is written."""
+    from bazt_lab.features.analysis import public as analysis
+    from bazt_lab.features.analysis.private import cli
+    headline = synth.episodes({"C": lambda *a: 0.4, "BAZT": lambda *a: 0.3}, block="llm_headline", platform="llm",
+                              cells=[("uncapped", "uncapped")], topologies=("random_directed",), seeds=range(1, 4),
+                              conversations=range(2), tasks=("mmlu",), backbones=("gpt",), noise_sd=0.01)
+    synth.write_rows(tmp_path, headline)
+    s = synth.settings()
+    assert s["analysis"]["blocks"]["adaptive"]["llm"] == ["llm_adaptive_check"]
+    r = analysis.analyze(tmp_path, s, out=tmp_path / "report.json")
+    assert r["hypotheses"]["H-adaptive"]["llm"] == {"status": "no_data", "blocks_missing": ["llm_adaptive_check"]}
+    assert r["verdicts"]["H-adaptive"]["llm"] == "no_data"
+    assert "llm_adaptive_check" in r["meta"]["platforms"]["llm"]["blocks_missing"]
+    assert any(ln.startswith("  llm: ") and "blocks without data:" in ln and "llm_adaptive_check" in ln
+               for ln in cli.render(r).splitlines())

@@ -70,9 +70,11 @@ def predict_logits(model: torch.nn.Module, adj: Tensor, turn_embeddings: Tensor)
     """Attacker logits [N] of the deployed defence for a conversation so far (`turn_embeddings` [turns, N, D])."""
     if model.training:
         raise ValueError("model must be in eval mode (dropout off) for prediction")
-    edge_index, edge_attr = graph_inputs(adj, turn_embeddings)
+    device = next(model.parameters()).device
+    edge_index, edge_attr = graph_inputs(adj.cpu(), turn_embeddings.cpu())
     with torch.no_grad():
-        return model(node_features(edge_attr, edge_index, adj.shape[0], "target"), edge_index, edge_attr).squeeze(-1)
+        x = node_features(edge_attr, edge_index, adj.shape[0], "target")
+        return model(x.to(device), edge_index.to(device), edge_attr.to(device)).squeeze(-1).cpu()
 
 
 def check_record(record: dict) -> Tuple[Tensor, list, list]:
@@ -82,13 +84,20 @@ def check_record(record: dict) -> Tuple[Tensor, list, list]:
     def bad(why: str):
         return ValueError(f"record {rid}: {why}")
 
-    adj = torch.tensor(record["adj"], dtype=torch.int64)
-    if adj.dim() != 2 or adj.shape[0] != adj.shape[1]:
-        raise bad(f"adj must be square, got shape {tuple(adj.shape)}")
-    if not bool(((adj == 0) | (adj == 1)).all()):
+    try:
+        raw = torch.tensor(record["adj"])
+    except (TypeError, ValueError, RuntimeError) as e:
+        raise bad(f"adj must be a rectangular numeric matrix ({e})") from e
+    if raw.dim() != 2 or raw.shape[0] != raw.shape[1]:
+        raise bad(f"adj must be square, got shape {tuple(raw.shape)}")
+    if not bool(((raw == 0) | (raw == 1)).all()):             # checked before any cast: 0.5 must not become 0
         raise bad("adj entries must be 0 or 1")
+    adj = raw.to(torch.int64)
     n = adj.shape[0]
-    attackers = list(record["attackers"])
+    attackers = record["attackers"]
+    if not isinstance(attackers, (list, tuple)) or any(type(a) is not int for a in attackers):
+        raise bad(f"attackers must be a list of int agent indices, got {attackers!r}")
+    attackers = list(attackers)
     if len(set(attackers)) != len(attackers) or any(not 0 <= a < n for a in attackers):
         raise bad(f"attackers must be distinct agent indices in [0, {n}), got {attackers}")
     turns = record["turns"]

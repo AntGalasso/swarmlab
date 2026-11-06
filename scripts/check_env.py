@@ -10,7 +10,7 @@ Checks, in order:
   packages   every dependency pinned in pyproject.toml ([project] and [dependency-groups]) is installed at exactly its
              pin (a local label such as torch's "+cpu" is ignored); a dependency that is not an exact `==` pin fails
   lock       uv.lock resolves every pin to the same version (so a hand edit of pyproject.toml without `uv lock` fails)
-  torch      a CPU build, CPU as the default device, and the thread count (printed; results are only bitwise
+  torch      CPU as the default device (a CUDA build from the optional extras is reported, not a failure), and the thread count (printed; results are only bitwise
              reproducible for a fixed thread count, so the manifest records it too)
   secrets    HF_TOKEN, WANDB_API_KEY, OPENROUTER_API_KEY are set, from the environment or from .env. Only presence is
              reported, never a value. A missing one is a warning unless --require-secrets is given.
@@ -120,8 +120,9 @@ def check_torch(expected_threads: int | None) -> list[Result]:
         return [Result("fail", "torch", f"cannot be imported: {error}")]
     results = []
     cuda = torch.version.cuda
-    results.append(Result("fail" if cuda else "ok", "torch build",
-                          f"CUDA {cuda} build, install the CPU wheel with `uv sync`" if cuda else "CPU"))
+    results.append(Result("warn" if cuda else "ok", "torch build",
+                          f"CUDA {cuda} build (the optional extras cu126 / cu130); `uv sync` restores the CPU build"
+                          if cuda else "CPU"))
     device = torch.get_default_device().type
     placed = torch.zeros(1).device.type
     results.append(Result("ok" if device == placed == "cpu" else "fail", "torch device",

@@ -61,3 +61,26 @@ def test_a_cell_without_the_reference_run_is_skipped(tmp_path):
 def test_the_gain_metrics_are_the_configured_ones(tmp_path):
     r = per_cost(tmp_path, rows(), analysis__containment_metrics=["asr_final"])
     assert {e["metric"] for e in r["entries"]} == {"asr_final"}
+
+
+def test_the_reference_is_found_in_another_block_of_the_hypothesis(tmp_path):
+    """A runs only in the headline block; the capped arms live in another block (llm_capped)."""
+    data = rows()
+    for r in data:
+        r["block"] = "mock_frontier" if r["arm"] == "A" else "mock_capped"
+    r = per_cost(tmp_path, data, analysis__blocks__containment__mock=["mock_frontier", "mock_capped"])
+    e = pick(r, "BAZT", 0.1, "agents_reached_auc")
+    assert e["containment_per_cost"] == pytest.approx(0.002) and not r["skipped"]
+
+
+def test_a_reference_that_never_sanitizes_serves_every_sanitize_mode(tmp_path):
+    data = rows()
+    out = []
+    for r in data:
+        if r["arm"] == "A":
+            out.append(dict(r, sanitize_mode="redaction"))
+        else:
+            out += [dict(r, sanitize_mode=m) for m in ("redaction", "llm_rewrite")]
+    r = per_cost(tmp_path, out)
+    modes = {e["context"]["sanitize_mode"] for e in r["entries"] if e["arm"] == "BAZT"}
+    assert modes == {"redaction", "llm_rewrite"} and not r["skipped"]

@@ -31,7 +31,9 @@ def _exported(feature: str, attribute: str):
         raise runner.FeatureMissing(feature, f"its public.py does not export {attribute}") from e
 
 
-def build_wiring() -> runner.Wiring:
+def build_wiring(first_match: bool = False) -> runner.Wiring:
+    """first_match: look an arm up by importing the arm features one at a time and stopping at the first that has it
+    (a worker process needs one arm; the parent has already checked the registry for duplicates)."""
     arms: dict = {}
     platforms: dict = {}
 
@@ -51,7 +53,19 @@ def build_wiring() -> runner.Wiring:
             arms.update(found=found, missing=missing)
         return arms["found"], arms["missing"]
 
+    def first_arm(name):
+        for feature in ARM_FEATURES:
+            try:
+                for spec in _exported(feature, "ARMS"):
+                    if spec.name == name:
+                        return spec
+            except runner.FeatureMissing:
+                continue
+        raise LookupError(f"no feature exports an arm named {name!r}")
+
     def arm(name):
+        if first_match:
+            return first_arm(name)
         found, missing = registry()
         if name in found:
             return found[name][1]
@@ -70,7 +84,12 @@ def build_wiring() -> runner.Wiring:
 
     return runner.Wiring(arm=arm, platform=platform, tracker=tracker,
                          adaptive=lambda: _feature("adaptive"), gnn=lambda: _feature("gnn"),
-                         analysis=lambda: _feature("analysis"), sync=lambda: _feature("sync"))
+                         analysis=lambda: _feature("analysis"), sync=lambda: _feature("sync"),
+                         rebuild="bazt_lab.app:build_worker_wiring")
+
+
+def build_worker_wiring() -> runner.Wiring:
+    return build_wiring(first_match=True)
 
 
 def main(argv=None) -> int:

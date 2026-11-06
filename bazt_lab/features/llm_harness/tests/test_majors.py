@@ -170,3 +170,62 @@ def test_watts_strogatz_refuses_an_odd_k():
 def test_rows_record_the_provider_and_quantization_the_responses_report(platform, tmp_path):
     rows, _ = run(platform, tmp_path)
     assert all(r["meta_providers"] == ["fake"] and r["meta_quantizations"] == [] for r in rows)
+
+
+# ------------------------------------------------------------------------- trace time convention (index r = round r)
+class DenyPayloadSenders(Passive):
+    """Denies the deliveries of exactly the senders whose text carries the payload (it reads the truth, as the oracle arm)."""
+
+    def decide(self, obs):
+        carrying = obs.oracle()[0]
+        return core.Actions(deny=carrying[:, None].expand(N, N)[None] & obs.attempts)
+
+
+def captured_traces(monkeypatch, platform, tmp_path, cls, **kw):
+    from bazt_lab.features.llm_harness.private import seedrun
+    traces = []
+    real = seedrun.metrics.rows_from_trace
+    monkeypatch.setattr(seedrun.metrics, "rows_from_trace", lambda trace, s: traces.append(trace) or real(trace, s))
+    spec = core.ArmSpec(cls.__name__, cls, platforms=("llm",), needs_truth=True)
+    platform.run_batch([unit(**kw)], spec, SETTINGS, core.CheckpointStore(tmp_path), core.NullTracker())
+    return traces
+
+
+@pytest.mark.parametrize("attack", ["infection", "insider_pi", "aitm"])
+def test_deliveries_are_indexed_by_the_round_of_the_text_they_carry(monkeypatch, platform, tmp_path, attack):
+    traces = captured_traces(monkeypatch, platform, tmp_path, DenyPayloadSenders, attack=attack, rounds=4, conversations=1)
+    t = traces[0]
+    T = t.infected.shape[1]
+    assert not t.attempts[0, T - 1].any()                       # the last round's texts are never sent on
+    for r in range(T - 1):
+        assert t.attempts[0, r].sum() == N * (N - 1)             # a full graph: every sender's round-r text is sent
+        if attack != "aitm":
+            carries = t.infected[0, r][:, None].expand(N, N)    # row i: the deliveries carrying i's round-r text
+            assert torch.equal(t.restricted[0, r].any(1), t.infected[0, r])
+            assert not (t.payload_delivered[0, r] & ~carries & ~t.meta["tampered"][0, r]).any()
+    if attack == "aitm":
+        assert t.meta["tampered"][0, :T - 1].any() and not t.meta["tampered"][0, T - 1].any()
+
+
+def test_a_delayed_payload_keeps_the_index_of_the_round_that_produced_it(monkeypatch, platform, tmp_path):
+    class DelayFirst(Passive):
+        def decide(self, obs):                    # round 0's texts are delayed, then everything is denied: only the late copy arrives
+            if obs.round_in_conversation == 1:
+                return core.Actions(delay=obs.attempts.clone())
+            return core.Actions(deny=obs.attempts.clone())
+
+    t = captured_traces(monkeypatch, platform, tmp_path, DelayFirst, attack="insider_pi", rounds=4, conversations=1)[0]
+    insiders = t.attackers[0]
+    assert t.restricted[0, 0].any() and t.payload_delivered[0, 0][insiders].any()       # produced in round 0, arrives in round 1
+    assert not t.payload_delivered[0, 0][~insiders].any()
+
+
+def test_spend_is_indexed_by_the_round_after_which_the_defender_decided(monkeypatch, platform, tmp_path):
+    class DenyOne(Passive):
+        def decide(self, obs):
+            deny = torch.zeros(1, N, N, dtype=torch.bool)
+            deny[0, 0, 1] = True
+            return core.Actions(deny=deny & obs.attempts)
+
+    t = captured_traces(monkeypatch, platform, tmp_path, DenyOne, attack="none", rounds=4, conversations=1)[0]
+    assert t.spend_intervention[0].tolist() == [1.0, 1.0, 1.0, 0.0]

@@ -6,7 +6,6 @@ only from keyed streams, so the RNG state is recorded for completeness and neede
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Mapping, Optional
 
@@ -23,6 +22,17 @@ def _name(epoch: int) -> str:
     return f"epoch_{epoch:04d}.pt"
 
 
+def _cpu(obj):
+    """The same nested state with every tensor on the CPU: epoch files do not depend on the training device."""
+    if isinstance(obj, torch.Tensor):
+        return obj.detach().cpu()
+    if isinstance(obj, dict):
+        return {k: _cpu(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(_cpu(v) for v in obj)
+    return obj
+
+
 def save_epoch(directory: Path, state: Mapping, keep: int, best_epoch: int) -> None:
     """Write `state` (its "epoch" names the file) atomically, then drop every file but the newest `keep`, the
     best epoch and this one."""
@@ -30,8 +40,8 @@ def save_epoch(directory: Path, state: Mapping, keep: int, best_epoch: int) -> N
     final = directory / _name(state["epoch"])
     tmp = final.with_name(final.name + ".tmp")
     try:
-        torch.save({**state, "rng": torch.get_rng_state()}, tmp)
-        os.replace(tmp, final)
+        torch.save(_cpu({**state, "rng": torch.get_rng_state()}), tmp)
+        core.atomic_replace(tmp, final)
     finally:
         tmp.unlink(missing_ok=True)
     files = sorted(directory.glob("epoch_*.pt"))

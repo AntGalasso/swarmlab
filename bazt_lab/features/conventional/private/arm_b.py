@@ -7,7 +7,7 @@ import math
 import torch
 
 from bazt_lab.core import public as core
-from bazt_lab.features.conventional.private.common import STAT_JUDGE, BudgetedArm, Tensor
+from bazt_lab.features.conventional.private.common import STAT_JUDGE, BudgetedArm, Tensor, mask_and
 
 RATE_LIMIT_KEY = "runtime.rate_limit_per_identity"
 
@@ -25,11 +25,13 @@ class ArmB(BudgetedArm):
         # A missing threshold is +inf: the statistic is reported (calibration runs) and nothing is denied by it.
         threshold = float(self.ctx.thresholds.get(STAT_JUDGE, math.inf))
         score = audited[:, :, None].expand_as(evaluated)
-        flagged = evaluated & (score > threshold)                        # NaN (unchecked sender) is never flagged
-        checked = evaluated & ~score.isnan()                            # an unchecked sender is only A's business
-        want = flagged | self._rate_limited(checked & ~flagged)
-        statistic = torch.where(evaluated, score, torch.full_like(score, math.nan))
-        return want, statistic, {STAT_JUDGE: statistic}
+        over = (audited > threshold)[:, :, None].expand_as(evaluated)    # NaN (unchecked sender) is never over
+        flagged = mask_and(evaluated, over)
+        checked = mask_and(evaluated, (~audited.isnan())[:, :, None].expand_as(evaluated))   # unchecked: only A's business
+        passed = core.as_bool(core.as_uint8(checked) ^ core.as_uint8(flagged))            # flagged is a subset of checked
+        want = core.as_bool(core.as_uint8(flagged) | core.as_uint8(self._rate_limited(passed)))
+        statistic = score.masked_fill(~evaluated, math.nan)
+        return want, statistic, {STAT_JUDGE: statistic}, flagged
 
     def _rate_limited(self, passed: Tensor) -> Tensor:
         """Deliveries beyond `rate_limit` receivers per sender and round. Which receivers get through is a keyed
@@ -37,7 +39,7 @@ class ArmB(BudgetedArm):
         limit = self.rate_limit
         rows = (passed.sum(-1) > limit).any(-1).nonzero().flatten()
         out = torch.zeros_like(passed)
-        if len(rows):
+        if len(rows):                                                   # rows: the episodes where the limit bites
             u = self._draw("rate_limit", rows).masked_fill(~passed[rows], 2.0)
-            out[rows] = passed[rows] & (u.argsort(-1).argsort(-1) >= limit)
+            out[rows] = mask_and(passed[rows], u.argsort(-1).argsort(-1) >= limit)
         return out

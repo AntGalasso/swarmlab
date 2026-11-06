@@ -37,6 +37,21 @@ def log_conversations(settings: Mapping, unit: Mapping, records: Sequence[dict])
     core.CheckpointStore(_root(settings, family)).append_rows(unit["id"], records)
 
 
+def check_logged(settings: Mapping, family: str) -> None:
+    """Refuse logs that do not match gnn_train (agents, rounds, backbone), naming the file and the record."""
+    want = {k: core.get(settings, f"gnn_train.{k}") for k in ("agents", "rounds", "backbone")}
+    root = _root(settings, family)
+    if not (root / "units").is_dir():
+        return
+    store = core.CheckpointStore(root)
+    for path in sorted((root / "units").glob("*.jsonl")):
+        for record in store.resume_rows(path.stem):
+            got = {"agents": len(record["adj"]), "rounds": len(record["turns"]), "backbone": record["backbone"]}
+            for what, value in got.items():
+                if value != want[what]:
+                    raise ValueError(f"{path}: record {record['id']}: {what} is {value}, gnn_train.{what} is {want[what]}")
+
+
 def read_conversations(settings: Mapping, family: str) -> List[dict]:
     """Every logged conversation of `family`: files in name order, lines in order, a repeated id kept once (first)."""
     root = _root(settings, family)

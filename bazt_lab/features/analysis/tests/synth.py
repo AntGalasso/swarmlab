@@ -1,5 +1,6 @@
 """Synthetic result rows with planted effects, written in the launcher's layout:
-results/experiments/<profile>/<block>/units/<unit file>.jsonl, one `{"unit": {...}, **metrics}` per line.
+results/experiments/<profile>/<block>/units/<unit file>.jsonl (with its .done marker), one `{"unit": {...}, **metrics}`
+per line.
 
 Not a test module (pytest does not collect it). Numpy draws are fine here: this is test data, not an experiment.
 """
@@ -19,20 +20,29 @@ UNIT_FIELDS = ("block", "platform", "arm", "audit", "intervention", "topology", 
 UNCAPPED = ("uncapped", "uncapped")
 
 
-def write_rows(root: Path, rows: Iterable[dict], per_file: int = 40) -> Path:
-    """Write flat rows (unit fields + metrics) under root/<block>/units/. Returns root."""
-    by_block: Dict[str, List[dict]] = {}
+def record(row: dict) -> dict:
+    """A flat row as the platforms write it: the unit fields nested in "unit", the metrics beside it."""
+    return {"unit": {k: row[k] for k in UNIT_FIELDS if k in row}, **{k: v for k, v in row.items() if k not in UNIT_FIELDS}}
+
+
+def by_block(rows: Iterable[dict]) -> Dict[str, List[dict]]:
+    out: Dict[str, List[dict]] = {}
     for row in rows:
-        by_block.setdefault(row["block"], []).append(row)
-    for block, items in by_block.items():
+        out.setdefault(row["block"], []).append(row)
+    return out
+
+
+def write_rows(root: Path, rows: Iterable[dict], per_file: int = 40) -> Path:
+    """Write flat rows (unit fields + metrics) under root/<block>/units/, `per_file` rows per finished unit: <name>.jsonl
+    and its done marker <name>.done, as core.CheckpointStore leaves a unit marked done. Returns root."""
+    for block, items in by_block(rows).items():
         units = Path(root) / block / "units"
         units.mkdir(parents=True, exist_ok=True)
         for i in range(0, len(items), per_file):
-            lines = []
-            for row in items[i:i + per_file]:
-                unit = {k: row[k] for k in UNIT_FIELDS if k in row}
-                lines.append(json.dumps({"unit": unit, **{k: v for k, v in row.items() if k not in UNIT_FIELDS}}))
-            (units / f"{items[i]['arm']}-{i // per_file:04d}.jsonl").write_text("\n".join(lines) + "\n")
+            lines = [json.dumps(record(row)) for row in items[i:i + per_file]]
+            name = f"{items[i]['arm']}-{i // per_file:04d}"
+            (units / f"{name}.jsonl").write_text("\n".join(lines) + "\n")
+            (units / f"{name}.done").write_bytes(b"")
     return Path(root)
 
 

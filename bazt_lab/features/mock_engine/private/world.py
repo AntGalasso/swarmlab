@@ -26,6 +26,10 @@ INSIDERS = ("insider_pi", "insider_ta", "insider_ma")
 # feature's strategy space (adaptive/private/space.py).
 PARAM_KEYS = ("n_insiders", "insider_bias", "mu_inf", "auditor_tpr",
               "entry_ranks", "start_frac", "rate", "detectability", "potency")
+# The keys an attack-free run reads: the detection rate of the adaptive auditor preset (part of the defence, set by a
+# robustness variant). Every other key describes the attack and changes nothing in a run without one (no agent carries
+# the payload), so the attack-free twin of a unit (D109) keeps only these.
+ATTACK_FREE_PARAMS = ("auditor_tpr",)
 SAME = ("arm", "audit", "intervention", "topology", "attack", "agents", "cost_condition", "preset")
 STAR = ("star_hub", "star_leaf")
 
@@ -61,6 +65,21 @@ class World:
     u_decoy: torch.Tensor
     u_strip: torch.Tensor
     u_aitm: torch.Tensor            # [b, t, j]: the delivery from j into the victim is rewritten iff u_aitm < rewrite
+    keys: torch.Tensor              # int64 [B]: one key per episode, (topology, N, seed), for the keyed draws below
+
+    FLOATS = ("x", "mean", "shift", "mu_mal", "rewrite", "d_pay", "d_dec", "mon_z", "aud_z", "u_adopt", "u_stay", "u_decoy",
+              "u_strip", "u_aitm")
+
+    def on(self, device: torch.device, dtype: torch.dtype) -> World:
+        """The same world with every tensor on `device` and the real-valued ones in `dtype` (the draws are made once, in
+        float64 on the CPU, then converted: the numbers are the same whatever the device)."""
+        moved = {}
+        for name, value in vars(self).items():
+            if isinstance(value, torch.Tensor):
+                moved[name] = value.to(device, dtype) if name in self.FLOATS else value.to(device)
+            else:
+                moved[name] = value
+        return World(**moved)
 
 
 def check_homogeneous(units: Sequence[Mapping]) -> None:
@@ -126,16 +145,16 @@ def draw_noise(units: Sequence[Mapping], topology: str, N: int, T: int) -> Dict[
 
 def rate_priority(world: World, rows: torch.Tensor, t: int) -> torch.Tensor:
     """float64 [len(rows), N, N]: uniforms that rank the receivers of a rate-limited sender in round t. Keyed by
-    (topology, N, seed, t) without the arm; drawn on demand because only the episodes with a rate-limited sender need them."""
-    return torch.stack([core.uniforms(core.stream("rate", world.topology, world.N, world.seeds[b], t),
-                                      (world.N, world.N)) for b in rows.tolist()])
+    (topology, N, seed, t) without the arm (core.keyed_uniform: the same numbers on every device and batch)."""
+    return core.keyed_uniform(world.keys[rows.to(world.keys.device)], "rate", t, (world.N, world.N), world.keys.device)
 
 
-def audit_priority(world: World, rows: torch.Tensor, t: int, call: torch.Tensor) -> torch.Tensor:
+def audit_priority(world: World, rows: torch.Tensor, t: int, call: torch.Tensor, stream: str = "audit") -> torch.Tensor:
     """float64 [len(rows), N]: uniforms that rank the requested senders when an episode asks for more audits than it can
-    afford (the lowest are granted). Keyed by (topology, N, seed, round, the episode's own call number), never the arm or the batch."""
-    return torch.stack([core.uniforms(core.stream("audit", world.topology, world.N, world.seeds[b], t, int(c)), (world.N,))
-                        for b, c in zip(rows.tolist(), call.tolist(), strict=True)])
+    afford (the lowest are granted). Keyed by (topology, N, seed, round, the episode's own call number), never the arm or the batch. `stream` separates the
+    plain audit from the audit of isolated agents (D123), each with its own call number."""
+    keys = world.keys[rows.to(world.keys.device)]
+    return core.keyed_uniform(keys, stream, t * (1 << 20) + call.to(keys.device), (world.N,), keys.device)
 
 
 # ------------------------------------------------------------------------------------------- attack parameters
@@ -318,4 +337,5 @@ def build_world(units: Sequence[Mapping], settings: Mapping, topology: str, N: i
         attackers=attackers, victim=victim, decoy=decoy, burst=_burst(d["burst_u"], T, model.burst_span), sink=sink,
         shift=shift, mu_mal=mu_mal, rewrite=rewrite, d_pay=d_pay, d_dec=d_dec, attack_on=_schedule(params, T),
         mon_z=d["mon_z"], aud_z=d["aud_z"], u_adopt=d["u_adopt"], u_stay=d["u_stay"], u_decoy=d["u_decoy"],
-        u_strip=d["u_strip"], u_aitm=d["u_aitm"])
+        u_strip=d["u_strip"], u_aitm=d["u_aitm"],
+        keys=core.episode_keys([f"{topology}|{N}|{s}" for s in seeds]))

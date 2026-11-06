@@ -12,22 +12,38 @@ from typing import Mapping
 
 # Never part of a block's identity: the profile (it names the directory), tracking, dry-run estimates, the analysis,
 # performance-only keys, the two pre-registered values (recorded in every manifest) and the live flag the runner sets.
-IGNORED = ("profile", "tracking", "estimates", "analysis", "mock.batch_size", "gnn.embedding.batch_size",
+IGNORED = ("profile", "tracking", "sync", "compute", "estimates", "analysis", "mock.batch_size", "gnn.embedding.batch_size",
            "runtime.ni_margin_accuracy", "runtime.rank_agreement_threshold", "llm.allow_live")
-MOCK_ONLY_IGNORED = ("llm", "llm_data", "gnn", "gnn_train", "runtime.llm_seeds", "runtime.llm_calibration_seeds",
-                     "runtime.llm_sink_positions", "runtime.random_edge_probability")
-LLM_ONLY_IGNORED = ("mock", "runtime.horizon_constant", "runtime.eps_correct")
+# What only the other platform reads: a platform's identity holds the keys that platform reads and no others.
+LLM_RUNTIME_ONLY = ("runtime.llm_seeds", "runtime.llm_calibration_seeds", "runtime.llm_sink_positions",
+                    "runtime.random_edge_probability", "conventional.c.judge_score_bins.llm")
+# runtime.sanitize_success is read by BAZT on both platforms (it prices sanitize), so it is not listed here.
+MOCK_RUNTIME_ONLY = ("runtime.horizon_constant", "runtime.eps_correct", "runtime.insider_bias", "runtime.ta_detectability", "runtime.ma_detectability",
+                     "runtime.aitm_rewrite_strength", "conventional.c.judge_score_bins.mock")
+MOCK_ONLY_IGNORED = ("llm", "llm_data", "gnn", "gnn_train", *LLM_RUNTIME_ONLY)
+LLM_ONLY_IGNORED = ("mock", *MOCK_RUNTIME_ONLY)
 SCOPED_MOCK = ("epidemiology", "ablations", "adaptive", "presets_robustness", "costs_robustness", "legacy")
 
-# thresholds.json: what decides an attack-free statistic.
+# thresholds.json: what decides an attack-free statistic. Besides the platform's own keys, every section a calibrated
+# arm reads while it decides: B (runtime, costs), C (conventional), BAZT and its ablations (bazt), BAZT_upstream
+# (bazt_upstream, bazt.prior), the allocation baselines and the GNN stand-in (costs), the thresholded legacy rules
+# (mock.legacy structure constants), GNN_recalibrated (gnn, and gnn_train.families, which picks the deployed GNN).
+# The LLM side also remembers what produces its replies and items: llm.api (the fake backend, judge and items of a
+# rehearsal, or the live ones), llm.providers (the pinned provider of each backbone, also in the request cache key) and
+# llm_data (the pinned revisions and vendored digests). Its run-time configuration is not settings (the client timeout
+# and retries are constants of llm_harness adapters/live.py) or is ignored (llm.allow_live); llm.ma_judge_model and
+# llm.ma_correctness are read by evaluation units only (a calibrating seed run checks no MA answer).
 THRESHOLD_PREFIXES = ("runtime", "mock.model", "mock.auditor", "mock.tune_seeds", "calibration", "budgets.alpha",
-                      "costs", "auditor_presets", "conventional", "bazt", "gnn", "llm.judge", "llm.agents",
-                      "llm.rounds", "llm.temperature", "llm.backbones", "llm.seeds_per_cell",
-                      "llm.calibration_conversations_per_cell", "llm.cache", "llm.attack_free_tasks")
+                      "costs", "auditor_presets", "conventional", "bazt", "bazt_upstream", "mock.legacy", "gnn",
+                      "gnn_train.families", "llm.judge", "llm.agents", "llm.rounds", "llm.temperature",
+                      "llm.backbones", "llm.seeds_per_cell", "llm.calibration_conversations_per_cell", "llm.cache",
+                      "llm.attack_free_tasks", "llm.api", "llm.providers", "llm_data")
 THRESHOLD_IGNORED = ("runtime.ni_margin_accuracy", "runtime.rank_agreement_threshold", "runtime.recovery_margin",
                      "runtime.llm_seeds", "runtime.llm_sink_positions", "runtime.n_insiders", "runtime.insider_bias",
                      "runtime.ta_detectability", "runtime.ma_detectability", "runtime.aitm_rewrite_strength",
-                     "gnn.embedding.batch_size", "llm.allow_live")
+                     "gnn.embedding.batch_size", "llm.allow_live",
+                     "mock.legacy.arms", "mock.legacy.cells",       # the scope of mock_legacy, not a structure constant
+                     "mock.legacy.matched_thresholds")              # which cell a matched arm reads: evaluation only
 
 
 def flatten(tree: Mapping, prefix: str = "") -> dict:
@@ -59,7 +75,7 @@ def block_view(settings: Mapping, block: str, platform: str) -> dict:
 
 def threshold_view(settings: Mapping, platform: str) -> dict:
     """The settings the thresholds of a platform's calibration depend on."""
-    other = ("llm", "gnn") if platform == "mock" else ("mock",)
+    other = MOCK_ONLY_IGNORED if platform == "mock" else LLM_ONLY_IGNORED
     return {k: v for k, v in sorted(flatten(settings).items())
             if _under(k, THRESHOLD_PREFIXES) and not _under(k, THRESHOLD_IGNORED) and not _under(k, other)}
 

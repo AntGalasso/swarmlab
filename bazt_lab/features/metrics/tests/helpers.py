@@ -65,7 +65,7 @@ def random_trace(B, T, N, seed, attack_free=False):
     return core.EpisodeTrace(
         unit_ids=tuple({"seed": s} for s in range(B)), infected=(u(B, T, N, key="i") < 0.3) & attack,
         attackers=(u(B, N, key="k") < 0.2) & attack, active=u(B, T, N, key="v") < 0.9, attempts=attempts,
-        delivered=delivered, restricted=restricted, payload_delivered=(u(B, T, N, N, key="p") < 0.1) & attack,
+        delivered=delivered, restricted=restricted, payload_delivered=(u(B, T, N, N, key="p") < 0.1) & attempts & attack,
         correct=u(B, T, N, key="c") < 0.7, goal_reached=(u(B, key="g") < 0.5) & attack, sink=(u(B, key="s") * N).long(),
         spend_audit=u(B, T, key="sa") * 5, spend_intervention=u(B, T, key="si") * 5,
         exhausted_step=(u(B, key="e") * (T + 1)).long(), violations=(u(B, key="x") * 3).long(),

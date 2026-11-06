@@ -11,13 +11,24 @@ Tensor = torch.Tensor
 
 STAT_JUDGE = "judge"            # B: judge score of the sender's text, per delivery
 STAT_C = "rl_minus_ts"          # C: risk level minus trust score, per delivery
-_LOWEST = torch.finfo(torch.float64).min
+
+
+def mask_and(*masks: Tensor) -> Tensor:
+    """Logical and of bool masks through uint8 (the bool kernels are several times slower on CPU); same result."""
+    out = core.as_uint8(masks[0])
+    for m in masks[1:]:
+        out = out & core.as_uint8(m)
+    return core.as_bool(out)
 
 
 def a_gate(adj: Tensor, attempts: Tensor, authentic: Tensor | None) -> Tensor:
     """Deliveries A lets through: on the allowlist (the graph's edges) and authenticated (mTLS or signature)."""
-    ok = attempts & adj
-    return ok if authentic is None else ok & authentic
+    return mask_and(attempts, adj) if authentic is None else mask_and(attempts, adj, authentic)
+
+
+def a_drops(attempts: Tensor, ok: Tensor) -> Tensor:
+    """Attempted deliveries A drops. `ok` is a subset of `attempts`, so xor is attempts & ~ok."""
+    return core.as_bool(core.as_uint8(attempts) ^ core.as_uint8(ok))
 
 
 def unit_cost(ctx: core.EpisodeContext, kind: core.ActionKind) -> float:
@@ -44,10 +55,11 @@ class BudgetedArm:
     # ---- Defender protocol
     def reset(self, ctx: core.EpisodeContext) -> None:
         self.ctx = ctx
+        self.keys = core.episode_keys(ctx.unit_ids).to(ctx.device)      # one key per episode: draws never depend on B
         self.unit_audit = unit_cost(ctx, core.ActionKind.INSPECT)
         self.unit_deny = unit_cost(ctx, core.ActionKind.DENY)
         self.step = 0
-        self.exhausted = torch.zeros(ctx.B, dtype=torch.bool)
+        self.exhausted = torch.zeros(ctx.B, dtype=torch.bool, device=ctx.device)
         self._allocate(ctx)
 
     def state_dict(self) -> dict:
@@ -65,21 +77,24 @@ class BudgetedArm:
         ctx = self.ctx
         self.step += 1
         ok = a_gate(ctx.adj, obs.attempts, obs.authentic)
-        actions = core.Actions(deny=obs.attempts & ~ok)                  # A's rules: free
+        actions = core.Actions(deny=a_drops(obs.attempts, ok))           # A's rules: free
         ra, ri = obs.remaining_audit.clone(), obs.remaining_intervention.clone()
         actions.events += self._latch(ra, ri, obs.t)
         live = ~self.exhausted
-        evaluated = ok & live[:, None, None]
+        evaluated = mask_and(ok, live[:, None, None].expand_as(ok))
         senders = evaluated.any(-1)
-        audited = obs.audit(senders) if senders.any() else torch.full(senders.shape, math.nan, dtype=torch.float64)
-        audited = audited.masked_fill(~senders, math.nan)
-        want, priority, statistics = self._policy(obs, evaluated, audited)
+        if senders.any():
+            audited = obs.audit(senders).masked_fill(~senders, math.nan)
+        else:
+            audited = torch.full(senders.shape, math.nan, dtype=ctx.dtype, device=ctx.device)
+        want, priority, statistics, crossed = self._policy(obs, evaluated, audited)
         final = self._fund(want, priority, ri)
-        actions.deny = actions.deny | final
+        actions.deny = core.as_bool(core.as_uint8(actions.deny) | core.as_uint8(final))
         actions.statistics = statistics
-        paid = (~audited.isnan()).sum(-1).to(torch.float64)
+        actions.threshold_restricted = final & crossed                  # D108: what alpha counts
+        paid = (~audited.isnan()).sum(-1, dtype=torch.float64)      # accounting stays float64
         actions.events += self._latch(ra - paid * self.unit_audit,
-                                      ri - final.flatten(1).sum(-1).to(torch.float64) * self.unit_deny, obs.t)
+                                      ri - final.flatten(1).sum(-1, dtype=torch.float64) * self.unit_deny, obs.t)
         return actions
 
     # ---- subclass hooks
@@ -87,7 +102,8 @@ class BudgetedArm:
         raise NotImplementedError
 
     def _policy(self, obs: core.Observation, evaluated: Tensor, audited: Tensor):
-        """-> (deliveries to deny, suspicion used to rank them when the budget cannot pay all, statistics). Any
+        """-> (deliveries to deny, suspicion used to rank them when the budget cannot pay all, statistics, deliveries
+        whose statistic crossed its threshold: the subset of the denies that alpha counts, D108). Any
         state the policy learns from this round is updated here; it does not depend on how many denies are funded."""
         raise NotImplementedError
 
@@ -96,16 +112,19 @@ class BudgetedArm:
         starved_audit = remaining_audit < self.unit_audit
         now = (starved_audit | (remaining_intervention < self.unit_deny)) & ~self.exhausted
         self.exhausted = self.exhausted | now
+        if not now.any():
+            return []
         return [{"event": "budget_exhausted", "arm": self.name, "b": b, "unit_id": self.ctx.unit_ids[b],
                  "budget": "audit" if starved_audit[b] else "intervention", "t": t}
                 for b in now.nonzero().flatten().tolist()]
 
-    def _draw(self, namespace: str, rows: Tensor) -> Tensor:
-        """float64 uniforms [len(rows), N, N] from the arm stream of (namespace, step, episode): they depend on the
-        episode and the round only, never on the batch."""
+    def _draw(self, namespace: str, rows: Tensor | None = None, dtype: torch.dtype = torch.float64) -> Tensor:
+        """Uniforms [len(rows) or B, N, N] from the keyed stream (arm, namespace) at counter = this round: one batched
+        call, and a draw depends on the episode id, the arm, the namespace, the round and the delivery index only,
+        never on the batch, its order or the device."""
+        keys = self.keys if rows is None else self.keys[rows]
         N = self.ctx.N
-        return torch.stack([core.uniforms(self.ctx.arm_stream(f"{namespace}|{self.step}", int(b)), (N, N))
-                            for b in rows.tolist()])
+        return core.keyed_uniform(keys, f"{self.name}|{namespace}", self.step, (N, N), self.ctx.device, dtype)
 
     def _fund(self, want: Tensor, priority: Tensor, remaining: Tensor) -> Tensor:
         """Keep the denies an episode can pay for: the most suspicious first, ties broken at random (keyed)."""
@@ -118,11 +137,12 @@ class BudgetedArm:
         rows = over.nonzero().flatten()
         B, N, _ = want.shape
         w = want[rows].flatten(1)
-        key = priority[rows].flatten(1).nan_to_num(nan=_LOWEST).masked_fill(~w, -math.inf)
-        shuffle = self._draw("fund", rows).flatten(1).argsort(-1)
+        lowest = torch.finfo(priority.dtype).min
+        key = priority[rows].flatten(1).nan_to_num(nan=lowest).masked_fill(~w, -math.inf)
+        shuffle = self._draw("fund", rows).flatten(1).argsort(-1)       # float64 scores: the order never depends on the dtype
         best = key.gather(-1, shuffle).argsort(dim=-1, descending=True, stable=True)   # stable= needs dim= by keyword
         order = shuffle.gather(-1, best)
-        rank = torch.empty_like(order).scatter_(-1, order, torch.arange(N * N).expand_as(order).contiguous())
+        rank = torch.empty_like(order).scatter_(-1, order, torch.arange(N * N, device=order.device).expand_as(order).contiguous())
         keep = (rank < afford[rows].long()[:, None]) & w
         out = want.clone()
         out[rows] = keep.view(len(rows), N, N)

@@ -120,8 +120,8 @@ def test_a_delay_in_the_last_round_never_arrives():
 def test_isolation_cuts_an_agent_off_for_good_and_costs_its_remaining_deliveries():
     iso = Fn(lambda o: Actions(isolation=agents(1, 6, (0, 0))) if o.t == 2 else Actions())
     w, tr, _ = sim("infection", iso, T=6, edit=chain(seed_at(0), SPREAD))
-    assert tr.active[0, :, 0].tolist() == [True, False, False, False, False, False]
-    assert tr.infected[0, :, 0].tolist() == [True, True, False, False, False, False]
+    assert tr.active[0, :, 0].tolist() == [True, True, False, False, False, False]      # decided after round 2
+    assert tr.infected[0, :, 0].all()                                       # D111: isolation contains, it does not cure
     assert tr.infected[0, 1, 1] and not tr.infected[0, 2, 1]               # round 2's delivery from the isolated agent was cut
     assert tr.infected[0, 2, 2]                                             # agent 1 was infected at round 2 and passed it on
     assert tr.spend_intervention[0].tolist() == [0.0, 5.0, 0, 0, 0, 0]       # out-degree 1 x rounds 2..6
@@ -129,6 +129,66 @@ def test_isolation_cuts_an_agent_off_for_good_and_costs_its_remaining_deliveries
     assert tr.action_counts[0, KINDS.index("isolation")] == 1
     seen = iso.seen[2]
     assert not seen.active[0, 0] and not seen.attempts[0, 0].any() and not seen.attempts[0, :, 0].any()
+
+
+# ------------------------------------------------------------------------- D111: isolation is containment, not cure
+ISOLATE_1_AFTER_ROUND_2 = {2: lambda o: Actions(isolation=agents(1, 6, (0, 1)))}
+
+
+def test_d111_an_isolated_infected_agent_stays_infected_and_sends_nothing():
+    """Agent 1 takes the payload at round 2 and is isolated after round 2: it carries the payload for every round it is
+    isolated, none of its deliveries goes out, so agent 2 is never reached (the spread is unchanged)."""
+    iso = Fn(lambda o: ISOLATE_1_AFTER_ROUND_2.get(o.t, lambda o: Actions())(o))
+    _, tr, _ = sim("infection", iso, T=6, edit=chain(seed_at(0), SPREAD))
+    assert tr.active[0, :, 1].tolist() == [True, True, False, False, False, False]
+    assert tr.infected[0, :, 1].tolist() == [False, True, True, True, True, True]
+    assert not tr.infected[0, :, 2:].any()
+    assert not tr.delivered[0, 1:, 1].any() and not tr.payload_delivered[0, 1:, 1].any()
+
+
+@pytest.mark.parametrize("u_stay,first_round_back", [(0.0, True), (1.0, False)])
+def test_d111_a_reinstated_agent_comes_back_carrying_the_payload_and_keeps_it_with_p_stay(u_stay, first_round_back):
+    """Isolated after round 2, reinstated after round 3: still infected while isolated; back at round 4 with no exposure
+    (it received nothing in round 3), its own payload stays with probability p_stay, as for any active agent."""
+    plan = {2: Actions(isolation=agents(1, 6, (0, 1))), 3: Actions(reinstatement=agents(1, 6, (0, 1)))}
+    d = Fn(lambda o: plan.get(o.t, Actions()))
+    _, tr, _ = sim("infection", d, T=6, edit=chain(seed_at(0), forced(u_adopt=0.0, u_stay=u_stay)))
+    assert tr.active[0, :, 1].tolist() == [True, True, False, True, True, True]
+    assert tr.infected[0, :, 1].tolist() == [False, True, True, first_round_back, True, True]
+
+
+def test_d111_the_oracle_reports_an_isolated_agent_as_still_infected():
+    """As on the LLM platform, whose oracle reads every agent's text, isolated agents included; it equals the trace."""
+    seen = []
+
+    def fn(o):
+        seen.append(o.oracle()[0].clone())
+        return Actions(isolation=agents(1, 6, (0, 1))) if o.t == 2 else Actions()
+    _, tr, _ = sim("infection", Fn(fn), T=4, needs_truth=True, edit=chain(seed_at(0), SPREAD))
+    assert [bool(s[1]) for s in seen] == [False, True, True, True]
+    assert all(torch.equal(s, tr.infected[0, r]) for r, s in enumerate(seen))
+
+
+def test_d111_metrics_count_an_isolated_infected_sink_as_harmed_and_its_deliveries_as_malicious():
+    """Oracle isolation of every infected agent at the first decision, sink = the infection entry agent (the
+    sink_isolated.py repro: the LLM platform reports harm 1.0, the mock reported 0.0). Containment stays at 1 round."""
+    from bazt_lab.features.metrics import public as metrics
+    first = Fn(lambda o: Actions(isolation=o.oracle() & o.active) if o.t == 1 else Actions())
+    s = make_settings()
+    _, tr, _ = sim("infection", first, T=6, needs_truth=True, sink=0, settings=s, edit=chain(seed_at(0), SPREAD))
+    (r,) = metrics.rows_from_trace(tr, s)
+    assert r["protected_sink_harm"] == 1.0
+    assert (r["time_to_containment"], r["contained"], r["recovery_time_infection"]) == (1.0, 1.0, 1.0)
+    assert r["agents_reached_final"] == 1.0 and r["empty_replies"] == 0
+    # 10 directed chain edges x 6 rounds: agent 0's out-edge carries an infected sender's output in every round
+    # (malicious), its in-edge is benign and lost to the isolation, the other 8 edges deliver.
+    assert (r["benign_deliveries"], r["benign_delivered"], r["benign_restricted"]) == (54, 48, 0)
+
+
+def test_d111_a_sink_isolated_after_taking_the_payload_still_holds_it_at_the_end_for_insider_ma():
+    iso = Fn(lambda o: ISOLATE_1_AFTER_ROUND_2.get(o.t, lambda o: Actions())(o))
+    _, tr, _ = sim("insider_ma", iso, T=6, sink=1, edit=chain(seed_at(0), SPREAD))
+    assert tr.infected[0, -1, 1] and not tr.active[0, -1, 1] and tr.goal_reached.tolist() == [True]
 
 
 def test_a_budget_cap_is_a_fraction_of_all_edge_deliveries_and_overspending_is_a_violation():
@@ -170,7 +230,7 @@ def test_audit_scores_follow_the_class_of_the_text_and_never_the_arm():
     for t in range(3):
         want = torch.where(tr.infected[0, t], w.d_pay[0], torch.where(w.decoy[0] & w.burst[0, t], w.d_dec[0],
                                                                       torch.zeros((), dtype=torch.float64)))
-        assert torch.allclose(got[t], want)
+        assert torch.allclose(got[t], want.to(got[t].dtype))          # D117: scores follow compute.dtype
     assert w.d_dec[0] > 0 and (w.decoy & w.burst[:, 0]).any()
 
 
@@ -203,7 +263,7 @@ def test_a_defender_observation_holds_no_ground_truth():
     sim("infection", d, T=2, edit=chain(seed_at(0), SPREAD))
     o = d.seen[0]
     assert set(vars(o)) == {"t", "T", "active", "attempts", "monitor", "remaining_audit", "remaining_intervention",
-                                   "audit", "authentic", "oracle", "texts", "round_in_conversation"}
+                                   "audit", "authentic", "oracle", "texts", "round_in_conversation", "audit_isolated"}
     assert o.round_in_conversation is None and o.texts is None                                        # the mock has no texts
     assert o.t == 1 and o.T == 2 and o.active.all() and o.attempts.sum() == 10 and o.authentic.all()
     assert math.isinf(o.remaining_audit[0]) and math.isinf(o.remaining_intervention[0])
@@ -398,3 +458,33 @@ def test_the_audit_subset_of_an_episode_does_not_depend_on_how_often_the_arm_ask
         sim("none", Fn(ask), T=2, topology="chain", N=8, seeds=(1, 2) if extra_episode else (1,), audit=0.05)
         return ~seen[0].isnan()
     assert torch.equal(grants(False), grants(True))
+
+
+def test_active_is_the_state_during_the_round_and_a_decision_shows_from_the_next_round_and_in_flagged():
+    iso = Fn(lambda o: Actions(isolation=agents(1, 6, (0, 2))) if o.t in (2, 4) else Actions())
+    _, tr, _ = sim("none", iso, T=4)
+    assert tr.active[0, :, 2].tolist() == [True, True, False, False]          # decided after round 2: active[2] is False
+    assert tr.active[0, 1, 2] and not tr.active[0, 2, 2]
+    assert tr.meta["flagged"][0, :, 2].tolist() == [False, True, True, True]  # flagged[r] = restricted after round r's decision
+    last = Fn(lambda o: Actions(isolation=agents(1, 6, (0, 3))) if o.t == 4 else Actions())
+    _, tr, _ = sim("none", last, T=4)
+    assert tr.active[0, :, 3].all() and tr.meta["flagged"][0, 3, 3]           # a last-round isolation is visible in flagged
+
+
+def test_the_oracle_isolation_of_the_first_decision_is_active_false_from_round_two():
+    seen = {}
+
+    def fn(o):
+        if o.t == 1:
+            seen["inf"] = o.oracle()[0].clone()
+            return Actions(isolation=o.oracle() & o.active)
+        return Actions()
+    _, tr, _ = sim("infection", Fn(fn), T=4, needs_truth=True, edit=seed_at(0))
+    assert tr.active[0, 0, 0] and not tr.active[0, 1:, 0].any()
+
+
+def test_a_delay_in_the_second_to_last_round_never_counts_as_a_payload_delivery():
+    """A delay decided at round T-1 would be consumed at round T+1: the delivery never happens inside the episode."""
+    late = Fn(lambda o: Actions(delay=o.attempts.clone()) if o.t == 3 else Actions())
+    _, tr, _ = sim("infection", late, T=4, topology="chain", N=4, edit=chain(seed_at(0), SPREAD))
+    assert tr.restricted[0, 2, 0, 1] and not tr.payload_delivered[0, 2].any()

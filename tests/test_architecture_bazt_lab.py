@@ -461,3 +461,11 @@ def test_app_wires_every_arm_feature_both_platforms_the_tracker_and_sync():
     source = (REPO / "bazt_lab" / "app.py").read_text(encoding="utf-8")
     assert "sync" in source, "app.py must wire the sync feature"
     assert "sync" in real_features()
+
+
+def test_the_ruff_step_of_check_static_is_green_on_the_real_tree():
+    import subprocess
+    import sys
+    done = subprocess.run([sys.executable, "-m", "ruff", "check", "--output-format", "concise"], cwd=REPO,
+                          capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stdout[-3000:] + done.stderr[-500:]

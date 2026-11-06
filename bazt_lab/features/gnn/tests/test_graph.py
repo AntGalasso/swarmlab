@@ -213,3 +213,25 @@ def test_training_example_equals_upstreams_dataset_builder(tmp_path):
     assert np.array_equal(ours.edge_index.numpy(), up["edge_index"])
     assert np.array_equal(ours.y.numpy(), up["labels"])
     np.testing.assert_allclose(ours.edge_attr.numpy(), up["edge_attr"], atol=0, rtol=0)
+
+
+@pytest.mark.parametrize("change,message", [
+    (lambda r: r.update(adj=[[0, 0.5], [1, 0]]), "0 or 1"),
+    (lambda r: r.update(adj=[[0, 1], [1]]), "adj"),
+    (lambda r: r.update(attackers=[1.5]), "attacker"),
+    (lambda r: r.update(attackers=[True]), "attacker"),
+    (lambda r: r.update(attackers="01"), "attacker"),
+])
+def test_check_record_validates_values_before_casting(change, message):
+    from bazt_lab.features.gnn.private.graph import check_record
+    rec = make_records(1, n_agents=2, rounds=1, p=1.0, seed=1)[0]
+    change(rec)
+    with pytest.raises(ValueError, match=rf"{rec['id']}.*{message}"):
+        check_record(rec)
+
+
+def test_check_record_accepts_float_zeros_and_ones():
+    from bazt_lab.features.gnn.private.graph import check_record
+    rec = make_records(1, n_agents=2, rounds=1, p=1.0, seed=1)[0]
+    rec["adj"] = [[0.0, 1.0], [1.0, 0.0]]
+    assert check_record(rec)[0].tolist() == [[False, True], [True, False]]

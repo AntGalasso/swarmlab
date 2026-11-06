@@ -1,7 +1,8 @@
 """Command line: python -m bazt_lab.features.analysis [--profile P] [--set key=value] [--results-root DIR] [--out FILE]
 
-Reads <results-root>/<profile>/<block>/units/*.jsonl, writes <results-root>/<profile>/analysis_report.json and prints
-the verdicts. Exit 0 on success, 2 on a refusal (a setting that is not set, a missing results directory, malformed rows).
+Reads the committed rows files of <results-root>/<profile>/<block>/units/ and of its worker shards units/<shard>/ (a
+<stem>.jsonl with its <stem>.done beside it), writes <results-root>/<profile>/analysis_report.json and prints the
+verdicts. Exit 0 on success, 2 on a refusal (a setting that is not set, a missing results directory, malformed rows).
 """
 from __future__ import annotations
 
@@ -33,7 +34,9 @@ def render(r: Mapping) -> str:
     for p in PLATFORMS:
         info = meta["platforms"][p]
         missing = f", blocks without data: {', '.join(info['blocks_missing'])}" if info["blocks_missing"] else ""
-        lines.append(f"  {p}: {info['rows']} rows{missing}")
+        k = info["uncommitted_files"]
+        uncommitted = f", {k} uncommitted rows file{'s' if k != 1 else ''} not read" if k else ""
+        lines.append(f"  {p}: {info['rows']} rows{uncommitted}{missing}")
     lines.extend(f"WARNING {m['block']}/{m['file']}: pre-registered {m['key']} was {m['manifest']} when the block "
                  f"ran, the settings now say {m['settings']}" for m in meta["manifests"]["pre_registered_mismatch"])
     lines += ["", f"confirmatory hypotheses ({CRITERION})"]

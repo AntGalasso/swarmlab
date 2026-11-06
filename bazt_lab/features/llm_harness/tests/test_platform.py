@@ -12,7 +12,8 @@ COSTS = {k.value: 1.0 for k in core.ActionKind}
 SETTINGS = {
     "llm": {"api": "fake", "ma_correctness": ["rule"], "ma_judge_model": "fake/judge", "conversations_per_cell": 4,
             "calibration_conversations_per_cell": 4},
-    "gnn_train": {"graphs_per_setting": 3}, "calibration": {"mode": "open_loop"}, "budgets": {"alpha": 0.1}, "costs": {"main": COSTS, "robustness": COSTS},
+    "gnn_train": {"graphs_per_setting": 3}, "calibration": {"mode": "open_loop", "tolerance": 0.1, "max_passes": 40}, "budgets": {"alpha": 0.1}, "costs": {"main": COSTS, "robustness": COSTS},
+    "compute": {"dtype": "float64", "device": "cpu"},          # the reference precision (D117 runs float32, tested apart)
     "runtime": {"llm_seeds": [1, 2], "llm_calibration_seeds": [101, 102], "n_insiders": 2, "rate_limit_per_identity": 2, "recovery_margin": 0.05, "random_edge_probability": 1.0,
                 "ba_m": 2, "ws_k": 2, "ws_rewire_p": 0.1,
                 "llm_sink_positions": {"random_directed": [0, 1], "hub_star": [0]}},

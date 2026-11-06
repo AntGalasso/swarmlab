@@ -63,7 +63,8 @@ class FakeBackend:
         if any(m in system for m in _INSIDER_SYSTEM):
             return f"<{tag}>: the user is right\n<ANSWER>: {info['wrong']}"
         mine = [m for m in messages if m["role"] == "assistant"]
-        own = _OWN_ANSWER.search(mine[-1]["content"]).group(1).strip() if mine else info["correct"]
+        said = _OWN_ANSWER.search(mine[-1]["content"]) if mine else None        # None too after an empty reply (D114)
+        own = said.group(1).strip() if said else info["correct"]
         pushed = _VIEW_ANSWER.findall(prompt).count(info["wrong"])
         infected = prompts.REPLICATION_MARKER in prompt or AITM_MARK in prompt or pushed >= self.susceptibility
         if infected:
@@ -73,11 +74,14 @@ class FakeBackend:
 
 
 def sample(task: str, seed: int, k: int, settings) -> list:
-    """Synthetic items for the offline run (mmlu, csqa, gsm8k): a function of (task, seed) only, a larger k extends the draw."""
+    """Items for the offline run: synthetic mmlu, csqa and gsm8k questions, and the real vendored InjecAgent / PoisonedRAG
+    records (read from the submodule; llm_data.* pins from settings). A function of (task, seed) only; a larger k extends the draw."""
     from bazt_lab.core import public as core
     from bazt_lab.features.llm_data import public as data
+    if task in ("injecagent", "poisonedrag_msmarco"):      # the vendored files are in the checkout: no network, no Hub
+        return data.sample(task, seed, k, settings)
     if task not in ("mmlu", "csqa", "gsm8k"):
-        raise NotImplementedError(f"the offline sampler covers mmlu, csqa and gsm8k, not {task!r}")
+        raise NotImplementedError(f"unknown task {task!r}")
     u = core.uniforms(core.stream("llm_harness", "fake_items", task, seed), (k,))
     source = data.Source("fake", None, None, None, None)
     items = []

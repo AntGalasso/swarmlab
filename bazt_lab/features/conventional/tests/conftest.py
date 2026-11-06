@@ -10,4 +10,4 @@ JITTERED = ("test_arm_c_jitter", "test_arm_c_calibration")
 @pytest.fixture(autouse=True)
 def _exact_statistics_unless_jittered(request, monkeypatch):
     if request.module.__name__.rpartition(".")[2] not in JITTERED:
-        monkeypatch.setattr(ArmC, "jitter", False)
+        monkeypatch.setattr(ArmC, "JITTER", False)

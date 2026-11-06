@@ -26,6 +26,7 @@ class Recorder:
             raise self.fail
         self.commits.append(sorted(f.repo_path for f in files))
         self.contents.append({f.repo_path: f.local.read_bytes()[:f.size] for f in files})
+        return list(files)
 
 
 class FileRecorder:
@@ -43,6 +44,7 @@ class FileRecorder:
         if os.environ.get("BAZT_SYNC_FAKE_FAIL"):
             raise RuntimeError(f"401 rejected token {os.environ.get(env.VARIABLE)}")
         self._write({"event": "commit", "files": sorted(f.repo_path for f in files), "pid": os.getpid()})
+        return list(files)
 
 
 def make_uploader(config):

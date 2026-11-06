@@ -175,3 +175,10 @@ def test_require_secrets_fails_when_one_is_missing(tmp_path, monkeypatch, capsys
     assert env.main(["--env-file", str(tmp_path / "none.env")]) == 0
     assert env.main(["--env-file", str(tmp_path / "none.env"), "--require-secrets"]) == 1
     assert "[FAIL] HF_TOKEN" in capsys.readouterr().out
+
+
+def test_a_cuda_build_of_torch_is_reported_but_is_not_a_failure(monkeypatch):
+    import torch
+    monkeypatch.setattr(torch.version, "cuda", "13.0")
+    build = next(r for r in env.check_torch(expected_threads=None) if r.name == "torch build")
+    assert build.status == "warn" and "13.0" in build.detail and "cu130" in build.detail

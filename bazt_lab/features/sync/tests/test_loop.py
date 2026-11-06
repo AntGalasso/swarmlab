@@ -127,3 +127,89 @@ def test_a_file_that_grows_during_the_push_is_uploaded_up_to_the_size_seen_at_li
     assert rec.contents == [{"r/rows.jsonl": b"line1\n"}]
     uploads.push()                                               # the growth is the next push's change
     assert rec.commits[-1] == ["r/rows.jsonl"] and rec.contents[-1]["r/rows.jsonl"] == b"line1\nline2\n"
+
+
+def test_a_push_is_split_into_batches_so_it_never_holds_thousands_of_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(loop, "COMMIT_FILES", 2)
+    for name in "abcde":
+        write(tmp_path / "r" / f"{name}.json")
+    rec = Recorder()
+    uploads, _ = make(tmp_path, rec)
+    uploads.push()
+    assert rec.commits == [["r/a.json", "r/b.json"], ["r/c.json", "r/d.json"], ["r/e.json"]]
+    assert uploads.commits == 3
+    uploads.push()
+    assert len(rec.commits) == 3
+
+
+def test_a_failed_batch_keeps_the_earlier_batches_marked_and_retries_only_the_rest(tmp_path, monkeypatch):
+    monkeypatch.setattr(loop, "COMMIT_FILES", 2)
+    for name in "abcd":
+        write(tmp_path / "r" / f"{name}.json")
+
+    class FailsSecond(Recorder):
+        def commit(self, files, message):
+            if len(self.commits) == 1 and self.fail is None and not getattr(self, "armed", False):
+                self.armed = True
+                self.fail = ConnectionError("down")
+            return super().commit(files, message)
+
+    rec = FailsSecond()
+    uploads, _ = make(tmp_path, rec)
+    uploads.push()
+    assert rec.commits == [["r/a.json", "r/b.json"]] and uploads.failures == {"commit": 1}
+    rec.fail = None
+    uploads.push()
+    assert rec.commits == [["r/a.json", "r/b.json"], ["r/c.json", "r/d.json"]]
+
+
+def test_a_file_the_uploader_skipped_is_not_marked_uploaded_and_is_retried(tmp_path):
+    write(tmp_path / "r" / "a.json"), write(tmp_path / "r" / "b.json")
+
+    class SkipsB(Recorder):
+        skip = True
+
+        def commit(self, files, message):
+            kept = [f for f in files if not (self.skip and f.repo_path == "r/b.json")]
+            super().commit(kept, message)
+            return kept
+
+    rec = SkipsB()
+    uploads, _ = make(tmp_path, rec)
+    uploads.push()
+    rec.skip = False
+    uploads.push()
+    assert rec.commits == [["r/a.json"], ["r/b.json"]] and uploads.failures == {}
+
+
+def test_a_listing_that_fails_is_reported_and_does_not_end_the_loop(tmp_path, monkeypatch):
+    rec = Recorder()
+    uploads, lines = make(tmp_path, rec)
+    real = loop.plan.snapshot
+    monkeypatch.setattr(loop.plan, "snapshot", lambda *a: (_ for _ in ()).throw(PermissionError("denied")))
+    uploads.push()                                               # must not raise
+    assert uploads.failures == {"scan": 1} and "denied" in lines[0]
+    monkeypatch.setattr(loop.plan, "snapshot", real)
+    write(tmp_path / "r" / "a.json")
+    uploads.push()
+    assert rec.commits == [["r/a.json"]]
+
+
+def test_the_child_still_does_its_final_push_when_the_listing_failed_in_between(tmp_path, monkeypatch):
+    write(tmp_path / "r" / "a.json")
+    rec = Recorder()
+    uploads, _ = make(tmp_path, rec)
+    real = loop.plan.snapshot
+    calls = []
+
+    def flaky(*args):
+        calls.append(1)
+        if len(calls) == 1:
+            raise PermissionError("denied")
+        return real(*args)
+
+    monkeypatch.setattr(loop.plan, "snapshot", flaky)
+    stop = threading.Event()
+    stop.set()
+    loop.run(uploads, stop)                                      # the interval push fails; the loop still ends cleanly
+    assert uploads.failures == {"scan": 1}

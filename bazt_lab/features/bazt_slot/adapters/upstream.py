@@ -40,6 +40,27 @@ def _units(x: float) -> int:
     return max(1, round(x))
 
 
+class Verdicts(InspectionState):
+    """bazt's verdict memory with the conclusive probability a setting instead of the module constants 0.98 / 0.02
+    (bazt.evidence.P_POSITIVE / P_NEGATIVE): a positive verdict sets p' = p, a negative one 1 - p."""
+
+    def __init__(self, ttl: int, positive: float) -> None:
+        super().__init__(ttl)
+        self.positive = positive
+
+    def record(self, node: int, t: int, infected: bool) -> float:
+        p = self.positive if infected else 1.0 - self.positive
+        self._v[node] = (p, t + self.ttl - 1)
+        return p
+
+
+def _probability(settings: Mapping) -> float:
+    p = core.get(settings, "bazt_upstream.verdict_probability")
+    if isinstance(p, bool) or not isinstance(p, (int, float)) or not 0.5 < p < 1.0:
+        raise ValueError(f"bazt_upstream.verdict_probability must be a number in (0.5, 1), got {p!r}")
+    return float(p)
+
+
 class BaztUpstream:
     name = "BAZT_upstream"
 
@@ -58,11 +79,16 @@ class BaztUpstream:
             self.cfgs.append(BaztConfig(B=0 if math.isinf(cap) else int(cap), unlimited=math.isinf(cap), **costs))
         self.ledgers = [BudgetLedger(c) for c in self.cfgs]
         self.optimizers = [BudgetedOptimizer(c, self.sl_cfg) for c in self.cfgs]
-        self.verdicts = [InspectionState(c.inspect_ttl) for c in self.cfgs]
+        self.positive = _probability(s)
+        self.verdicts = [Verdicts(c.inspect_ttl, self.positive) for c in self.cfgs]
         self.step = 0
-        self.quarantined = torch.zeros(ctx.B, ctx.N, ctx.N, dtype=torch.bool)
-        self.restricted = torch.zeros(ctx.B, ctx.N, dtype=torch.bool)
-        self.exhausted = torch.zeros(ctx.B, dtype=torch.bool)
+        self.keys = core.episode_keys(ctx.unit_ids)
+        dev = ctx.device
+        self.quarantined = torch.zeros(ctx.B, ctx.N, ctx.N, dtype=torch.bool, device=dev)
+        self.restricted = torch.zeros(ctx.B, ctx.N, dtype=torch.bool, device=dev)
+        self.exhausted = torch.zeros(ctx.B, dtype=torch.bool, device=dev)
+        self.driven_edges = torch.zeros(ctx.B, ctx.N, ctx.N, dtype=torch.bool, device=dev)    # quarantined on a flagged agent's account
+        self.driven_agents = torch.zeros(ctx.B, ctx.N, 2, dtype=torch.bool, device=dev)       # [isolated, degraded] on a flagged account
 
     # ------------------------------------------------------------------------------------------------ state
     def state_dict(self) -> dict:
@@ -70,11 +96,12 @@ class BaztUpstream:
         kinds = torch.tensor([[led.spent_by_kind[k] for k in UK] for led in self.ledgers], dtype=torch.float64)
         verdicts = [[(n, p, last) for n, (p, last) in v._v.items()] for v in self.verdicts]
         return {"step": self.step, "quarantined": self.quarantined.clone(), "restricted": self.restricted.clone(),
-                "exhausted": self.exhausted.clone(), "ledger_spent": spent, "ledger_kinds": kinds, "verdicts": verdicts}
+                "exhausted": self.exhausted.clone(), "driven_edges": self.driven_edges.clone(),
+                "driven_agents": self.driven_agents.clone(), "ledger_spent": spent, "ledger_kinds": kinds, "verdicts": verdicts}
 
     def load_state_dict(self, state: Mapping) -> None:
         self.step = int(state["step"])
-        for key in ("quarantined", "restricted", "exhausted"):
+        for key in ("quarantined", "restricted", "exhausted", "driven_edges", "driven_agents"):
             setattr(self, key, state[key].clone())
         for b, led in enumerate(self.ledgers):
             for k, v in zip(sorted(led._spent), state["ledger_spent"][b].tolist(), strict=True):
@@ -91,14 +118,18 @@ class BaztUpstream:
         gate = ctx.adj if obs.authentic is None else ctx.adj & obs.authentic
         actions = core.Actions(deny=obs.attempts & ~gate)
         attempted = obs.attempts & gate & ~self.quarantined
-        self.scores = torch.full((B, N), math.nan, dtype=torch.float64)
-        self.noise = (jitter.unit(ctx, STAT, self.step, per_sender=True)[:, :, 0] - 0.5) * jitter.SCALE
+        self.driven_now = torch.zeros(B, N, N, dtype=torch.bool, device=ctx.device)
+        self.scores = torch.full((B, N), math.nan, dtype=ctx.dtype, device=ctx.device)
+        # u - 0.5 of this round's keyed draw per sender, in ctx.dtype: the verdict and the reported statistic both add it at
+        # the element's own scale (jitter.at_own_scale), so the calibrated threshold controls the verdict rate (D117)
+        self.offset = jitter.unit(ctx, STAT, self.step, per_sender=True, keys=self.keys)[:, :, 0] - 0.5
         if self.calibrating:                          # collect an unbiased sample of the judge score, act on nothing
             self.scores = obs.audit(attempted.any(-1))
             actions.statistics[STAT] = self._reported(attempted)
+            actions.threshold_restricted = self.driven_now
             return actions
-        masks = {name: torch.zeros(B, N, dtype=torch.bool) for name in ("isolation", "privilege_degradation")}
-        edges = {name: torch.zeros(B, N, N, dtype=torch.bool) for name in ("sanitize", "edge_quarantine")}
+        masks = {name: torch.zeros(B, N, dtype=torch.bool, device=ctx.device) for name in ("isolation", "privilege_degradation")}
+        edges = {name: torch.zeros(B, N, N, dtype=torch.bool, device=ctx.device) for name in ("sanitize", "edge_quarantine")}
         for b in range(B):
             self._plan_episode(b, obs, attempted, masks, edges)
         for name, mask in {**masks, **edges}.items():
@@ -107,6 +138,7 @@ class BaztUpstream:
         self.restricted |= masks["privilege_degradation"]
         self.quarantined |= edges["edge_quarantine"]
         actions.events += self._exhausted(obs)
+        actions.threshold_restricted = self._threshold_restricted()
         if not self.scores.isnan().all():
             actions.statistics[STAT] = self._reported(attempted)
         return actions
@@ -126,14 +158,17 @@ class BaztUpstream:
         out_adj = [live[i].nonzero().flatten().tolist() for i in range(N)]
         deg = [len(o) for o in out_adj]
 
+        request = torch.zeros(ctx.B, N, dtype=torch.bool, device=ctx.device)
+
         def inspect(i: int):
-            request = torch.zeros(ctx.B, N, dtype=torch.bool)
+            request.zero_()                       # one reused buffer: the platform only reads it
             request[b, i] = True
             score = float(obs.audit(request)[b, i])
             if math.isnan(score):
                 return None
             self.scores[b, i] = score
-            return verdicts.record(i, t, score + float(self.noise[b, i]) > self.verdict_threshold)
+            jittered = jitter.at_own_scale(self.scores[b, i], self.offset[b, i])
+            return verdicts.record(i, t, bool(jittered > self.verdict_threshold))
 
         sit = Situation(t=t, T=obs.T, active=tuple(active.nonzero().flatten().tolist()), p_prime=p, deg=deg,
                         maxdeg=max(*deg, 1), privileged=frozenset(), out_adj=out_adj,
@@ -156,8 +191,20 @@ class BaztUpstream:
             else:
                 price = charged[i] * left * c["isolation"]
             if price > remaining:                                       # the platform would reject the whole round
+                led = self.ledgers[b]                                   # the optimizer already charged it: give it back
+                led._spent[d.charge.pool] -= d.charge.cost
+                led.spent_by_kind[kind] -= d.charge.cost
                 continue
             remaining -= price
+            if verdicts.override(i, t) == self.positive:       # the restriction rests on a verdict over the calibrated threshold
+                if kind == UK.SANITIZE:
+                    self.driven_now[b, i] = attempted[b, i]
+                elif kind == UK.BLOCK_EDGE:
+                    self.driven_edges[b, i, j] = True
+                elif kind == UK.RESTRICT:
+                    self.driven_agents[b, i, 1] = True
+                else:
+                    self.driven_agents[b, i, 0] = True
             if kind == UK.SANITIZE:
                 edges["sanitize"][b, i] = attempted[b, i]
             elif kind == UK.BLOCK_EDGE:
@@ -167,16 +214,25 @@ class BaztUpstream:
             else:
                 masks["isolation"][b, i] = True
 
+    def _threshold_restricted(self) -> torch.Tensor:
+        """bool [B, N, N] (D108): the deliveries restricted because an audit verdict (score over the calibrated
+        `upstream_judge` threshold) put the sender at p' = 0.98: this round's sanitize, and the quarantines, restrictions and
+        isolations decided on such a verdict while it held, which persist. Not counted: A's denies, and anything the monitor
+        alone drove (upstream's actions are priced from p', not gated by a threshold)."""
+        iso, deg = self.driven_agents[:, :, 0], self.driven_agents[:, :, 1]
+        mask = self.driven_now | self.driven_edges | deg[:, :, None] | iso[:, :, None] | iso[:, None, :]
+        return mask & self.ctx.adj
+
     def _reported(self, attempted: torch.Tensor) -> torch.Tensor:
         """upstream_judge [B, N, N]: the audit score of the sender on each of its deliveries, plus the keyed tie-break jitter
-        (one per sender and round, guarded by the smallest gap; the verdict above uses the same draw at the fixed scale)."""
-        stat = torch.where(attempted, self.scores[:, :, None], math.nan)
-        return jitter.jitter(stat, self.ctx, STAT, self.step, per_sender=True)
+        (one draw per sender and round, at the score's own scale): exactly the value the verdict above compared."""
+        return torch.where(attempted, jitter.at_own_scale(self.scores, self.offset)[:, :, None], math.nan)
 
     def _exhausted(self, obs: core.Observation) -> list:
         """budget_exhausted once per episode when the intervention budget cannot pay the cheapest action (one unit)."""
         capped = torch.isfinite(obs.remaining_intervention)
-        low = torch.tensor([not math.isinf(led.capacity_total) and led.remaining("pool") < 1 for led in self.ledgers])
+        low = torch.tensor([not math.isinf(led.capacity_total) and led.remaining("pool") < 1 for led in self.ledgers],
+                           device=self.ctx.device)
         now = capped & low & ~self.exhausted
         self.exhausted |= now
         return [{"event": "budget_exhausted", "arm": self.ctx.arm, "b": b, "unit_id": self.ctx.unit_ids[b],

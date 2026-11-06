@@ -399,3 +399,33 @@ def test_the_statistic_is_reported_while_the_arm_acts_on_a_given_threshold():
     ctx, arm, fake = _run(thresholds={STAT: -20.0})
     first = arm.decide(fake.obs(1, scores=SCORES))
     assert first.deny.any() and not first.statistics[STAT].isnan().all()
+
+
+def test_threshold_restricted_is_every_funded_threshold_deny_but_not_a_rules():
+    ctx, arm, fake = _run(thresholds={STAT: -20.0})
+    tampered = torch.ones(1, 3, 3, dtype=torch.bool)
+    tampered[0, 0, 1] = False
+    a = arm.decide(fake.obs(1, scores=SCORES, authentic=tampered))
+    assert a.deny[0, 0, 1] and not a.threshold_restricted[0, 0, 1]        # A's rule
+    assert a.threshold_restricted[0, 2].sum() == 2                        # sender 2 crossed the threshold
+    assert a.threshold_restricted.sum() == 2
+    ctx, arm, fake = _run(thresholds={})
+    assert not arm.decide(fake.obs(1, scores=SCORES)).threshold_restricted.any()
+
+
+def test_absent_rounds_are_frozen_once_an_episode_is_exhausted():
+    ctx, arm, fake = _run(thresholds={}, audit_cap=0.0)
+    away = torch.tensor([[False, True, True]])
+    for t in (1, 2, 3):
+        arm.decide(fake.obs(t, scores=SCORES, active=away))
+    assert arm.state_dict()["absent"].tolist() == [[0, 0, 0]]
+
+
+def test_the_jitter_switch_is_read_once_at_reset(monkeypatch):
+    ctx, arm, fake = _run(thresholds={})                                  # conftest: JITTER is False here
+    monkeypatch.setattr(ArmC, "JITTER", True)                             # flipped mid-run: the run does not change
+    stat = arm.decide(fake.obs(1, scores=SCORES)).statistics[STAT]
+    assert arm.jitter is False and (stat[~stat.isnan()] == stat[~stat.isnan()].round()).all()
+    arm.reset(ctx)                                                        # the next run reads it again
+    stat = arm.decide(Fake(ctx).obs(1, scores=SCORES)).statistics[STAT]
+    assert arm.jitter is True and (stat[~stat.isnan()] != stat[~stat.isnan()].round()).any()

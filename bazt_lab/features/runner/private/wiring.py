@@ -24,5 +24,7 @@ class Wiring:
                                                        # search_episodes); raises FeatureMissing; only mock_adaptive
     analysis: Optional[Callable[[], Any]] = None       # the analysis feature's public module (analyze, missing_keys)
     sync: Optional[Callable[[], Any]] = None           # the sync feature's public module (start); sync.enabled only
+    rebuild: Optional[str] = None                      # "module:function" returning a fresh Wiring, which a spawned worker
+                                                       # process calls (a Wiring holds closures and cannot be pickled)
     gnn: Optional[Callable[[], Any]] = None            # the gnn feature's public module (training_finished); raises
                                                        # FeatureMissing; only blocks that run the GNN arm

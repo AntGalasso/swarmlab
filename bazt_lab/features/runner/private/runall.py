@@ -6,14 +6,15 @@ from pathlib import Path
 from typing import List, Mapping, Tuple
 
 from bazt_lab.core import public as core
-from bazt_lab.features.runner.private import ledger
-from bazt_lab.features.runner.private.blocks import BLOCKS
+from bazt_lab.features.runner.private import files, ledger
+from bazt_lab.features.runner.private.blocks import BLOCKS, unrunnable
 from bazt_lab.features.runner.private.launch import FREEZE_MARKER, run_block
 from bazt_lab.features.runner.private.runtime import PRE_REGISTERED, RUNTIME_BY_PLATFORM
 from bazt_lab.features.runner.private.sizing import dry_run
 from bazt_lab.features.runner.private.wiring import FeatureMissing, Wiring
 
-KIND_ORDER = ("calibrate", "train", "evaluate")      # thresholds first, then the GNN, then the evaluations
+KIND_ORDER = ("train", "calibrate", "evaluate")      # the GNN first (D104: it needs no thresholds, and GNN_recalibrated
+                                                     # is calibrated on it), then the thresholds, then the evaluations
 
 
 def own_variables(platform: str) -> list:
@@ -28,8 +29,9 @@ def configured(s: Mapping, platform: str) -> bool:
     return any(core.is_set(s, f"runtime.{k}") for k in own_variables(platform))
 
 
-def plan(s: Mapping, root: Path, allow_live_llm: bool) -> Tuple[List[str], List[Tuple[str, str]]]:
-    """(blocks to run, [(block, reason it is skipped)]) in dependency order."""
+def plan(s: Mapping, root: Path, allow_live_llm: bool, wiring: Wiring) -> Tuple[List[str], List[Tuple[str, str]]]:
+    """(blocks to run, [(block, reason it is skipped)]) in dependency order. A block whose units carry an adaptive
+    condition asks its platform, through `wiring`, whether it runs it (`blocks.unrunnable`)."""
     run, skipped = [], []
     ordered = sorted(BLOCKS.values(), key=lambda b: KIND_ORDER.index(b.kind))        # stable: registry order inside
     for block in ordered:
@@ -48,6 +50,15 @@ def plan(s: Mapping, root: Path, allow_live_llm: bool) -> Tuple[List[str], List[
                 continue
             except SystemExit as e:
                 skipped.append((block.name, f"scope invalid ({e.code})"))
+                continue
+            reason = unrunnable(block, s, wiring)
+            if reason:
+                skipped.append((block.name, reason))
+                continue
+            first = block.replays or block.timing_source
+            source = dict(skipped).get(first) if first else None
+            if source is not None:          # the registry puts a replayed block first, so it has been decided already
+                skipped.append((block.name, f"it replays the results of {first}, which is skipped ({source})"))
                 continue
             run.append(block.name)
     return run, skipped
@@ -79,11 +90,17 @@ def _analysis(s: Mapping, root: Path, wiring: Wiring, dry: bool) -> int:
 
 
 def run_all(s: Mapping, root: Path, allow_live_llm: bool, dry: bool, wiring: Wiring) -> int:
-    run, skipped = plan(s, root, allow_live_llm)
+    # A dry run makes no call, so it sizes the LLM blocks without --allow-live-llm; every real LLM launch still goes
+    # through the kickoff guard (launch._preflight).
+    run, skipped = plan(s, root, allow_live_llm or dry, wiring)
     for name, reason in skipped:
         print(f"{name}: skipped: {reason}")
     if dry:
         print(f"would run, in this order: {', '.join(run) or 'nothing'}")
+        held = [name for name in run if BLOCKS[name].platform == "llm"] if not allow_live_llm else []
+        if held:
+            print(f"the LLM blocks ({', '.join(held)}) are sized only: run-all runs them with --allow-live-llm, "
+                  f"after the kickoff")
         if run:
             dry_run(s, run, wiring)
         return _analysis(s, root, wiring, dry)
@@ -91,6 +108,9 @@ def run_all(s: Mapping, root: Path, allow_live_llm: bool, dry: bool, wiring: Wir
         print(f"== {name}")
         try:
             run_block(s, name, allow_live_llm, wiring=wiring, results_root=root)
+        except files.BusyLaunch as e:
+            print(e.code, file=sys.stderr)
+            return 1
         except SystemExit as e:
             if isinstance(e.code, str):
                 ledger.record(root, s["profile"], name, e.code)

@@ -46,6 +46,13 @@ def test_the_platform_satisfies_the_core_contract_and_the_public_surface():
     assert "insider_pi" in mock.ATTACKS and "none" in mock.ATTACKS
 
 
+def test_the_platform_runs_every_condition_the_adaptive_feature_searches():
+    """Platform.adaptive_conditions: the units of mock_adaptive carry a condition of the adaptive feature, whose best
+    responses the engine applies through attack_params."""
+    from bazt_lab.features.adaptive import public as adaptive
+    assert mock.MockPlatform().adaptive_conditions == tuple(adaptive.CONDITIONS)
+
+
 def test_run_batch_appends_one_row_per_unit_marks_it_done_and_returns_the_rows_in_input_order():
     store, units = FakeStore(), units_of(5, attack="infection")
     rows = platform().run_batch(units, spec(), make_settings(), store, core.NullTracker())
@@ -454,3 +461,45 @@ def test_a_real_store_gets_one_batch_file_per_chunk_and_a_rerun_skips_every_fini
     again = core.CheckpointStore(tmp_path)
     assert all(again.is_done(u["id"]) for u in units)
     assert platform().run_batch(units, spec(), make_settings(mock__batch_size=3), again, core.NullTracker()) == []
+
+
+def test_a_bad_unit_in_a_later_chunk_is_refused_before_any_chunk_is_written():
+    units = units_of(6)
+    units[5]["sink"] = 99
+    store = FakeStore()
+    with pytest.raises(ValueError, match="sink"):
+        platform().run_batch(units, spec(), make_settings(mock__batch_size=2), store, core.NullTracker())
+    assert not store.done and not store.rows
+
+
+def test_the_closed_loop_constants_come_from_the_settings():
+    from bazt_lab.features.mock_engine.tests.test_calibration_modes import Feedback, settings, uncapped
+    cal = uncapped("scripted", range(9001, 9009))
+    p = mock.MockPlatform(rows_fn=fake_rows)
+    p.calibrate(cal, spec(Feedback), settings("closed_loop", calibration__max_passes=2), FakeStore())
+    assert p.last_calibration["passes"] <= 2
+    s = settings("closed_loop")
+    del s["calibration"]["tolerance"]
+    with pytest.raises(core.Unset) as e:
+        p.calibrate(cal, spec(Feedback), s, FakeStore())
+    assert e.value.args[0] == "calibration.tolerance"
+
+
+def _real_arm_rows(name, batch_size, thresholds):
+    from bazt_lab.features.bazt_slot import public as slot
+    from bazt_lab.features.conventional import public as conv
+    from bazt_lab.features.mock_engine.tests.test_calibration_modes import real_settings
+    arm = {a.name: a for a in (*conv.ARMS, *slot.ARMS)}[name]
+    s = real_settings("closed_loop")
+    core.put(s, "mock.batch_size", batch_size)
+    units = [unit(arm=name, seed=sd, sink=sd % 12, topology="small_world", attack="infection", agents=12, audit=0.2,
+                  intervention=0.2, thresholds=thresholds) for sd in range(1, 9)]
+    return mock.MockPlatform().run_batch(units, arm, s, FakeStore(), core.NullTracker())
+
+
+@pytest.mark.parametrize(("name", "thresholds"), [("B", {"judge": 2.0}), ("C", {"rl_minus_ts": -20.0}), ("BAZT", {})])
+def test_rows_hold_no_threshold_tensor_and_do_not_depend_on_the_batch_size(name, thresholds):
+    one = [_real_arm_rows(name, 1, thresholds)[k] for k in range(1)]
+    many = _real_arm_rows(name, 8, thresholds)
+    assert not [k for row in many for k in row if "threshold_restricted" in k]
+    assert json.dumps(one[0], sort_keys=True, default=float) == json.dumps(many[0], sort_keys=True, default=float)

@@ -18,9 +18,11 @@ def small():
 
 def test_the_registry_lists_every_block_of_the_spec():
     assert list(rx.BLOCKS) == [
-        "llm_calibration", "gnn_train", "llm_headline", "llm_capped", "llm_adaptive_check", "mock_calibration",
-        "mock_frontier", "mock_epidemiology", "mock_ablations", "mock_adaptive", "mock_presets_robustness",
-        "mock_costs_robustness", "mock_legacy", "mock_heldout"]
+        "llm_calibration", "gnn_train", "llm_headline", "llm_capped", "mock_calibration",
+        "mock_frontier", "mock_epidemiology", "mock_ablations", "mock_adaptive", "llm_adaptive_check",
+        "mock_presets_robustness", "mock_costs_robustness", "mock_legacy", "mock_heldout"]
+    # D110: the check replays mock_adaptive's best responses, so the registry (run-all's order inside a kind) has it after
+    assert list(rx.BLOCKS).index("mock_adaptive") < list(rx.BLOCKS).index("llm_adaptive_check")
     assert {b.kind for b in rx.BLOCKS.values()} == {"calibrate", "train", "evaluate"}
     assert [n for n, b in rx.BLOCKS.items() if b.kind == "calibrate"] == ["llm_calibration", "mock_calibration"]
     assert [n for n, b in rx.BLOCKS.items() if b.requires_freeze] == ["mock_heldout"]
@@ -85,7 +87,7 @@ def test_mock_unit_fields_are_those_of_the_old_launcher():
     s = fakes.settings(fakes.TINY_MOCK, fakes.ONLY_A)
     unit = next(iter(rx.units_mock_frontier(s, False)))
     assert unit == dict(block="mock_frontier", platform="mock", arm="A", audit="uncapped", intervention="uncapped",
-                        topology="chain", attack="infection", agents=3, seed=1, sink=0)
+                        topology="chain", attack="none", agents=3, seed=1, sink=0)
 
 
 def test_variant_blocks_add_their_field_and_the_cost_block_names_its_cost_condition():
@@ -159,10 +161,12 @@ def test_sanitizing_arms_get_one_unit_per_sanitize_mode_and_the_others_the_first
     assert len({rx.unit_id(u) for u in units}) == len(units)
 
 
-def test_calibration_and_training_units_have_no_sanitize_mode():
-    s = fakes.settings(fakes.TINY_LLM, fakes.RUNTIME_LLM, ["gnn_train.backbone='bb1'"])
-    assert all("sanitize_mode" not in u for u in rx.units_llm_calibration(s, True))
-    assert all("sanitize_mode" not in u for u in rx.units_gnn_train(s, True))
+def test_calibration_and_training_units_carry_the_first_sanitize_mode():
+    """The LLM probe and the platform read sanitize_mode on every LLM unit."""
+    s = fakes.settings(fakes.TINY_LLM, fakes.RUNTIME_LLM, ["gnn_train.backbone='bb1'",
+                                                           "llm.sanitize_modes=['redaction', 'llm_rewrite']"])
+    assert {u["sanitize_mode"] for u in rx.units_llm_calibration(s, True)} == {"redaction"}
+    assert {u["sanitize_mode"] for u in rx.units_gnn_train(s, True)} == {"redaction"}
 
 
 def test_the_profiles_select_the_sanitize_and_memory_attack_modes():

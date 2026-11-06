@@ -60,7 +60,7 @@ def build_plan(args: argparse.Namespace) -> e2e.Plan:
     }
     if args.with_gnn:
         sets.update({"gnn_train.families": [["insider_pi", "mmlu"]], "gnn_train.edge_probabilities": [0.5],
-                     "gnn_train.attackers": [1], "gnn_train.conversations_per_setting": 2,
+                     "gnn_train.attackers": [1], "gnn_train.conversations_per_setting": 5,
                      "gnn_train.agents": args.agents, "gnn_train.rounds": 2, "gnn_train.backbone": BACKBONE})
     settings = rx.load_settings(overrides=e2e.override_items(sets))
     headline, capped = rx.units_llm_headline(settings, True), rx.units_llm_capped(settings, True)

@@ -11,7 +11,8 @@ UTILITY_KINDS = ("sanitize", "delay", "edge_quarantine", "rate_limit", "privileg
 
 @dataclass(frozen=True)
 class Params:
-    decay: float                  # bazt.katz_decay: per-hop transmission probability of the truncated Katz reach
+    katz_fraction: float          # bazt.katz_decay: the Katz decay as a fraction of 1 / spectral radius of the graph
+                                  # (D115); the decay used on a graph is pricing.katz_decay
     iterations: int               # bazt.eigen_iterations: power iterations of the leading eigenpair
     sink_weight: float            # bazt.sink_weight: loss weight of the protected sink, an ordinary agent weighs 1
     utility_weight: float         # bazt.utility_weight: lambda, utility loss against loss reduction
@@ -25,13 +26,14 @@ class Params:
     rate_limit: int               # runtime.rate_limit_per_identity
 
 
-def _number(settings: Mapping, key: str, low: float, high: float, *, low_open: bool, high_open: bool) -> float:
+def _number(settings: Mapping, key: str, low: float, high: float, *, low_open: bool, high_open: bool,
+            why: str = "") -> float:
     value = core.get(settings, key)
     ok = isinstance(value, (int, float)) and not isinstance(value, bool) and value == value
     if ok and (value > low if low_open else value >= low) and (value < high if high_open else value <= high):
         return float(value)
     raise ValueError(f"{key} must be a number in {'(' if low_open else '['}{low}, {high}{')' if high_open else ']'}, "
-                     f"got {value!r}")
+                     f"got {value!r}{why}")
 
 
 def _integer(settings: Mapping, key: str) -> int:
@@ -43,8 +45,10 @@ def _integer(settings: Mapping, key: str) -> int:
 
 def read(settings: Mapping) -> Params:
     inf = float("inf")
-    return Params(
-        decay=_number(settings, "bazt.katz_decay", 0.0, 1.0, low_open=True, high_open=False),
+    params = Params(
+        katz_fraction=_number(settings, "bazt.katz_decay", 0.0, 1.0, low_open=True, high_open=True, why=(
+            ": it is the fraction of 1 / spectral radius used as the Katz decay on each graph (D115), and the Katz sum "
+            "over (decay A)^k converges only below 1 / rho")),
         iterations=_integer(settings, "bazt.eigen_iterations"),
         sink_weight=_number(settings, "bazt.sink_weight", 1.0, inf, low_open=False, high_open=False),
         utility_weight=_number(settings, "bazt.utility_weight", 0.0, inf, low_open=False, high_open=False),
@@ -58,3 +62,8 @@ def read(settings: Mapping) -> Params:
         sanitize_success=_number(settings, "runtime.sanitize_success", 0.0, 1.0, low_open=False, high_open=False),
         rate_limit=_integer(settings, "runtime.rate_limit_per_identity"),
     )
+    if params.flag_logodds <= params.clear_logodds:
+        raise ValueError(f"bazt.flag_logodds ({params.flag_logodds}) must exceed bazt.clear_logodds ({params.clear_logodds}): "
+                         "a verdict stands while its decayed weight exceeds a clearing verdict, so a flag that does not could "
+                         "never make an agent eligible")
+    return params

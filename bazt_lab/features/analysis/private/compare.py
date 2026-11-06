@@ -87,6 +87,14 @@ def in_split(t: Table, rows: np.ndarray, fields: Sequence[str], codes: Sequence[
     return np.flatnonzero(ok)
 
 
+def own_tasks(t: Table, attacked: np.ndarray, rows: np.ndarray, k: np.ndarray) -> np.ndarray:
+    """Positions `k` of attack-free `rows` kept to the tasks and backbones the attacked rows of the comparison ran: an
+    attack-free run is the clean reference of its own task only, never of another task's comparison."""
+    for f in ("task", "backbone"):
+        k = k[np.isin(t.codes[f][rows[k]], np.unique(t.codes[f][attacked]))]
+    return k
+
+
 def pairs_of(t: Table, rows: Sequence[np.ndarray], metric: str, at: np.ndarray) -> Pairs:
     col, rx, ry = t.metrics[metric], rows[0][at], rows[1][at]
     return Pairs(col[rx], col[ry], t.codes["seed"][rx])
@@ -140,7 +148,7 @@ def arm_vs_arm(t: Table, cfg: Cfg, platform: str, blocks: Sequence[str], challen
             skipped.append(_skip(ctx, "its rows carry no `condition`, so the knowledge condition of the adaptive "
                                       "attacker is unknown"))
             continue
-        lacking = [a for a in (challenger, baseline) if a not in present]
+        lacking = [a for a in (challenger, baseline) if a not in present and not t.has(ctx.with_arm(a, False))]
         if lacking:
             skipped.append(_skip(ctx, f"no attacked rows for {', '.join(lacking)}"))
             continue
@@ -170,10 +178,12 @@ def arm_vs_arm(t: Table, cfg: Cfg, platform: str, blocks: Sequence[str], challen
             raw = Raw((challenger, baseline), {**describe(ctx), **dict(zip(fields, values, strict=True))}, safety, facts=facts)
             if utility_rows is not None:
                 k = in_split(t, utility_rows[0], fields, codes, free)
+                k = own_tasks(t, anchor[at], utility_rows[0], k) if free else k
                 raw.utility = pairs_of(t, utility_rows, cfg.utility_column, k) if len(k) else None
             for name, rows in extra_rows.items():
                 if rows is not None:
                     k = in_split(t, rows[0], fields, codes, cfg.extra_metrics[name][1] == "attack_free")
+                    k = own_tasks(t, anchor[at], rows[0], k) if cfg.extra_metrics[name][1] == "attack_free" else k
                     if len(k):
                         raw.extras[name] = pairs_of(t, rows, name, k)
             raws.append(raw)
@@ -191,7 +201,9 @@ def pair_arrays(p: Pairs, kind: str, cfg: Cfg, platform: str):
 
 def endpoint(p: Pairs, kind: str, cfg: Cfg, platform: str, key: Sequence) -> dict:
     x, y, cluster = pair_arrays(p, kind, cfg, platform)
-    return stats.paired_test(x, y, cluster, kind, key, cfg.resamples, cfg.level)
+    out = stats.paired_test(x, y, cluster, kind, key, cfg.resamples, cfg.level)
+    out["n_dropped_nan"] = int((np.isnan(p.x) | np.isnan(p.y)).sum())      # before a seed collapse drops them silently
+    return out
 
 
 def _adjust(results: List[dict], get: Callable[[dict], dict | None]) -> None:

@@ -48,7 +48,7 @@ in the file (InjecAgent), or the record's native key (PoisonedRAG). It is stable
 | `poisonedrag_msmarco` | `incorrect_answer`, `adv_texts` (5 poisoned passages), `native_id` |
 
 The 771 InjecAgent records carry 17 distinct user instructions; records differ in attacker tools and instruction.
-The test split of CommonsenseQA has no labels, so `validation` is used. MS MARCO passages are research use only; the
+The test split of CommonsenseQA has no labels, so `validation` is used (D41). MS MARCO passages are research use only; the
 PoisonedRAG file carries its own passages and MS MARCO itself is never loaded.
 
 ## Source records
@@ -56,7 +56,8 @@ PoisonedRAG file carries its own passages and MS MARCO itself is never loaded.
 `Source.dataset`, `config`, `split` and `revision` are set on every Hub item. A vendored item has `dataset` = the
 file path relative to the repository root, `config` and `revision` None, `split` = `all`, `train` or `test`, and
 `sha256` = the digest of the file read with CRLF as LF (git on Windows rewrites line endings; this digest equals the
-digest of the committed blob). `sources(settings)` returns the same record per task for a block's manifest.
+digest of the committed blob). `sources(settings)` returns the same record per task for a block's manifest. The vendored
+tasks need `vendor/G-safeguard` checked out at `890c99f` (D33); the digests and the real-file tests depend on it.
 
 ## Draws
 
@@ -82,7 +83,9 @@ digest of the committed blob). `sources(settings)` returns the same record per t
 
 A malformed answer (wrong type, empty, out of range) is wrong, not an error. `render_question(item)` is the question
 followed by `A. text` lines, the layout of G-Safeguard's `format_example`. For a choice task the wrong choices are the
-letters other than `answer`; the seeded wrong-answer draw belongs to the attack side.
+letters other than `answer`; the seeded wrong-answer draw belongs to the attack side. The PoisonedRAG correctness rule is
+not a checker here: llm_harness judges memory-attack replies by normalised containment of the correct answer text (D103,
+`private/cases.py`), or with the upstream LLM judge in research mode.
 
 ## Invariants
 
@@ -113,16 +116,18 @@ process already has win. `datasets` and `huggingface_hub` read the two offline s
 the process environment when another module has imported either library earlier.
 
 Download size of the first online load, from the dataset cards at the pinned revisions: MMLU config `all` 51.5 MB
-(the 47.5 MB `auxiliary_train` split included, 3.5 MB for `test`), CommonsenseQA 1.6 MB, GSM8K 2.7 MB.
+(the 47.5 MB `auxiliary_train` split included, 3.5 MB for `test`), CommonsenseQA 1.6 MB, GSM8K 2.7 MB. The variables and the
+sizes are documented in `.env.example` and `docs/EXPERIMENTS_HOWTO.md`.
 
 ## Settings keys read
 
 | key | value |
 |---|---|
-| `llm_data.revisions.mmlu`, `.csqa`, `.gsm8k` | Hub commit sha of each dataset |
-| `llm_data.vendored_sha256.injecagent`, `.poisonedrag_msmarco` | sha256 of each vendored file |
+| `llm_data.revisions.mmlu`, `.csqa`, `.gsm8k` | Hub commit sha of each dataset (`experiments/profiles.toml`, outside any profile) |
+| `llm_data.vendored_sha256.injecagent`, `.poisonedrag_msmarco` | sha256 of each vendored file (same place) |
 
-`sample` reads only the keys of its task; `sources` reads all five.
+`sample` reads only the keys of its task; `sources` reads all five. `tests/test_sampling.py::test_profiles_toml_carries_the_requested_pins`
+checks the pins in profiles.toml against the expected values.
 
 ## Tests
 
@@ -136,29 +141,6 @@ Offline tests use tiny fixtures in the shapes of the pinned datasets, a fake for
 network smoke test loads the three pinned revisions and checks item shapes (the row builders refuse unexpected
 field types) and split sizes, then repeats the draw in a fresh process with both offline switches set.
 
-## Requests
-
-1. `experiments/profiles.toml` (runner), two tables outside any profile:
-
-   ```toml
-   [llm_data.revisions]
-   mmlu = "c30699e8356da336a370243923dbaf21066bb9fe"
-   csqa = "94630fe30dad47192a8546eb75f094926d47e155"
-   gsm8k = "740312add88f781978c0658806c59bc2815b9866"
-
-   [llm_data.vendored_sha256]
-   injecagent = "3465082b1d5bd32f60ba5e319a305f4b05bdb75dc00189e16ed6dc2937056998"
-   poisonedrag_msmarco = "d6bf508ebb0e31e09095995061bd483678e2ae8634f6ba5de1611e4adf9b1987"
-   ```
-
-   The three revisions are the Hub `main` commits of 2026-11-05 (read from the Hub API) and the values of the library
-   brief. The two digests are those of the files at submodule commit `890c99f`. `tests/test_sampling.py::
-   test_profiles_toml_carries_the_requested_pins` skips until the table exists and then checks these exact values.
-2. `.env.example` (quality): optional `HF_TOKEN`, `HF_HUB_OFFLINE`, `HF_DATASETS_OFFLINE`.
-3. `docs/EXPERIMENTS_HOWTO.md` (quality): the two commands under Tests, and the download sizes above.
-4. The `llm_harness` lane's submodule must be checked out at `890c99f` for the vendored tasks; the real-file tests
-   and the digests depend on it.
-
 ## Open questions
 
 1. Calibration and evaluation questions. Seeds are disjoint (`runtime.llm_calibration_seeds` against
@@ -167,11 +149,8 @@ field types) and split sizes, then repeats the draw in a fresh process with both
    GSM8K, 0.3 for MMLU, 4.7 for InjecAgent, 36 for PoisonedRAG (pool 100). Whether calibration questions must be
    disjoint from evaluation questions is undecided. Options: keep seed disjointness only (current); use
    `part="train"` for calibration and `part="test"` for evaluation on the vendored tasks; add an `exclude` argument
-   to `sample`.
-2. PoisonedRAG correctness. Upstream judges a free-text answer with an LLM (`MA/evaluate_output.py`, gpt-4o-mini).
-   This feature gives the correct and the incorrect answer text and no deterministic checker; the checker, a
-   normalised-containment rule or a judge call, is a harness decision.
-3. MMLU download. `load_dataset("cais/mmlu", "all", ...)` fetches every split of the config (51.5 MB). Passing
+   to `sample`. GNN training questions are already kept disjoint from both (D104, llm_harness).
+2. MMLU download. `load_dataset("cais/mmlu", "all", ...)` fetches every split of the config (51.5 MB). Passing
    `data_files={"test": "all/test-*"}` would fetch 3.5 MB; it departs from the call written in the spec and is not
    implemented.
 

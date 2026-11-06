@@ -41,3 +41,10 @@ def test_a_missing_key_raises_core_unset_naming_it(key):
 def test_a_bad_value_is_refused_and_names_the_key(key, value):
     with pytest.raises(SyncError, match=rf"sync\.{key}"):
         read(settings(**{key: value}))
+
+
+@pytest.mark.parametrize("key", ["every_minutes", "final_push_timeout_seconds"])
+@pytest.mark.parametrize("value", [float("inf"), float("nan"), float("-inf")])
+def test_a_number_that_is_not_finite_is_refused(key, value):
+    with pytest.raises(SyncError, match=rf"sync\.{key}"):
+        read(settings(**{key: value}))

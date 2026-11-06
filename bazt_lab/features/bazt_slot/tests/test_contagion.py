@@ -7,6 +7,7 @@ import pytest
 import torch
 
 from bazt_lab.features.bazt_slot.private import contagion as ct
+from bazt_lab.features.bazt_slot.tests.testkit import barabasi_albert, small_world, spectral_radius_np, star_hub
 
 F64 = torch.float64
 
@@ -211,3 +212,89 @@ def test_batch_mixing_cyclic_and_acyclic_episodes_keeps_them_apart():
     lam, node, edge = ct.eigen_drop(A, iterations=200)
     assert lam[0].item() == 0.0 and not node[0].any()
     assert lam[1].item() == pytest.approx(max_real_eig(cyc[0]).item(), rel=1e-6) and node[1].any()
+
+
+# ------------------------------------------------- D115: the Katz decay is bazt.katz_decay / spectral radius of the graph
+GRID = {"star_hub": star_hub(12), "small_world": small_world(30), "barabasi_albert": barabasi_albert(100)}
+
+
+def boolean(a):
+    return torch.as_tensor(np.asarray(a) > 0)
+
+
+@pytest.mark.parametrize("name", sorted(GRID))
+def test_the_spectral_radius_of_a_grid_graph_matches_numpy(name):
+    rho = ct.spectral_radius(boolean(GRID[name])[None], iterations=300)
+    assert rho.dtype == F64 and rho[0].item() == pytest.approx(spectral_radius_np(GRID[name]), rel=1e-9)
+
+
+@pytest.mark.parametrize("name", sorted(GRID))
+def test_the_katz_decay_is_the_fraction_of_one_over_the_spectral_radius(name):
+    d = ct.relative_decay(boolean(GRID[name])[None], 0.9, iterations=300)
+    assert d.dtype == F64 and d[0].item() == pytest.approx(0.9 / spectral_radius_np(GRID[name]), rel=1e-9)
+
+
+@pytest.mark.parametrize("name", sorted(GRID))
+@pytest.mark.parametrize("order", [1, 2, 4, 6])
+def test_katz_with_the_relative_decay_matches_the_explicit_sum(name, order):
+    A = GRID[name]
+    s = np.random.default_rng(order).uniform(0.0, 1.0, len(A))
+    d = ct.relative_decay(boolean(A)[None], 0.6, iterations=300)
+    H, _, _ = ct.katz(t3(A), t3(s), d, order)
+    np.testing.assert_allclose(H[0].numpy(), explicit_katz(A, s, 0.6 / spectral_radius_np(A), order), rtol=1e-9)
+
+
+@pytest.mark.parametrize("name", sorted(GRID))
+def test_katz_with_the_relative_decay_converges_at_09(name):
+    """sum_k d^(k-1) A^k s tends to A (I - d A)^-1 s when d rho < 1. At katz_decay = 0.9 the truncated reach grows with
+    the horizon towards that limit and never past it (with 0.9 as an absolute decay it would grow like (0.9 rho)^K)."""
+    A = GRID[name]
+    s = np.random.default_rng(1).uniform(0.2, 1.0, len(A))
+    d_np = 0.9 / spectral_radius_np(A)
+    limit = A @ np.linalg.solve(np.eye(len(A)) - d_np * A, s)
+    d = ct.relative_decay(boolean(A)[None], 0.9, iterations=300)
+    short, mid, long_ = (ct.katz(t3(A), t3(s), d, K)[0][0].numpy() for K in (35, 100, 400))
+    assert (short <= mid).all() and (mid <= limit * (1 + 1e-9)).all()
+    np.testing.assert_allclose(long_, limit, rtol=1e-9)
+
+
+def test_a_batch_of_different_graphs_takes_each_episodes_own_radius():
+    # N = 12 (the star_hub size of the grid): CPU (MKL) bmm is bitwise batch-independent there; from about N = 30 it
+    # differs in the last ulp between batch sizes, for every bmm of the lane (see CONTRACT.md, Compute)
+    graphs = [star_hub(12), small_world(12, seed=2), barabasi_albert(12, m=2, seed=3)]
+    A = torch.as_tensor(np.stack(graphs))
+    s = torch.as_tensor(np.random.default_rng(4).uniform(0.0, 1.0, (3, 12)))
+    d = ct.relative_decay(A > 0, 0.9, iterations=300)
+    H, R, Hp = ct.katz(A, s, d, 6)
+    for b, g in enumerate(graphs):
+        assert d[b].item() == pytest.approx(0.9 / spectral_radius_np(g), rel=1e-9)
+        np.testing.assert_allclose(H[b].numpy(), explicit_katz(g, s[b].numpy(), 0.9 / spectral_radius_np(g), 6),
+                                   rtol=1e-9)
+        d1 = ct.relative_decay(A[b:b + 1] > 0, 0.9, iterations=300)
+        h1, r1, p1 = ct.katz(A[b:b + 1], s[b:b + 1], d1, 6)
+        assert torch.equal(d[b], d1[0]) and torch.equal(H[b], h1[0]) and torch.equal(R[b], r1[0])
+        assert torch.equal(Hp[b], p1[0])
+
+
+def test_a_graph_without_a_cycle_takes_the_out_degree_bound_and_the_decay_stays_finite():
+    """No eigenpair (lambda = 0, a DAG or an empty graph): the out-degree bound max_i sum_j A_ij >= rho stands in for
+    rho, never below 1, so the decay is finite and decay x rho <= katz_decay still holds."""
+    empty = torch.zeros(1, 5, 5, dtype=torch.bool)
+    out_star = torch.zeros(1, 5, 5, dtype=torch.bool)
+    out_star[0, 0, 1:] = True
+    chain = acyclic_chain(5) > 0
+    adj = torch.cat([empty, out_star, chain])
+    d = ct.relative_decay(adj, 0.6, iterations=30)
+    assert d.tolist() == pytest.approx([0.6, 0.6 / 4, 0.6], rel=1e-12)
+    H, R, Hp = ct.katz(adj.to(F64), torch.ones(3, 5, dtype=F64), d, 5)
+    assert H.isfinite().all() and R.isfinite().all() and Hp.isfinite().all() and not H[0].any()
+    np.testing.assert_allclose(H[2].numpy(), explicit_katz(acyclic_chain(5)[0].numpy(), np.ones(5), 0.6, 5), rtol=1e-12)
+
+
+def test_float32_katz_with_the_relative_decay_stays_float32_and_close_to_float64():
+    A, s = GRID["barabasi_albert"], np.random.default_rng(5).uniform(0.0, 1.0, 100)
+    d = ct.relative_decay(boolean(A)[None], 0.9, iterations=300)
+    H64, _, _ = ct.katz(t3(A), t3(s), d, 35)
+    H32, R32, _ = ct.katz(t3(A).float(), t3(s).float(), d, 35)
+    assert H32.dtype == R32.dtype == torch.float32
+    np.testing.assert_allclose(H32[0].double().numpy(), H64[0].numpy(), rtol=1e-4)

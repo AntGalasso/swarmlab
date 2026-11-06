@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
 from typing import List, Mapping
 
 from bazt_lab.core import public as core
-from bazt_lab.features.runner.private import ledger, runall, status
+from bazt_lab.features.runner.private import files, ledger, runall, status
 from bazt_lab.features.runner.private.blocks import BLOCKS, Block
 from bazt_lab.features.runner.private.launch import RESULTS_ROOT, run_block
 from bazt_lab.features.runner.private.runtime import load_settings, missing_runtime
@@ -53,6 +55,28 @@ def list_blocks(s: Mapping, wiring: Wiring) -> None:
 
 
 COMMANDS = ("run-all", "status")
+DEVICE = re.compile(r"(cpu|cuda(:\d+)?)")
+
+
+def device(text: str) -> str:
+    if not DEVICE.fullmatch(text):
+        raise argparse.ArgumentTypeError(f"{text!r} is not cpu, cuda or cuda:N")
+    return text
+
+
+def add_compute_flags(ap: argparse.ArgumentParser) -> None:
+    ap.add_argument("--device", type=device, default=None, metavar="{cpu,cuda,cuda:N}",
+                    help="where the tensors run; same as --set compute.device=... (results do not depend on it)")
+    ap.add_argument("--workers", type=int, default=None, metavar="N",
+                    help="worker processes per block; same as --set compute.workers=N (rows do not depend on it)")
+    ap.add_argument("--compile", action="store_true",
+                    help="torch.compile the hot kernels; same as --set compute.compile=true")
+
+
+def compute_overrides(args) -> list:
+    return ([f"compute.device={json.dumps(args.device)}"] if args.device else []) + (
+        ["compute.compile=true"] if args.compile else []) + (
+        [f"compute.workers={args.workers}"] if args.workers is not None else [])
 
 
 def _launch_each(s: Mapping, names, allow_live: bool, wiring: Wiring, root: Path) -> None:
@@ -60,6 +84,8 @@ def _launch_each(s: Mapping, names, allow_live: bool, wiring: Wiring, root: Path
     for name in names:
         try:
             run_block(s, name, allow_live, wiring=wiring, results_root=root)
+        except files.BusyLaunch:
+            raise
         except SystemExit as e:
             if isinstance(e.code, str):
                 ledger.record(root, s["profile"], name, e.code)
@@ -76,14 +102,15 @@ def _command(command: str, argv, wiring: Wiring) -> int:
     ap.add_argument("--profile", default=None)
     ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     ap.add_argument("--results-root", default=str(RESULTS_ROOT))
+    add_compute_flags(ap)
     if command == "run-all":
         ap.add_argument("--dry-run", action="store_true", help="show the order and the sizes, run nothing")
         ap.add_argument("--allow-live-llm", action="store_true", help="also run the LLM blocks (after kickoff only)")
     args = ap.parse_args(argv)
-    s = load_settings(Path(args.settings), args.profile, args.set)
+    s = load_settings(Path(args.settings), args.profile, [*args.set, *compute_overrides(args)])
     root = Path(args.results_root)
     if command == "status":
-        print(status.render(s, root, Path(args.settings)))
+        print(status.render(s, root, Path(args.settings), wiring=wiring))
         return 0
     if args.dry_run:
         return runall.run_all(s, root, args.allow_live_llm, True, wiring)
@@ -108,9 +135,10 @@ def main(argv=None, *, wiring: Wiring) -> int:
     mode.add_argument("--dry-run", action="store_true", help="print sizes without running anything")
     mode.add_argument("--run", action="store_true", help="run the given block(s)")
     ap.add_argument("--allow-live-llm", action="store_true", help="required for LLM blocks (after kickoff only)")
+    add_compute_flags(ap)
     args = ap.parse_args(argv)
 
-    s = load_settings(Path(args.settings), args.profile, args.set)
+    s = load_settings(Path(args.settings), args.profile, [*args.set, *compute_overrides(args)])
     if args.list:
         list_blocks(s, wiring)
         return 0

@@ -1,4 +1,6 @@
 """MatchedTiming: an arm that may act only at the rounds of a schedule (spec 2.7, D32)."""
+import dataclasses
+
 import pytest
 import torch
 
@@ -140,3 +142,38 @@ def test_state_includes_the_inner_state_and_resumes_exactly(tmp_path):
         part.step(d2, t)
     for a, b in zip(ref.log, part.log, strict=True):
         assert torch.equal(a.actions.isolation, b.actions.isolation)
+
+
+# ------------------------------------------------------------------------- D116: the schedule format the engine reads
+@pytest.mark.parametrize("bad", [torch.tensor([[0, 1, 0, 1]]), torch.tensor([[0.0, 1.0, 0.0, 1.0]]),
+                                 torch.tensor([[2, 4, 0, 0]])])
+def test_a_schedule_that_is_not_a_bool_mask_is_refused_not_cast(bad):
+    """ctx.timing_schedule is bool [B, T], entry r = round r+1 (BAZT's intervened_by_round); numbers are refused, so a
+    list of round numbers can never be read as a mask."""
+    ctx = make_ctx(star(6), 4, settings=SETTINGS)
+    object.__setattr__(ctx, "timing_schedule", bad)
+    with pytest.raises(ValueError, match="bool"):
+        MatchedTiming(RandomCapped(own_timing=False)).reset(ctx)
+
+
+def test_a_bool_mask_is_read_with_entry_r_as_round_r_plus_1():
+    ctx = make_ctx(star(6), 4, settings=SETTINGS)
+    object.__setattr__(ctx, "timing_schedule", torch.tensor([[False, True, False, True]]))
+    fp = FakePlatform(ctx)
+    fp.run(MatchedTiming(RandomCapped(own_timing=False)))
+    assert list(isolated_at(fp)) == [2, 4]
+
+
+class _Restricts(RandomCapped):
+    """An inner arm that reports its isolations as threshold restrictions (D108) at every round."""
+
+    def act(self, obs):
+        a = super().act(obs)
+        return dataclasses.replace(a, threshold_restricted=obs.attempts & a.isolation[:, :, None])
+
+
+def test_nothing_the_inner_arm_reports_as_restricted_outside_the_schedule_reaches_the_platform():
+    fp = FakePlatform(with_schedule(make_ctx(star(6), 4, settings=SETTINGS), [[3]]))
+    fp.run(MatchedTiming(_Restricts(own_timing=False)))
+    restricted = [bool(r.actions.threshold_restricted.any()) for r in fp.log]
+    assert restricted == [False, False, True, False] and list(isolated_at(fp)) == [3]

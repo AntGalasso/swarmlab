@@ -149,3 +149,14 @@ def test_the_shared_embedder_names_a_missing_setting(settings, monkeypatch):
     del settings["gnn"]["embedding"]["revision"]
     with pytest.raises(core.Unset, match=r"gnn.embedding.revision"):
         embedding.shared_embedder(settings)
+
+
+def test_the_fake_embedding_setting_gives_a_deterministic_offline_encoder(settings, monkeypatch):
+    from bazt_lab.features.gnn.private import embedding
+    monkeypatch.setattr(embedding, "_SHARED", {})
+    settings["gnn"]["embedding"]["fake"] = True
+    a = embedding.shared_embedder(settings)(["x", "y"])
+    assert a.shape == (2, 384) and a.dtype == torch.float32
+    assert torch.allclose(a.norm(dim=1), torch.ones(2), atol=1e-5)
+    monkeypatch.setattr(embedding, "_SHARED", {})
+    assert torch.equal(embedding.shared_embedder(settings)(["y", "x"])[1], a[0])     # same text, same vector

@@ -118,8 +118,9 @@ def _pass(acts: Mapping, st: State, live: Tensor, auth: Tensor, adj: Tensor, t: 
 
     open_ = live & ~iso_block & ~quar2
     n_open = open_.sum(1)
+    surviving = torch.where(rate1, n_open.clamp(max=limit), n_open)       # a rate-limited sender keeps `limit` deliveries
     d_new = given("privilege_degradation") & ~degr1 & ~iso2
-    cost += c["privilege_degradation"] * total(d_new * n_open) * rem
+    cost += c["privilege_degradation"] * total(d_new * surviving) * rem
     counts[INDEX["privilege_degradation"]] = d_new.sum()
     degr2 = degr1 | d_new
 
@@ -143,8 +144,9 @@ def _pass(acts: Mapping, st: State, live: Tensor, auth: Tensor, adj: Tensor, t: 
     cost += c["delay"] * total(delay)
     counts[INDEX["delay"]] = delay.sum()
     explicit = given("sanitize") & after_deny
-    cost += c["sanitize"] * total(explicit)
-    counts[INDEX["sanitize"]] = explicit.sum()
+    fresh = explicit & ~delay & ~degr2[:, None]       # a delivery already delayed or already sanitized by a degradation is charged once
+    cost += c["sanitize"] * total(fresh)
+    counts[INDEX["sanitize"]] = fresh.sum()
     sanitized = explicit | (degr2[:, None] & after_deny)
 
     restricted = live & ~iso_block & (quar2 | rate_drop | deny | delay | sanitized)

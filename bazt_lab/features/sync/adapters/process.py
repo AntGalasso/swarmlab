@@ -80,6 +80,10 @@ class SyncHandle:
                 pass
         if self.summary is None:
             self._report_death()
+        elif self.summary["failures"]:
+            counts = ", ".join(f"{kind}: {n}" for kind, n in self.summary["failures"].items())
+            _tell(f"sync: {sum(self.summary['failures'].values())} upload operation(s) failed during the run "
+                  f"({counts}); the checkpoints stay on disk and were not all uploaded.")
 
 
 def start_child(settings: SyncSettings, paths: Sequence, environ: Mapping | None = None) -> SyncHandle:

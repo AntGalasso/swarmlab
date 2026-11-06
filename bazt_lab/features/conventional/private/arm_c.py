@@ -16,11 +16,12 @@ import torch
 
 from bazt_lab.core import public as core
 from bazt_lab.features.conventional.private import weights as w
-from bazt_lab.features.conventional.private.common import STAT_C, BudgetedArm, Tensor
+from bazt_lab.features.conventional.private.common import STAT_C, BudgetedArm, Tensor, mask_and
 
 BINS_KEY = "conventional.c.judge_score_bins"
 WINDOW_KEY = "conventional.c.presence_window_rounds"
 _NAN = math.nan
+JITTER_ULPS = 64        # tie_jitter_scale is 8 ulp of the largest sum; x64 gives about 6000 distinct levels per tie
 
 
 def _number(x) -> bool:
@@ -75,53 +76,74 @@ def _extend(lo: Tensor, hi: Tensor, x: Tensor, where: Tensor) -> tuple[Tensor, T
     return (torch.minimum(lo, torch.where(where, x, math.inf)), torch.maximum(hi, torch.where(where, x, -math.inf)))
 
 
-def _gain(met: Tensor, weight: float) -> Tensor:
-    return met.to(torch.float64) * weight
-
-
 class ArmC(BudgetedArm):
     name = "C"
-    jitter = True                    # tie-breaking jitter of the statistic (CONTRACT.md); the tests switch it off
+    JITTER = True                    # tie-breaking jitter of the statistic (CONTRACT.md); reset() copies it to `jitter`
     state_keys = ("recipients", "rate_lo", "rate_hi", "input_lo", "input_hi", "trust_lo", "trust_hi", "absent",
                   "flagged")
 
     def _allocate(self, ctx: core.EpisodeContext) -> None:
+        self.jitter = bool(type(self).JITTER)                                # one value for the whole run
         self.window = _window(core.get(ctx.settings, WINDOW_KEY))
         if not ctx.platform:
             raise core.Unset(f"{BINS_KEY}.<platform> (ctx.platform is empty)")
         value = core.get(ctx.settings, f"{BINS_KEY}.{ctx.platform}")
-        self.bin_upper, self.bin_weight = _bins(value)
+        upper, weight = _bins(value)
+        dev, dt = ctx.device, ctx.dtype
+        self.bin_upper, self.bin_weight = upper.to(dev, dt), weight.to(dev, dt)
+        self.threat = w.NETWORK_THREAT.to(dev, dt)
         self.unit = _unit(value)
+        bound = w.CONSTANT_TRUST + w.PRESENCE + w.SERVICE_USAGE + w.ACCESS_RATE + w.INPUT_BEHAVIOUR + w.TRUST_HISTORY             + float(w.NETWORK_THREAT.max()) + float(weight.max())            # largest |RL - TS|
+        self.jitter_scale = float(core.tie_jitter_scale(dt, bound)) * JITTER_ULPS
+        if 2 * self.jitter_scale >= self.unit:
+            raise ValueError(f"{BINS_KEY}.{ctx.platform} weights have a gcd of {self.unit}, too small for the {dt} "
+                             f"tie-breaking jitter ({self.jitter_scale}): the statistic could not be told apart")
         B, N = ctx.B, ctx.N
-        self.recipients = torch.zeros(B, N, N, dtype=torch.bool)            # j is among i's past recipients
+        self.recipients = torch.zeros(B, N, N, dtype=torch.bool, device=dev)    # j is among i's past recipients
         for history in ("rate", "input", "trust"):                           # running min / max of i's past values
-            setattr(self, f"{history}_lo", torch.full((B, N), math.inf, dtype=torch.float64))
-            setattr(self, f"{history}_hi", torch.full((B, N), -math.inf, dtype=torch.float64))
-        self.absent = torch.zeros(B, N, dtype=torch.int64)                   # consecutive rounds i was not active
-        self.flagged = torch.zeros(B, N, dtype=torch.bool)                   # agents C has denied so far
+            setattr(self, f"{history}_lo", torch.full((B, N), math.inf, dtype=dt, device=dev))
+            setattr(self, f"{history}_hi", torch.full((B, N), -math.inf, dtype=dt, device=dev))
+        self.absent = torch.zeros(B, N, dtype=torch.int64, device=dev)       # consecutive rounds i was not active
+        self.flagged = torch.zeros(B, N, dtype=torch.bool, device=dev)       # agents C has denied so far
+
+    def _jitter(self, scored: Tensor) -> Tensor:
+        """Tie-breaking jitter [B, N, N] (CONTRACT.md). Only evaluated deliveries need one, so the draw has one slot
+        per such delivery: delivery number r of the episode in row-major (sender, receiver) order this round gets
+        element r of the keyed stream. That depends on the episode and the round only, and costs K draws instead of N*N,
+        K being the most evaluated deliveries in one episode (most deliveries of a sparse graph are not)."""
+        flat = scored.flatten(1)
+        rank = flat.cumsum(-1, dtype=torch.int64) - 1
+        most = int(rank[:, -1].max()) + 1                                    # one host read per round
+        if most <= 0:
+            return torch.zeros_like(scored, dtype=self.ctx.dtype)
+        u = core.keyed_uniform(self.keys, f"{self.name}|jitter", self.step, (most,), self.ctx.device, self.ctx.dtype)
+        slot = u.gather(1, rank.clamp(min=0))
+        return ((slot - 0.5) * (2 * self.jitter_scale)).view_as(scored)
 
     def _policy(self, obs: core.Observation, evaluated: Tensor, audited: Tensor):
-        scored = evaluated & ~audited.isnan()[:, :, None]                    # A passed and the text was checked
+        dt = self.ctx.dtype
+        checked = (~audited.isnan())[:, :, None]
+        scored = mask_and(evaluated, checked.expand_as(evaluated))          # A passed and the text was checked
         sender = lambda x: x[:, :, None]                                     # noqa: E731  [B, N] -> [B, N, 1]
-        rate = obs.attempts.sum(-1).to(torch.float64)                        # messages i sends this round
+        rate = obs.attempts.sum(-1, dtype=dt)                                # messages i sends this round
 
-        partial = (w.CONSTANT_TRUST
-                   + _gain(sender(self.absent <= self.window), w.PRESENCE)
-                   + _gain(self.recipients, w.SERVICE_USAGE)
-                   + _gain(sender(_in_range(rate, self.rate_lo, self.rate_hi)), w.ACCESS_RATE)
-                   + _gain(sender(_in_range(audited, self.input_lo, self.input_hi)), w.INPUT_BEHAVIOUR))
-        ts = partial + _gain(_in_range(partial, sender(self.trust_lo), sender(self.trust_hi)), w.TRUST_HISTORY)
+        # sender-level terms on [B, N]; only service usage and trust history are per delivery
+        met = lambda mask, weight: mask.to(dt) * weight                      # noqa: E731  Eq. 1: the weight if met
+        base = (w.CONSTANT_TRUST + met(self.absent <= self.window, w.PRESENCE)
+                + met(_in_range(rate, self.rate_lo, self.rate_hi), w.ACCESS_RATE)
+                + met(_in_range(audited, self.input_lo, self.input_hi), w.INPUT_BEHAVIOUR))
+        partial = sender(base) + met(self.recipients, w.SERVICE_USAGE)
+        ts = partial + met(_in_range(partial, sender(self.trust_lo), sender(self.trust_hi)), w.TRUST_HISTORY)
 
         level = self.flagged.sum(-1).clamp(max=w.MAX_THREAT_LEVEL)
         judge = self.bin_weight[torch.bucketize(audited, self.bin_upper)]    # NaN lands beyond the last bin: 0
-        rl = w.NETWORK_THREAT[level][:, None, None] + sender(judge)
+        rl = (self.threat[level][:, None] + judge)[:, :, None]
 
         statistic = rl - ts
         if self.jitter:                                                      # strictly inside (-unit/2, unit/2)
-            everyone = torch.arange(self.ctx.B)
-            statistic = statistic + (self._draw("jitter", everyone) - 0.5) * (0.9 * self.unit)
+            statistic = statistic + self._jitter(scored)
         statistic = torch.where(scored, statistic, _NAN)
-        want = scored & (statistic > float(self.ctx.thresholds.get(STAT_C, math.inf)))
+        want = mask_and(scored, statistic > float(self.ctx.thresholds.get(STAT_C, math.inf)))
 
         # every checked delivery enters the histories, denied or not: C never penalises an earlier flag (D36)
         sent = scored.any(-1)
@@ -131,5 +153,7 @@ class ArmC(BudgetedArm):
         self.trust_lo = torch.minimum(self.trust_lo, torch.where(scored, ts, math.inf).amin(-1))
         self.trust_hi = torch.maximum(self.trust_hi, torch.where(scored, ts, -math.inf).amax(-1))
         self.flagged = self.flagged | want.any(-1)
-        self.absent = torch.where(obs.active, torch.zeros_like(self.absent), self.absent + 1)
-        return want, statistic, {STAT_C: statistic}
+        live = ~self.exhausted[:, None]                                      # an exhausted episode's histories stay frozen
+        updated = torch.where(obs.active, torch.zeros_like(self.absent), self.absent + 1)
+        self.absent = torch.where(live, updated, self.absent)
+        return want, statistic, {STAT_C: statistic}, want

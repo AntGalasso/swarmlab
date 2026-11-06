@@ -85,3 +85,16 @@ def test_rounded_statistic_equals_the_scalar_oracle(window):
                                         [True] * N, scores[b].tolist(), math.inf)
             got = {(i, j): round(stat[b, i, j].item()) for i in range(N) for j in range(N) if not stat[b, i, j].isnan()}
             assert got == {k: round(v) for k, v in stats.items()}
+
+
+@pytest.mark.parametrize("dtype", [torch.float64, torch.float32])
+def test_the_jitter_survives_the_compute_dtype_and_stays_far_below_the_gap(dtype):
+    ctx = make_ctx(full_adj(4, 12), "C", dtype=dtype, thresholds={}, settings=make_settings(rate_limit=None, bins=BINS, window=3),
+                   ids=[f"d{b}" for b in range(4)])
+    arm = ArmC()
+    arm.reset(ctx)
+    stat = arm.decide(Fake(ctx).obs(1, scores=[-8.0] * 12)).statistics[STAT]
+    live = stat[~stat.isnan()]
+    assert stat.dtype == dtype
+    assert live.unique().numel() > live.numel() // 2                    # the ties are really broken in this dtype
+    assert (live + 26.0).abs().max() < 0.05                              # and stay tiny against the gap of 1

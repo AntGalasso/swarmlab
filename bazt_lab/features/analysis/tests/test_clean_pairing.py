@@ -94,8 +94,9 @@ def harness_rows(modes=("redaction", "llm_rewrite"), checks=("regex", "llm_judge
             rows.extend(dict(r, sanitize_mode=mode, ma_check=check)
                         for r in llm_pair(twin=False, asr=0.3 if mode == "redaction" else 0.1))
     for mode in (twin_modes if twin_modes is not None else modes):
-        twin = llm_pair(clean=0.9 if mode == "redaction" else 0.8)[1]
-        rows.append(dict(twin, sanitize_mode=mode, ma_check=None))
+        for check in checks:
+            twin = llm_pair(clean=(0.9 if mode == "redaction" else 0.8) - (0.05 if check == "llm_judge" else 0.0))[1]
+            rows.append(dict(twin, sanitize_mode=mode, ma_check=check))
     return rows
 
 
@@ -103,17 +104,24 @@ def test_one_episode_repeated_per_sanitize_mode_and_ma_check_loads_as_separate_g
     t = read(tmp_path, harness_rows())
     assert {(k.sanitize_mode, k.ma_check) for k in t.index if not k.attack_free} == {
         (m, c) for m in ("redaction", "llm_rewrite") for c in ("regex", "llm_judge")}
-    assert {(k.sanitize_mode, k.ma_check) for k in t.index if k.attack_free} == {("redaction", None),
-                                                                                  ("llm_rewrite", None)}
+    assert {(k.sanitize_mode, k.ma_check) for k in t.index if k.attack_free} == {
+        (m, c) for m in ("redaction", "llm_rewrite") for c in ("regex", "llm_judge")}
 
 
-def test_the_twin_matches_on_sanitize_mode_and_serves_every_ma_check(tmp_path):
+def test_the_twin_matches_on_sanitize_mode_and_on_the_same_ma_check(tmp_path):
     t = read(tmp_path, harness_rows())
     sel = [i for i in range(t.n) if t.vocab["attack"][t.codes["attack"][i]] != "none"]
     got = {(t.vocab["sanitize_mode"][t.codes["sanitize_mode"][i]], t.vocab["ma_check"][t.codes["ma_check"][i]]):
            t.metrics["accuracy_clean_reference"][i] for i in sel}
-    assert got == {("redaction", "regex"): 0.9, ("redaction", "llm_judge"): 0.9,
-                   ("llm_rewrite", "regex"): 0.8, ("llm_rewrite", "llm_judge"): 0.8}
+    assert got == {("redaction", "regex"): 0.9, ("redaction", "llm_judge"): pytest.approx(0.85),
+                   ("llm_rewrite", "regex"): 0.8, ("llm_rewrite", "llm_judge"): pytest.approx(0.75)}
+
+
+def test_the_twin_does_not_depend_on_the_order_of_the_rows(tmp_path):
+    rows = harness_rows()
+    a = read(tmp_path / "a", rows)
+    b = read(tmp_path / "b", rows[::-1])
+    assert sorted(attacked(a, "nrp")) == pytest.approx(sorted(attacked(b, "nrp")))
 
 
 def test_a_twin_of_another_sanitize_mode_is_no_twin(tmp_path):
@@ -129,7 +137,7 @@ def test_comparisons_are_per_sanitize_mode_and_ma_check_and_use_the_attack_free_
     rows = []
     for mode in ("redaction", "llm_rewrite"):
         for r in base:
-            checks = ("regex", "llm_judge") if r["attack"] != "none" else (None,)
+            checks = ("regex", "llm_judge")
             rows.extend(dict(r, sanitize_mode=mode, ma_check=check) for check in checks)
     t, cfg = load(tmp_path, rows, platform="llm")
     out = hyp.h_budget(t, cfg, "llm")["challengers"]["BAZT"]
@@ -137,3 +145,56 @@ def test_comparisons_are_per_sanitize_mode_and_ma_check_and_use_the_attack_free_
     assert all(c["utility"] is not None for c in out["comparisons"])
     assert {(c["context"]["sanitize_mode"], c["context"]["ma_check"]) for c in out["comparisons"]} == {
         (m, c) for m in ("redaction", "llm_rewrite") for c in ("regex", "llm_judge")}
+
+
+def test_a_clean_utility_loss_on_one_task_is_not_charged_to_another_task(tmp_path):
+    """split by attack: the insider_pi comparison must read the clean accuracy of its own task (mmlu) only."""
+    from bazt_lab.features.analysis.private import hypotheses as hyp
+    arms = {"C": lambda *a: 0.3, "BAZT": lambda *a: 0.1}
+    util = {"C": lambda *a: 0.9, "BAZT": lambda *a: 0.9}
+    common = dict(platform="llm", block="llm_headline", cells=[("uncapped", "uncapped")], seeds=range(1, 6),
+                  conversations=range(6), backbones=("gpt",), noise_sd=0.0, seed_sd=0.0, utility=util)
+    pi = synth.episodes(arms, families=("insider_pi",), tasks=("mmlu",), **common)
+    ma = synth.episodes(arms, families=("insider_ma",), tasks=("poisonedrag",), **common)
+    for r in ma:
+        if r["arm"] == "BAZT" and r["attack"] == "none":
+            r["accuracy_clean"] = 0.4
+    t, cfg = load(tmp_path, pi + ma, platform="llm", analysis__split_by__llm=["attack"])
+    comps = hyp.h_topology(t, cfg, "llm")["challengers"]["BAZT"]["comparisons"]
+    by = {c["context"]["attack"]: c["utility"]["delta"] for c in comps}
+    assert by["insider_pi"] == pytest.approx(0.0, abs=1e-9) and by["insider_ma"] == pytest.approx(0.5)
+
+
+def test_a_baseline_that_ran_in_one_sanitize_mode_serves_every_mode_of_the_challenger(tmp_path):
+    from bazt_lab.features.analysis.private import hypotheses as hyp
+    common = dict(platform="llm", block="llm_capped", cells=[(0.1, 0.1)], seeds=range(1, 6), conversations=range(6),
+                  tasks=("mmlu",), backbones=("gpt",))
+    c = synth.episodes({"C": lambda *a: 0.3}, **common)
+    b = synth.episodes({"BAZT": lambda *a: 0.1}, **common)
+    rows = [dict(r, sanitize_mode="redaction") for r in c]
+    rows += [dict(r, sanitize_mode=m) for r in b for m in ("redaction", "llm_rewrite")]
+    t, cfg = load(tmp_path, rows, platform="llm")
+    out = hyp.h_budget(t, cfg, "llm")["challengers"]["BAZT"]
+    assert {x["context"]["sanitize_mode"] for x in out["comparisons"]} == {"redaction", "llm_rewrite"}
+    assert out["summary"]["complete"] is True
+
+
+def test_the_empty_metric_list_is_taken_after_the_clean_pairing(tmp_path):
+    t = read(tmp_path, llm_pair())
+    assert "nrp" not in t.empty_metrics and "accuracy_clean_reference" not in t.empty_metrics
+
+
+def test_nan_pairs_are_counted_before_the_seed_collapse(tmp_path):
+    from bazt_lab.features.analysis.private import hypotheses as hyp
+    rows = synth.episodes({"C": lambda *a: 0.3, "BAZT": lambda *a: 0.1}, cells=[(0.1, 0.1)], seeds=range(1, 6),
+                          sinks=range(4))
+    first = next(r for r in rows if r["arm"] == "BAZT" and r["attack"] != "none")
+    first["asr_final"] = math.nan
+    t, cfg = load(tmp_path, rows)
+    s = hyp.h_budget(t, cfg, "mock")["challengers"]["BAZT"]["comparisons"][0]["safety"]
+    assert s["n_dropped_nan"] == 1
+
+
+def test_the_report_fingerprint_changes_with_the_recovery_margin():
+    from bazt_lab.features.analysis.private import report
+    assert report.fingerprint(synth.settings()) != report.fingerprint(synth.settings(runtime__recovery_margin=0.5))

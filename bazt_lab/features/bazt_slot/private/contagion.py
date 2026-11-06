@@ -7,6 +7,11 @@ episodes never interact.
   katz        truncated Katz walk reach by matvec recursion (Katz 1953; the finite-horizon form of
               "time-critical influence minimisation", Wang et al., PACMMOD 2025). Gives the reach of a node and,
               from the same recursion, the value of each of its out-edges (link blocking, Kimura et al., TKDD 2009).
+  relative_decay
+              the Katz decay of each episode's graph, bazt.katz_decay / rho(A) (D115). The k-th term of the Katz sum is
+              decay^(k-1) A^k s, powers of the directed A, so the series converges exactly when decay x rho(A) < 1, rho
+              the spectral radius of that directed A (rho(A) = rho(A^T); on the symmetric graphs of the grid directed and
+              undirected coincide). A fraction in (0, 1) of 1 / rho is therefore valid on every topology.
   leading_pair / eigen_drop
               NetShield (Tong et al., TKDE 2016) and NetMelt (Tong et al., CIKM 2012): the relative drop of the
               spectral radius when a node (all its edges) or an edge is removed, to first order, from the leading
@@ -22,10 +27,11 @@ _EPS = 1e-12
 _RESIDUAL = 0.5          # largest ||A u - lam u|| / (lam ||u||) of a pair still taken as an eigenpair
 
 
-def katz(A: Tensor, s: Tensor, decay: float, order: int) -> tuple[Tensor, Tensor, Tensor]:
+def katz(A: Tensor, s: Tensor, decay: float | Tensor, order: int) -> tuple[Tensor, Tensor, Tensor]:
     """Truncated Katz reach by the recursion r_0 = s, r_m = s + decay * A r_{m-1}.
 
-    s[b, j] is the susceptibility weight of node j (what is lost if j is infected). Returns, all [B, N]:
+    s[b, j] is the susceptibility weight of node j (what is lost if j is infected). `decay` is one number or one per
+    episode ([B], see `relative_decay`), applied in the dtype of s. Returns, all [B, N]:
       H       = A r_{order-1}   = sum_{k=1..order} decay^(k-1) A^k s    reach of each node over `order` hops
       R       = r_{order-1}                                             continuation value behind each node, so
                                                                         the edge i->j is worth R_j and H_i = sum_j A_ij R_j
@@ -35,13 +41,39 @@ def katz(A: Tensor, s: Tensor, decay: float, order: int) -> tuple[Tensor, Tensor
     if order <= 0:
         z = torch.zeros_like(s)
         return z, z.clone(), z.clone()
+    d = torch.as_tensor(decay, dtype=s.dtype, device=s.device)
+    d = d[:, None] if d.dim() == 1 else d
     r, r_prev = s, None
     for _ in range(order - 1):
         r_prev = r
-        r = s + decay * torch.bmm(A, r[..., None])[..., 0]
+        r = s + d * torch.bmm(A, r[..., None])[..., 0]
     H = torch.bmm(A, r[..., None])[..., 0]
     H_prev = torch.zeros_like(s) if r_prev is None else torch.bmm(A, r_prev[..., None])[..., 0]
     return H, r, H_prev
+
+
+def spectral_radius(adj: Tensor, iterations: int) -> Tensor:
+    """float64 [B]: the spectral radius of each episode's directed graph adj[b, i, j] (i -> j), the leading eigenvalue
+    of `leading_pair` (for a nonnegative matrix the Perron root is the spectral radius). 0 where the power iteration
+    finds no eigenpair: a graph without a cycle (nilpotent, rho = 0), or one that has not converged in `iterations`."""
+    lam, _, _ = leading_pair(adj.to(torch.float64), iterations)
+    return lam
+
+
+def relative_decay(adj: Tensor, fraction: float, iterations: int) -> Tensor:
+    """float64 [B]: the Katz decay of each episode, fraction / rho(adj) (D115), fraction = bazt.katz_decay in (0, 1).
+
+    `adj` is the base graph. Every matrix the Katz sum runs on is entrywise at most adj (live deliveries times a factor
+    in [0, 1], or adj without quarantined edges), so by Perron-Frobenius monotonicity its radius is at most rho(adj) and
+    decay x its radius <= fraction < 1: the sum converges on all of them, and the decay does not move when an action
+    cuts an edge. Where no eigenpair is found, the out-degree bound max_i sum_j adj_ij >= rho stands in for rho; the
+    divisor is never below 1 (a 0/1 graph with a cycle has rho >= 1), so an empty graph gives the fraction, never NaN.
+    Computed once per episode in float64 with a fixed iteration count, so it depends on the batch only as far as CPU bmm
+    does (bitwise at the small N of the tests, last-ulp differences from about N = 30 with MKL)."""
+    A = adj.to(torch.float64)
+    rho = spectral_radius(A, iterations)
+    scale = torch.where(rho > 0, rho, A.sum(-1).amax(-1)).clamp_min(1.0)
+    return fraction / scale
 
 
 def _unit(x: Tensor) -> Tensor:
@@ -61,7 +93,7 @@ def leading_pair(A: Tensor, iterations: int, u0: Tensor | None = None, v0: Tenso
     lam ||u|| on a DAG, about 0 once converged), so a pair that fails it is reported as lam = 0.
     """
     B, N, _ = A.shape
-    start = torch.full((B, N), N ** -0.5, dtype=A.dtype)
+    start = torch.full((B, N), N ** -0.5, dtype=A.dtype, device=A.device)
     u = start if u0 is None else u0
     v = start.clone() if v0 is None else v0
     At = A.transpose(1, 2)

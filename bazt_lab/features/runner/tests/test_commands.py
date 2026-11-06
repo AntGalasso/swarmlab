@@ -1,5 +1,6 @@
 """`run-all` and `status`: the two commands a person types."""
 import json
+from pathlib import Path
 
 import pytest
 
@@ -151,8 +152,8 @@ def test_sync_runs_beside_each_block_and_stops_with_it(tmp_path):
     sync = fakes.FakeSync()
     argv = ["--run", "--block", "mock_calibration", "--block", "mock_frontier", "--results-root", str(tmp_path)]
     run(argv + sets(MOCK, ["sync.enabled=true"]), fakes.wiring({"mock": fakes.FakePlatform("mock")}, sync=sync))
-    assert [paths for _, paths in sync.started] == [[tmp_path / "sprint" / "mock_calibration"],
-                                                    [tmp_path / "sprint" / "mock_frontier"]]
+    # the profile folder is what is mirrored, so two profiles in one repository stay apart (<profile>/<block>/...)
+    assert [paths for _, paths in sync.started] == [[tmp_path / "sprint"], [tmp_path / "sprint"]]
     assert core.get(sync.started[0][0], "sync.enabled") is True and sync.stopped == 2
 
 
@@ -160,10 +161,11 @@ def test_the_gnn_artifacts_are_synced_during_gnn_training(tmp_path, monkeypatch)
     past_kickoff(monkeypatch)
     sync = fakes.FakeSync()
     argv = ["--run", "--block", "gnn_train", "--results-root", str(tmp_path)]
-    run(argv + sets(LLM, ["sync.enabled=true", "gnn_train.backbone='bb1'", "gnn.artifacts_dir='ckpt'"]) +
-        ["--allow-live-llm"], fakes.wiring({"llm": fakes.FakePlatform("llm")}, sync=sync))
+    run(argv + sets(LLM, ["sync.enabled=true", "gnn_train.backbone='bb1'", "gnn.artifacts_dir='ckpt'",
+                                  "gnn_train.logs_dir='logs'"]) +
+        ["--allow-live-llm"], fakes.wiring({"llm": fakes.FakePlatform("llm")}, sync=sync, gnn=fakes.FakeGnn()))
     ((_, paths),) = sync.started
-    assert paths[0] == tmp_path / "sprint" / "gnn_train" and paths[1].name == "ckpt" and len(paths) == 2
+    assert paths == [tmp_path / "sprint", Path("ckpt"), Path("logs")]          # as the gnn feature reads them
 
 
 def test_sync_is_stopped_after_a_crash_and_run_all_starts_one_per_block(tmp_path):
@@ -225,3 +227,14 @@ def test_the_profile_holds_the_sync_and_checkpoint_keys():
                                               "final_push_timeout_seconds")] == [
         "dataset", True, 10, [], [".launch.lock"], "below_normal", 600]
     assert json.dumps(core.get(s, "tracking.flush_rows")) == "3600"
+
+
+def test_sync_failures_are_printed_at_the_end_of_the_block(tmp_path, capsys):
+    sync = fakes.FakeSync()
+    sync.summary = {"commits": 3, "failures": {"commit": 2}}
+    argv = ["--run", "--block", "mock_calibration", "--results-root", str(tmp_path)]
+    run(argv + sets(MOCK, ["sync.enabled=true"]), fakes.wiring({"mock": fakes.FakePlatform("mock")}, sync=sync))
+    assert "mock_calibration: sync reported failures {'commit': 2} (3 commits)" in capsys.readouterr().out
+    sync.summary = {"commits": 3, "failures": {}}
+    run(argv + sets(MOCK, ["sync.enabled=true"]), fakes.wiring({"mock": fakes.FakePlatform("mock")}, sync=sync))
+    assert "sync reported" not in capsys.readouterr().out

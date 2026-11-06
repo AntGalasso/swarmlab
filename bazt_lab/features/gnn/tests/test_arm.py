@@ -244,3 +244,24 @@ def test_the_conversation_boundary_is_round_in_conversation_not_the_seed_run_rou
     again.round_in_conversation = 2
     a.decide(again)
     assert len(a.history[0]) == 2
+
+
+def test_an_attack_free_cell_deploys_the_gnn_of_its_task_whatever_the_fallback(trained):
+    s = copy.deepcopy(trained)
+    s["gnn_train"]["families"] = [["insider_pi", "mmlu"], ["insider_pi", "csqa"], ["insider_ta", "injecagent"]]
+    for fb in ("pi_same_task", "none"):
+        s["gnn"]["fallback_family"] = fb
+        assert gnn.deploy_family("none", "mmlu", s) == "insider_pi__mmlu"
+        assert gnn.deploy_family("none", "injecagent", s) == "insider_ta__injecagent"
+    del s["gnn"]["fallback_family"]                                    # the key is not consulted
+    assert gnn.deploy_family("none", "csqa", s) == "insider_pi__csqa"
+    with pytest.raises(ValueError, match="gsm8k"):
+        gnn.deploy_family("none", "gsm8k", s)                          # no family for the task
+    s["gnn_train"]["families"].append(["insider_ma", "mmlu"])
+    with pytest.raises(ValueError, match="mmlu"):
+        gnn.deploy_family("none", "mmlu", s)                           # two families for the task
+
+
+def test_the_arm_runs_on_an_attack_free_cell(trained):
+    a = arm(trained)
+    a.reset(ctx(trained, full_adj(), cell=("none", "mmlu")))

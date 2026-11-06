@@ -10,6 +10,8 @@ from typing import Callable, Dict, Iterable, List
 from bazt_lab.features.sync.private import plan
 from bazt_lab.features.sync.private.settings import SyncSettings
 
+COMMIT_FILES = 500                       # files per commit: bounds the handles one push holds open at once
+
 
 def _stderr(line: str) -> None:
     print(line, file=sys.stderr, flush=True)
@@ -45,18 +47,28 @@ class Uploads:
         return plan.changed(plan.snapshot(self.paths, self.settings.include, self.settings.exclude), self.uploaded)
 
     def commit(self, entries: List[plan.Entry]) -> None:
+        """Commits `entries` in batches of COMMIT_FILES. What the uploader returns is marked uploaded (with the stamp
+        of the version it really sent); a file it skipped, or a batch that failed, is retried at the next push."""
         if not entries or not self.ensure():
             return
-        try:
-            self.uploader.commit(entries, f"sync: {len(entries)} changed file(s)")
-        except Exception as error:
-            self._fail("commit", error)
-            return
-        self.uploaded.update(plan.stamps(entries))
-        self.commits += 1
+        for start in range(0, len(entries), COMMIT_FILES):
+            batch = entries[start:start + COMMIT_FILES]
+            try:
+                sent = self.uploader.commit(batch, f"sync: {len(batch)} changed file(s)")
+            except Exception as error:
+                self._fail("commit", error)
+                return
+            sent = list(sent)
+            self.uploaded.update(plan.stamps(sent))
+            self.commits += 1 if sent else 0
 
     def push(self) -> None:
-        self.commit(self.pending())
+        try:
+            entries = self.pending()
+        except Exception as error:                   # a listing that fails must not end the loop or skip the final push
+            self._fail("scan", error)
+            return
+        self.commit(entries)
 
 
 def run(uploads: Uploads, stop: threading.Event) -> None:

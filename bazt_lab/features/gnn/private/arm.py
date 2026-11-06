@@ -23,7 +23,13 @@ FALLBACKS = ("pi_same_task", "none")
 
 def deploy_family(attack: str, task: str, settings) -> str | None:
     """The GNN family run on the cell (attack, task): its own if trained (gnn_train.families), else per
-    gnn.fallback_family: 'pi_same_task' -> insider_pi__<task>, 'none' -> None (refused). Unset -> core.Unset."""
+    gnn.fallback_family: 'pi_same_task' -> insider_pi__<task>, 'none' -> None (refused). Unset -> core.Unset.
+    An attack-free cell (attack 'none') uses the unique family of its task and never reads the fallback key."""
+    if attack == "none":                                  # attack-free cell: the GNN of its task, whatever the fallback
+        same = [f for f in core.get(settings, "gnn_train.families") if f[1] == task]
+        if len(same) != 1:
+            raise ValueError(f"an attack-free cell needs exactly one gnn_train family for task {task!r}, found {len(same)}")
+        return family_key(*same[0])
     own = family_key(attack, task)
     if own in {family_key(*f) for f in core.get(settings, "gnn_train.families")}:
         return own
@@ -66,7 +72,7 @@ class GNNArm:
                 raise RuntimeError(f"the GNN checkpoint of {family} at {checkpoint_path(s, family)} is missing or its "
                                    f"training did not finish; run train_unit for {family} again (it resumes)")
             self._model = load_checkpoint(checkpoint_path(s, family))[0]
-        self._model.eval()
+        self._model.to(core.device(s)).eval()
         if self._embed is None:
             self._embed = shared_embedder(s)
         self.history: List[List[List[str]]] = [[] for _ in range(ctx.B)]   # per episode: turns of N texts

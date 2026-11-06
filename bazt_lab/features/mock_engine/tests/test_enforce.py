@@ -80,12 +80,6 @@ def test_a_delivery_is_charged_once_by_the_first_action_in_contract_order():
     assert count(out, "deny") == [1] and count(out, "delay") == [0] and count(out, "sanitize") == [0]
 
 
-def test_delay_and_sanitize_combine_on_one_delivery_and_are_both_charged():
-    both = mask(1, 4, (0, 1, 2))
-    out = run(core.Actions(delay=both, sanitize=both))
-    assert out.cost.tolist() == [2.0] and out.delayed[0, 1, 2] and out.sanitized[0, 1, 2]
-
-
 def test_isolation_costs_out_degree_times_remaining_rounds_and_persists():
     out = run(core.Actions(isolation=agents(1, 4, (0, 1))), t=2, T=4)             # 3 live out-edges x rounds 2..4
     assert out.cost.tolist() == [9.0] and out.state.iso.tolist() == [[False, True, False, False]]
@@ -251,3 +245,22 @@ def test_reinstating_an_agent_that_still_sends_pays_for_the_current_round_too():
     st.rate[0, 1] = True
     out = run(core.Actions(reinstatement=agents(1, 4, (0, 1))), state=st, t=3, T=8)
     assert out.cost.tolist() == [18.0]                            # 3 x rounds 3..8
+
+
+def test_privilege_degradation_after_a_rate_limit_pays_only_for_the_deliveries_the_limit_let_through():
+    first = run(core.Actions(rate_limit=agents(1, 4, (0, 0))), t=1, T=6)
+    second = run(core.Actions(privilege_degradation=agents(1, 4, (0, 0))), state=first.state, t=2, T=6)
+    assert second.cost.tolist() == [5.0]                         # 1 surviving delivery x 5 remaining rounds
+
+
+def test_an_explicit_sanitize_on_a_degraded_sender_is_free_because_degradation_already_sanitizes_it():
+    st = E.Persistent.zeros(1, 4)
+    st.degr[0, 0] = True
+    out = run(core.Actions(sanitize=mask(1, 4, (0, 0, 1))), state=st)
+    assert out.cost.tolist() == [0.0] and count(out, "sanitize") == [0] and out.sanitized[0, 0, 1]
+
+
+def test_delay_and_sanitize_on_one_delivery_are_charged_once_by_the_first_action():
+    out = run(core.Actions(delay=mask(1, 4, (0, 0, 1)), sanitize=mask(1, 4, (0, 0, 1))))
+    assert out.cost.tolist() == [1.0] and count(out, "delay") == [1] and count(out, "sanitize") == [0]
+    assert out.delayed[0, 0, 1] and out.sanitized[0, 0, 1]

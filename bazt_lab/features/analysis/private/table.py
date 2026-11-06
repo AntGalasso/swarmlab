@@ -1,8 +1,9 @@
 """Result rows as compact columns: int-coded unit fields, float64 metrics, rows grouped by cell, paired by episode.
 
-Rows come from <results_dir>/<block>/units/*.jsonl, one `{"unit": {...}, **metrics}` per line (unit fields may also be
-repeated flat in the row; the row wins a collision). A full mock frontier has millions of rows, so a row is never kept
-as a dict: every unit field is a dictionary code, every metric an array('d').
+Rows come from the committed rows files of <results_dir>/<block>/units/ and of its worker shards units/<shard>/
+(`core.committed_row_files`, the store's done rule), one `{"unit": {...}, **metrics}` per line (unit fields may also be
+repeated flat in the row; the row wins a collision). A full mock frontier has millions of rows, so a row is never kept as a dict: every unit
+field is a dictionary code, every metric an array('d').
 
 Vocabularies are sorted after loading, so codes, groups and pair order do not depend on file or row order.
 A *group* is the set of rows of one (block, arm, audit, intervention, topology, agents, condition, preset,
@@ -21,6 +22,7 @@ from typing import Dict, List, NamedTuple, Sequence
 
 import numpy as np
 
+from bazt_lab.core import public as core
 from bazt_lab.features.metrics.public import recovery_time_accuracy
 
 BUDGET_FIELDS = ("audit", "intervention")
@@ -52,9 +54,7 @@ class Key(NamedTuple):
         return self._replace(arm=None, attack_free=None)
 
     def with_arm(self, arm: str, attack_free: bool | None = None) -> Key:
-        free = self.attack_free if attack_free is None else attack_free
-        # an attack-free run has no memory-attack check: it serves every `ma_check` of the attacked rows
-        return self._replace(arm=arm, attack_free=free, **({"ma_check": None} if free else {}))
+        return self._replace(arm=arm, attack_free=self.attack_free if attack_free is None else attack_free)
 
 
 class DuplicateRows(ValueError):
@@ -96,13 +96,31 @@ class Table:
     missing_blocks: List[str] = field(default_factory=list)
     torn_lines: int = 0
     empty_metrics: List[str] = field(default_factory=list)
+    uncommitted_files: int = 0               # rows files without their done marker, not read (core.committed_row_files)
+    _modeless: Dict | None = field(default=None, repr=False)
 
     def groups(self) -> Dict[Key, np.ndarray]:
         return self.index
 
+    def resolve(self, key: Key) -> Key:
+        """`key`, or the one group that differs from it only in `sanitize_mode`. An arm that never sanitizes (A, B, C)
+        runs once, in the first mode, and serves every sanitize mode of an arm that does."""
+        if key in self.index:
+            return key
+        if self._modeless is None:
+            self._modeless = {}
+            for k in self.index:
+                self._modeless.setdefault(k._replace(sanitize_mode=None), []).append(k)
+        alternatives = self._modeless.get(key._replace(sanitize_mode=None), [])
+        return alternatives[0] if len(alternatives) == 1 else key
+
+    def has(self, key: Key) -> bool:
+        return self.resolve(key) in self.index
+
     def aligned(self, keys: Sequence[tuple]):
         """Row numbers of the episodes present in every group, one array per key and in the same episode order;
-        None if one of the groups is absent."""
+        None if one of the groups is absent. A group missing only in its sanitize mode is served by `resolve`."""
+        keys = [self.resolve(k) if isinstance(k, Key) else k for k in keys]
         if any(k not in self.index for k in keys):
             return None
         rows = [self.index[k] for k in keys]
@@ -141,9 +159,13 @@ class _Builder:
             self.by_round.append(row.get("accuracy_by_round"))
         for m in self.metric_columns:
             v = row.get(m)
-            self.metrics[m].append(math.nan if v is None else float(v))
+            try:
+                self.metrics[m].append(math.nan if v is None else float(v))
+            except (TypeError, ValueError):         # a list (a per-round column) or a text: never a metric value
+                raise ValueError(f"metric {m!r} of a row of arm {row.get('arm')!r} in block {block!r} is not a number: "
+                                 f"{v!r}") from None
 
-    def finish(self, missing_blocks: List[str], torn: int) -> Table:
+    def finish(self, missing_blocks: List[str], torn: int, uncommitted: int) -> Table:
         n = len(self.attack_free)
         vocab: Dict[str, list] = {}
         codes: Dict[str, np.ndarray] = {}
@@ -164,7 +186,7 @@ class _Builder:
         for f in EPISODE_FIELDS:
             episode_id = episode_id * max(len(vocab[f]), 1) + codes[f]
         table = Table(n, vocab, codes, metrics, episode_id, {}, missing_blocks, torn,
-                      [m for m, v in metrics.items() if n == 0 or np.isnan(v).all()])
+                      [m for m, v in metrics.items() if n == 0 or np.isnan(v).all()], uncommitted)
         table.index = _group(table)
         return table
 
@@ -173,7 +195,7 @@ class _Builder:
         reference) from the attack-free row of the same unit and episode. A missing twin is an error."""
         if self.by_round is None or not t.n:
             return
-        fields = [f for f in ("block", *RAW_FIELDS) if f not in ("attack", "ma_check")]   # a twin has no ma_check
+        fields = [f for f in ("block", *RAW_FIELDS) if f != "attack"]       # the twin has the same ma_check
         ident = np.stack([t.codes[f] for f in fields], axis=1)
         free = t.codes["attack_free"] == 1
         twin = {tuple(ident[i]): t.metrics["accuracy_clean"][i] for i in np.flatnonzero(free)}
@@ -224,15 +246,20 @@ def _group(t: Table) -> Dict[Key, np.ndarray]:
 
 
 def load(results_dir, blocks: Sequence[str], metric_columns: Sequence[str], clean_margin: float | None = None) -> Table:
-    """Read every row of the given blocks under `results_dir` (the directory that holds the block folders). With
-    `clean_margin` (runtime.recovery_margin) the attack rows are paired with their attack-free twin (LLM platform)."""
-    builder, missing, torn = _Builder(metric_columns, clean_margin is not None), [], 0
+    """Read every committed row of the given blocks under `results_dir` (the directory that holds the block folders),
+    from units/ and every worker shard (`core.committed_row_files`: a rows file without its done marker is a batch a crash
+    cut before its done list or a unit still running or abandoned, and is counted in `uncommitted_files`, not read). A
+    block with no units/ folder or no committed row is listed in `missing_blocks`. With `clean_margin` (runtime.recovery_margin) the attack rows are paired with their
+    attack-free twin (LLM platform)."""
+    builder, missing, torn, uncommitted = _Builder(metric_columns, clean_margin is not None), [], 0, 0
     for block in blocks:
-        units = Path(results_dir) / block / "units"
-        if not units.is_dir():
+        if not (Path(results_dir) / block / "units").is_dir():
             missing.append(block)
             continue
-        for path in sorted(units.glob("*.jsonl")):
+        files, skipped = core.committed_row_files(Path(results_dir) / block)
+        uncommitted += skipped
+        before = len(builder.attack_free)
+        for path in files:
             with path.open(encoding="utf-8") as handle:
                 for line in handle:
                     if not line.strip():
@@ -243,7 +270,10 @@ def load(results_dir, blocks: Sequence[str], metric_columns: Sequence[str], clea
                         torn += 1
                         continue
                     builder.add(raw, block)
-    table = builder.finish(missing, torn)
+        if len(builder.attack_free) == before:          # no committed row: a block without data, not an empty result
+            missing.append(block)
+    table = builder.finish(missing, torn, uncommitted)
     if clean_margin is not None:
         builder.pair_clean(table, clean_margin)
+        table.empty_metrics = [m for m, v in table.metrics.items() if table.n == 0 or np.isnan(v).all()]
     return table

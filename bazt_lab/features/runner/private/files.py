@@ -4,10 +4,15 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-import sys
 from pathlib import Path
 
 from filelock import FileLock, Timeout
+
+from bazt_lab.core import public as core
+
+
+class BusyLaunch(SystemExit):
+    """Another launch holds the block: a refusal that is not an error of the block, so it is not remembered."""
 
 
 def write_text(path: Path, text: str) -> None:
@@ -16,7 +21,7 @@ def write_text(path: Path, text: str) -> None:
         f.write(text)
         f.flush()
         os.fsync(f.fileno())
-    os.replace(tmp, path)
+    core.atomic_replace(tmp, path)
 
 
 def write_json(path: Path, data) -> None:
@@ -31,7 +36,7 @@ def exclusive(path: Path, refusal: str):
     try:
         lock.acquire()
     except Timeout:
-        sys.exit(refusal)
+        raise BusyLaunch(refusal) from None
     try:
         yield
     finally:

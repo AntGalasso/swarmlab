@@ -19,7 +19,7 @@ def ctx_of(B=3, N=4):
 def test_equal_values_become_distinct_and_stay_within_the_jitter_scale():
     ctx = ctx_of(1, 4)
     out = jt.jitter(torch.full((1, 4, 4), 3.0, dtype=F64), ctx, "judge", 1)
-    assert out.unique().numel() == 16 and (out - 3.0).abs().max().item() < jt.SCALE
+    assert out.unique().numel() == 16 and (out - 3.0).abs().max().item() < 1e-6
 
 
 def test_the_order_of_distinct_values_never_changes_whatever_their_gaps():

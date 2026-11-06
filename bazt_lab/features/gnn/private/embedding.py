@@ -49,9 +49,23 @@ class CachedEmbedder:
 _SHARED: Dict[tuple, CachedEmbedder] = {}
 
 
+FAKE_DIM = 384          # the width of all-MiniLM-L6-v2
+
+
+def fake_encode(texts: Sequence[str]) -> torch.Tensor:
+    """Deterministic unit vectors keyed by the text: an offline stand-in for the real encoder (tests and e2e only)."""
+    out = torch.stack([torch.randn(FAKE_DIM, generator=core.stream("gnn_fake_embed", t), dtype=torch.float32)
+                       for t in texts])
+    return out / out.norm(dim=1, keepdim=True)
+
+
 def shared_embedder(settings) -> CachedEmbedder:
-    """The process-wide embedder of the settings' sentence-transformers model, loaded on first use."""
+    """The process-wide embedder of the settings' sentence-transformers model, loaded on first use. With the
+    test-only key `gnn.embedding.fake` true it is `fake_encode` instead, so offline runs download nothing."""
     key = tuple(core.get(settings, f"gnn.embedding.{k}") for k in ("model", "revision", "batch_size"))
+    if core.is_set(settings, "gnn.embedding.fake") and core.get(settings, "gnn.embedding.fake"):
+        key = ("fake",) + key
+        _SHARED.setdefault(key, CachedEmbedder(fake_encode))
     if key not in _SHARED:
         from bazt_lab.features.gnn.adapters.sbert import load_encoder  # heavy import, only when really used
         _SHARED[key] = CachedEmbedder(load_encoder(*key))

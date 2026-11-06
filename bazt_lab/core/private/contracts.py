@@ -1,8 +1,16 @@
 """Contracts shared by every feature. Changing anything here is a cross-feature change: owner = core.
 
 Shapes: B episodes in a batch, N agents, T rounds. Agents send at every round; a delivery is one message on one
-directed edge (sender i -> receiver j), indexed [b, i, j]. Every float tensor is float64, every mask is bool,
-every index is int64. Tensors live on CPU unless a feature documents otherwise.
+directed edge (sender i -> receiver j), indexed [b, i, j]. Every mask is bool, every index is int64.
+
+Device and precision (settings [compute]): tensors live on `ctx.device` and float tensors that carry probabilities,
+scores, statistics and model values use `ctx.dtype` (float64 or float32); a feature creates them with
+`device=ctx.device, dtype=ctx.dtype`. Draws come from `core.keyed_uniform` / `keyed_normal`, which return the SAME
+numbers on every device and dtype (up to rounding). Accounting is exact and NEVER follows compute.dtype: audit and
+intervention caps, remaining budgets, spend per round and action costs are float64 (integer-valued unit counts,
+exact up to 2**53) or int64, so budget sums, caps and exhaustion tests give the same answer in a float32 run.
+Statistics that are compared across dtypes (ties, thresholds) get a rounding-safe jitter from
+`core.tie_jitter_scale(ctx.dtype, magnitude)`.
 """
 from __future__ import annotations
 
@@ -39,7 +47,9 @@ class EpisodeContext:
     audit_cap: Tensor                        # float64 [B]: audit units for the episode, inf if uncapped
     intervention_cap: Tensor                 # float64 [B]: intervention units for the episode, inf if uncapped
     costs: Mapping[str, float]               # ActionKind value -> cost per affected delivery
-    thresholds: Mapping[str, float]          # calibrated thresholds of this arm (empty while calibrating)
+    thresholds: Mapping[str, float]          # thresholds this arm acts on: empty in an open-loop calibration pass (it collects
+                                             # statistics and never acts), the candidate thresholds of a closed-loop pass, the
+                                             # calibrated ones in an evaluation run
     settings: Mapping                        # resolved settings (read with core.get)
     arm: str
     unit_ids: tuple                          # length B, for checkpointing and logging
@@ -49,6 +59,8 @@ class EpisodeContext:
                                              # None for every other arm
     cell: Optional[Mapping] = None           # {"attack", "task"} of the batch's units (LLM side; the GNN arm picks
                                              # its trained family from it); None where not supplied
+    device: torch.device = field(default_factory=lambda: torch.device("cpu"))   # compute.device (core.device(settings)): where this batch's tensors live
+    dtype: torch.dtype = torch.float64       # compute.dtype (core.dtype(settings)): float tensors other than accounting
 
 
 @dataclass
@@ -58,12 +70,13 @@ class Observation:
     T: int
     active: Tensor                           # bool [B, N]: not isolated
     attempts: Tensor                         # bool [B, N, N]: deliveries the agents try this round
-    monitor: Optional[Tensor]                # float64 [B, N] cheap monitor probability (free); None on the LLM side
+    monitor: Optional[Tensor]                # ctx.dtype [B, N] cheap monitor probability (free); None on the LLM side
     remaining_audit: Tensor                  # float64 [B]
     remaining_intervention: Tensor           # float64 [B]
-    audit: Callable[[Tensor], Tensor]        # bool [B, N] senders -> float64 [B, N] judge/auditor score of
+    audit: Callable[[Tensor], Tensor]        # bool [B, N] senders -> ctx.dtype [B, N] judge/auditor score of
                                              # their text this round, NaN where not requested or unaffordable;
-                                             # debits one audit unit per requested sender
+                                             # debits one audit unit per sender it grants (a request beyond the affordable
+                                             # number is granted as a keyed random subset, on both platforms)
     authentic: Optional[Tensor] = None       # bool [B, N, N]: message authentication (mTLS / signature) passed;
                                              # False where content was altered in transit (AiTM)
     oracle: Optional[Callable[[], Tensor]] = None   # bool [B, N] infected now; supplied ONLY to arms whose
@@ -72,15 +85,24 @@ class Observation:
                                              # (t and T always count the whole episode = seed run, D54); None on the mock
     texts: Optional[List[List[str]]] = None   # [B][N] text each agent wrote this round (LLM side only;
                                              # delivered or not); None on the mock side
+    audit_isolated: Optional[Callable[[Tensor], Tensor]] = None
+                                             # D123: bool [B, N] isolated agents -> ctx.dtype [B, N] auditor/judge score
+                                             # of the isolated agent (mock: its carried state, D111; LLM: the text it
+                                             # still wrote this round), NaN where not requested, not isolated, without
+                                             # a text or unaffordable. Same unit cost, same audit budget and same keyed
+                                             # random subset on over-request as `audit`, but its own call count, so
+                                             # `audit` itself never grants an isolated agent and its numbers never move
+                                             # for an arm that does not call this. None where a platform has no such channel.
 
 
 @dataclass
 class Actions:
     """A defender's decision for round t. None = no such action. The platform applies them in this order:
     reinstatement, isolation, edge_quarantine, privilege_degradation, rate_limit, deny, delay, sanitize;
-    charges intervention units per affected delivery (agent-level actions: every delivery they remove, i.e.
-    out-degree x remaining rounds); rejects all actions of an episode whose cost exceeds its remaining budget
-    (counted as a budget violation)."""
+    charges intervention units per affected delivery (agent-level actions: the deliveries they remove over the remaining
+    rounds, e.g. isolation: live out-degree x remaining rounds); an action on a delivery an earlier action already removed
+    costs nothing. Rejects all actions of an episode whose cost exceeds its remaining budget (counted as a budget
+    violation)."""
     deny: Optional[Tensor] = None            # bool [B, N, N]
     sanitize: Optional[Tensor] = None        # bool [B, N, N]
     delay: Optional[Tensor] = None           # bool [B, N, N]
@@ -89,9 +111,12 @@ class Actions:
     privilege_degradation: Optional[Tensor] = None   # bool [B, N]
     isolation: Optional[Tensor] = None       # bool [B, N]
     reinstatement: Optional[Tensor] = None   # bool [B, N]
+    threshold_restricted: Optional[Tensor] = None   # bool [B, N, N]: deliveries restricted BECAUSE a calibrated
+                                             # statistic exceeded its threshold (D108: alpha counts only these;
+                                             # rate limits and A's rules are not); None = every restriction counts
     events: List[dict] = field(default_factory=list)   # e.g. {"event": "budget_exhausted", "b": 0, "budget": "audit"}
     statistics: Dict[str, Tensor] = field(default_factory=dict)
-    # Decision statistics for alpha calibration: name -> float64 [B, N, N] (or [B, N]), higher = more suspicious;
+    # Decision statistics for alpha calibration: name -> ctx.dtype [B, N, N] (or [B, N]), higher = more suspicious;
     # the arm acts when statistic > ctx.thresholds[name]. A threshold missing from ctx.thresholds means +inf
     # (never act on it), which is how calibration runs collect the statistic without acting.
 
@@ -112,7 +137,17 @@ class Defender(Protocol):
 
 @dataclass
 class EpisodeTrace:
-    """Ground-truth record of a batch, produced by a platform, consumed by metrics. Rounds are 0-based here."""
+    """Ground-truth record of a batch, produced by a platform, consumed by metrics. Rounds are 0-based here.
+
+    Time convention, identical on both platforms (index r = round r+1 of the episode):
+      infected[r]  the agent's OWN output of round r carries the payload;
+      active[r]    the agent is active DURING round r, i.e. before the defender's decision taken after round r;
+      attempts/delivered/restricted/payload_delivered[r] and meta['tampered'][r]  the deliveries that carry the
+                   outputs of round r (sender i's round-r text or value), whenever they arrive (a delay keeps the
+                   index of the round the output was produced in);
+      correct[r]   the agent's answer of round r.
+    A delivery (r, i, j) is malicious iff infected[r, i] or it was tampered; a decision taken after round r shows
+    in active[r+1] and in meta['flagged']."""
     unit_ids: tuple                          # length B
     infected: Tensor                         # bool [B, T, N]: the agent's own output carries the payload
     attackers: Tensor                        # bool [B, N]: insider attackers / AiTM victim's adversary = none
@@ -181,6 +216,9 @@ class ArmSpec:
 class Platform(Protocol):
     """Runs units. Mock: a batch of episodes vectorised over B. LLM: one seed run (its conversations in order)."""
     name: str                                # "mock" | "llm"
+    adaptive_conditions: tuple               # the adaptive conditions (unit["condition"]) it runs; a unit carrying any
+                                             # other is refused by run_batch, and the runner refuses its block before
+                                             # anything runs. Mock: the adaptive feature's CONDITIONS. LLM: ("gray_box",), the replay of the mock's best response (D110).
 
     def run_batch(self, units: List[dict], arm: ArmSpec, settings: Mapping, store, tracker: Tracker) -> List[dict]:
         """Run the units (all with the same arm, budget cell, topology, attack and N), append rows to `store`

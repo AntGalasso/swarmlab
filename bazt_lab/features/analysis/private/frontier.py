@@ -110,7 +110,7 @@ def efficiency(t: Table, cfg: Cfg, platform: str) -> dict:
         frontiers, skipped = [], []
         for site in sorted(sites, key=sort_key):
             ref = site._replace(arm=cfg.baseline, audit=UNCAPPED, intervention=UNCAPPED, attack_free=False)
-            if ref not in t.index:
+            if not t.has(ref):
                 skipped.append({"context": _site(site),
                                 "reason": f"no uncapped {cfg.baseline} run to compare with"})
                 continue

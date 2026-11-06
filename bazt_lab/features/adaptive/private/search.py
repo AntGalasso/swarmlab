@@ -28,7 +28,7 @@ from bazt_lab.features.adaptive.private import space as sp
 from bazt_lab.features.adaptive.private import table as tb
 from bazt_lab.features.runner import public as runner
 
-REQUIRED = ("arm", "attack", "agents", "condition")
+REQUIRED = ("arm", "attack", "agents", "condition", "seed")
 BLOCK = "mock_adaptive_search"
 METRIC = "asr_final"            # the safety endpoint of the confirmatory hypotheses (D63), a column of the metrics rows
 
@@ -67,8 +67,8 @@ def _episode_id(cell: dict, seed, sink) -> str:
     return f"{cell['arm']}-search-{digest}-{seed}-{sink}"
 
 
-def _job(cell: dict, eval_units: Mapping[tuple, Mapping], space: sp.Space) -> Job:
-    """eval_units: (seed, sink) -> an evaluation unit of the cell. A search on the evaluation episodes themselves runs
+def _job(cell: dict, eval_ids: Mapping[tuple, str], space: sp.Space) -> Job:
+    """eval_ids: (seed, sink) -> the id of the cell's evaluation unit. A search on the evaluation episodes themselves runs
     under the evaluation unit's id (its `id` field, else `runner.unit_id`), so the searched ASR of the chosen strategy
     is exactly the ASR the evaluation will measure."""
     cond = cell["condition"]
@@ -77,7 +77,7 @@ def _job(cell: dict, eval_units: Mapping[tuple, Mapping], space: sp.Space) -> Jo
     level = space.knowledge[cond]
     if level == "cell":
         lo, hi = space.search_seeds
-        clash = sorted({s for s, _ in eval_units} & set(range(lo, hi + 1)))
+        clash = sorted({s for s, _ in eval_ids} & set(range(lo, hi + 1)))
         if clash:
             raise sp.Refusal(f"{tb.cell_id(cell)}: evaluation seeds {clash} are among the search seeds {[lo, hi]}: "
                              f"the attacker must be optimised on seeds that are not evaluated")
@@ -85,17 +85,18 @@ def _job(cell: dict, eval_units: Mapping[tuple, Mapping], space: sp.Space) -> Jo
         pairs = tuple((s, k) for s in range(lo, hi + 1) for k in sinks)
         return Job(cell, level, pairs, {(None, None): tuple(range(len(pairs)))},
                    {p: _episode_id(cell, *p) for p in pairs})
-    pairs = tuple(eval_units)
+    pairs = tuple(eval_ids)
     groups: Dict[tuple, List[int]] = {}
     for i, (seed, sink) in enumerate(pairs):
         groups.setdefault((seed, None) if level == "seed" else (seed, sink), []).append(i)
     return Job(cell, level, pairs, {k: tuple(v) for k, v in groups.items()},
-               {p: eval_units[p].get("id") or runner.unit_id(eval_units[p]) for p in pairs})
+               {p: eval_ids[p] for p in pairs})
 
 
 def plan_jobs(units: Iterable[Mapping], space: sp.Space) -> List[Job]:
     """One job per cell of the evaluation units, in first-seen order; attack-free units have nothing to search.
-    Refuses before anything runs: a unit without a required field, an unknown condition, too many candidates."""
+    Refuses before anything runs: a unit without a required field, an unknown condition, too many candidates.
+    Memory: one id string per distinct (cell, seed, sink) episode of the evaluation units, never the units."""
     cells: Dict[str, tuple] = {}
     for u in units:
         for field in REQUIRED:
@@ -104,7 +105,10 @@ def plan_jobs(units: Iterable[Mapping], space: sp.Space) -> List[Job]:
         if u["attack"] == tb.ATTACK_FREE:
             continue
         cell = tb.cell_of(u)
-        cells.setdefault(tb.cell_id(cell), (cell, {}))[1].setdefault((u["seed"], u.get("sink")), u)
+        ids = cells.setdefault(tb.cell_id(cell), (cell, {}))[1]
+        key = (u["seed"], u.get("sink"))
+        if key not in ids:                  # only the id is kept, not the unit: memory is one short string per episode
+            ids[key] = u.get("id") or runner.unit_id(u)
     jobs = [_job(cell, pairs, space) for cell, pairs in cells.values()]
     for job in jobs:
         sp.checked_count(job.family, job.agents, job.condition, space)
@@ -157,19 +161,24 @@ def run_chunk(platform, arm_spec, settings, tracker, batch: List[dict]) -> List[
         if named != unit["id"]:
             raise RuntimeError(f"the platform returned rows in another order than the units ({named} for {unit['id']})")
         value = row.get(METRIC, math.nan)
-        if not isinstance(value, (int, float)) or math.isnan(value):
-            raise ValueError(f"unit {unit['id']}: the platform's row has no usable {METRIC} (got {value!r})")
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0.0 <= value <= 1.0:      # NaN fails too
+            raise ValueError(f"unit {unit['id']}: the platform's row has no usable {METRIC}: a finite number in [0, 1] "
+                             f"is required (got {value!r})")
         out.append(float(value))
     return out
 
 
 def _load_progress(path: Path, vals: torch.Tensor) -> None:
-    """Fill `vals` (flat, NaN = pending) from the progress lines. A torn last line is dropped from the file."""
+    """Fill `vals` (flat, NaN = pending) from the progress lines. Only complete lines (ending in a newline and valid
+    JSON) count; a torn tail, even one that parses, is dropped and the file is rewritten atomically without it, so the
+    next append starts on a fresh line."""
     if not path.exists():
         return
-    lines = path.read_text(encoding="utf-8").splitlines()
+    text = path.read_text(encoding="utf-8")
     good = []
-    for line in lines:
+    for line in text.splitlines(keepends=True):
+        if not line.endswith("\n"):
+            break
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -179,8 +188,10 @@ def _load_progress(path: Path, vals: torch.Tensor) -> None:
             raise ValueError(f"{path}: progress does not fit this plan ({vals.numel()} episodes); delete it")
         vals[torch.tensor(f, dtype=torch.int64)] = torch.tensor(a, dtype=torch.float64)
         good.append(line)
-    if len(good) != len(lines):
-        path.write_text("".join(line + "\n" for line in good), encoding="utf-8")
+    if "".join(good) != text:
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text("".join(good), encoding="utf-8")
+        os.replace(tmp, path)
 
 
 def _append_progress(path: Path, indices: Sequence[int], asr: Sequence[float]) -> None:

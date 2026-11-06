@@ -9,7 +9,7 @@ from __future__ import annotations
 import itertools
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Mapping, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 from bazt_lab.core import public as core
 
@@ -38,7 +38,7 @@ class Space:
     detectabilities: Tuple[float, ...]          # descending, contains 1.0
     evasion_cost: float
     max_candidates: int
-    search_seeds: Tuple[int, int]
+    search_seeds: Optional[Tuple[int, int]]     # None when no configured condition searches at cell level
     every_sink: bool
     main_seeds: Tuple[int, int]
     knowledge: Mapping[str, str]                # condition -> KNOWLEDGE value, for the configured conditions
@@ -52,6 +52,8 @@ def _grid(settings, key, lo_open: bool, hi_open: bool, must_contain_one: bool = 
     if len(set(values)) != len(values):
         raise Refusal(full + f"has duplicate values {values}")
     for v in values:
+        if math.isnan(v):
+            raise Refusal(full + "has NaN")
         if (v <= 0.0 if lo_open else v < 0.0) or (v >= 1.0 if hi_open else v > 1.0):
             raise Refusal(full + f"value {v} outside {'(' if lo_open else '['}0, 1{')' if hi_open else ']'}")
     if must_contain_one and 1.0 not in values:
@@ -81,14 +83,6 @@ def load_space(settings: Mapping) -> Space:
     cap = int(core.get(settings, "mock.adaptive.max_candidates"))
     if cap < 1:
         raise Refusal(f"mock.adaptive.max_candidates must be at least 1, got {cap}")
-    search = _seed_range(settings, "mock.adaptive.search_seeds")
-    main = _seed_range(settings, "mock.main_seeds")
-    held = _seed_range(settings, "mock.heldout_seeds")
-    tune = _seed_range(settings, "mock.tune_seeds")
-    for name, (lo, hi) in (("mock.main_seeds", main), ("mock.heldout_seeds", held), ("mock.tune_seeds", tune)):
-        if search[0] <= hi and lo <= search[1]:
-            raise Refusal(f"mock.adaptive.search_seeds {list(search)} overlap {name} {[lo, hi]}: the attacker "
-                             f"must be optimised on seeds that are not evaluated or calibrated on")
     knowledge: Dict[str, str] = {}
     for c in conditions:
         k = core.get(settings, f"mock.adaptive.knowledge.{c}")
@@ -99,13 +93,26 @@ def load_space(settings: Mapping) -> Space:
         if c == "white_box" and k == "cell":
             raise Refusal("mock.adaptive.knowledge.white_box must be 'seed' or 'episode': white-box knows the allocation")
         knowledge[c] = k
+    search = None
+    if "cell" in knowledge.values():                 # only a cell-level strategy is optimised on search seeds
+        search = _seed_range(settings, "mock.adaptive.search_seeds")
+        main = _seed_range(settings, "mock.main_seeds")
+        held = _seed_range(settings, "mock.heldout_seeds")
+        tune = _seed_range(settings, "mock.tune_seeds")
+        for name, (lo, hi) in (("mock.main_seeds", main), ("mock.heldout_seeds", held), ("mock.tune_seeds", tune)):
+            if search[0] <= hi and lo <= search[1]:
+                raise Refusal(f"mock.adaptive.search_seeds {list(search)} overlap {name} {[lo, hi]}: the attacker "
+                              f"must be optimised on seeds that are not evaluated or calibrated on")
+    n_insiders = core.get(settings, "runtime.n_insiders")
+    if isinstance(n_insiders, bool) or not isinstance(n_insiders, int) or n_insiders < 1:
+        raise Refusal(f"runtime.n_insiders must be an integer >= 1, got {n_insiders!r}")
     return Space(
-        n_insiders=int(core.get(settings, "runtime.n_insiders")), insider_sets=insider_sets,
+        n_insiders=n_insiders, insider_sets=insider_sets,
         start_fractions=tuple(sorted(_grid(settings, "mock.adaptive.start_fractions", False, True))),
         rates=tuple(sorted(_grid(settings, "mock.adaptive.rates", True, False, True), reverse=True)),
         detectabilities=tuple(sorted(_grid(settings, "mock.adaptive.detectabilities", True, False, True), reverse=True)),
         evasion_cost=cost, max_candidates=cap, search_seeds=search, every_sink=bool(core.get(settings, "mock.every_sink")),
-        main_seeds=main, knowledge=knowledge)
+        main_seeds=_seed_range(settings, "mock.main_seeds"), knowledge=knowledge)
 
 
 def _n_entry_sets(family: str, N: int, space: Space) -> int:

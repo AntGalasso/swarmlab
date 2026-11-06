@@ -116,8 +116,10 @@ def test_search_seeds_must_not_overlap_the_tune_seeds():
 
 def test_the_fingerprint_ignores_unrelated_subtrees():
     base = rn.fingerprint(make_settings())
-    for over in ({"analysis.alpha": 0.1}, {"gnn.hidden": 8}, {"bazt_upstream.x": 1}, {"llm_data.rev": "a"}):
+    for over in ({"analysis.alpha": 0.1}, {"gnn.hidden": 8}, {"llm_data.rev": "a"}):
         assert rn.fingerprint(make_settings(over)) == base, over
+    # bazt_upstream holds the BAZT_upstream arm's parameters, which the mock platform runs (R3-M1)
+    assert rn.fingerprint(make_settings({"bazt_upstream.verdict_probability": 0.9})) != base
 
 
 def test_a_white_box_cell_finished_with_fewer_evaluation_seeds_is_searched_again_and_keeps_the_old_entries(tmp_path):

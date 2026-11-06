@@ -24,9 +24,9 @@ import numpy
 import torch
 
 from bazt_lab.core import public as core
-from bazt_lab.features.runner.adapters import kickoff
-from bazt_lab.features.runner.private import files, identity, needs, thresholds
-from bazt_lab.features.runner.private.blocks import BLOCKS, CALIBRATION_BLOCK, Block
+from bazt_lab.features.runner.adapters import kickoff, workers
+from bazt_lab.features.runner.private import files, identity, ledger, matched, needs, replay, thresholds
+from bazt_lab.features.runner.private.blocks import BLOCKS, CALIBRATION_BLOCK, Block, unrunnable
 from bazt_lab.features.runner.private.runtime import PRE_REGISTERED, missing_runtime
 from bazt_lab.features.runner.private.units import cell_key, group_key, unit_id
 from bazt_lab.features.runner.private.wiring import FeatureMissing, Wiring
@@ -54,6 +54,11 @@ class _Plan:
     out: Path | None = None             # the block directory
     manifest: dict | None = None        # the manifest being written (calibration diagnostics are added to it)
     manifest_path: Path | None = None
+    workers: int = 1                    # compute.workers: processes that run the batches of a mock evaluation block
+    gnn_skipped: dict | None = None     # {(arm, attack, task): units} of GNN cells that have no GNN (fallback none)
+    replay: object | None = None        # llm_adaptive_check: the replayed best responses (private/replay.py)
+    timing: object | None = None        # D116: the BAZT rounds the matched-timing controls replay (private/matched.py)
+    matched_thresholds: str | None = None   # mock.legacy.matched_thresholds when a calibrated matched arm runs
 
 
 def _git_commit() -> str:
@@ -82,10 +87,11 @@ def _tracking(s: Mapping, name: str, wiring: Wiring):
 def _arm_specs(block: Block, grid, wiring: Wiring) -> dict:
     specs = {}
     for arm in sorted(grid.arms()):
-        if arm.endswith(needs.MATCHED_SUFFIX):
-            sys.exit(f"Refusing {block.name}: arm {arm!r} is a matched-timing control and needs "
-                     f"EpisodeContext.timing_schedule, which nothing records yet; running it without one would give "
-                     f"a wrong result.")
+        if matched.is_matched(arm) and block.kind == "evaluate" and not block.timing_source:
+            sys.exit(f"Refusing {block.name}: arm {arm!r} is a matched-timing control: it acts at the rounds BAZT "
+                     f"intervened in the same unit (D116), which only a block with a timing source hands over "
+                     f"({', '.join(f'{b.name} from {b.timing_source}' for b in BLOCKS.values() if b.timing_source)}); "
+                     f"{block.name} has none.")
         try:
             spec = wiring.arm(arm)
         except (FeatureMissing, LookupError) as e:
@@ -97,12 +103,18 @@ def _arm_specs(block: Block, grid, wiring: Wiring) -> dict:
     return specs
 
 
-def _gnn_checkpoints(s: Mapping, name: str, grid, wiring: Wiring) -> None:
-    """Every GNN family the block deploys must be trained and finished before any arm of the block runs."""
+def _gnn_feature(wiring: Wiring):
     if wiring.gnn is None:
         raise FeatureMissing("gnn", "the composition root wires no gnn feature")
-    gnn = wiring.gnn()
+    return wiring.gnn()
+
+
+def _gnn_checkpoints(s: Mapping, name: str, grid, wiring: Wiring) -> dict:
+    """Every GNN family the block deploys must be trained and finished before any arm of the block runs. Cells with no
+    GNN (deploy_family is None, e.g. gnn.fallback_family = none) are skipped: {(arm, attack, task): units}."""
+    gnn = _gnn_feature(wiring)
     families: dict = {}
+    skipped: dict = {}
     for unit in grid:
         if unit["arm"] in needs.GNN_ARMS:
             try:
@@ -110,12 +122,26 @@ def _gnn_checkpoints(s: Mapping, name: str, grid, wiring: Wiring) -> None:
             except ValueError as e:
                 sys.exit(f"Refusing {name}: {e}")
             if family is None:
-                sys.exit(f"Refusing {name}: no GNN family for attack {unit['attack']!r}, task {unit['task']!r}.")
-            families[family] = None
+                key = (unit["arm"], unit["attack"], unit["task"])
+                skipped[key] = skipped.get(key, 0) + 1
+            else:
+                families[family] = None
     for family in families:
         if not gnn.training_finished(s, family):
             sys.exit(f"Refusing {name}: the GNN checkpoint of family {family!r} is missing or not finished; run "
                      f"--block gnn_train first (a crashed training resumes).")
+    return skipped
+
+
+def _finish_gnn_training(s: Mapping, name: str, wiring: Wiring) -> None:
+    """Even when every unit is done, a crash inside the training leaves it unfinished: resume it, then check."""
+    gnn = _gnn_feature(wiring)
+    gnn.train_pending(s)
+    unfinished = [f"{a}__{t}" for a, t in map(tuple, core.get(s, "gnn_train.families"))
+                  if not gnn.training_finished(s, f"{a}__{t}")]
+    if unfinished:
+        sys.exit(f"{name}: GNN training is not finished for {', '.join(unfinished)}; launch the block again "
+                 f"(a crashed training resumes).")
 
 
 def _oracle_thresholds(name: str, grid, found: Mapping) -> None:
@@ -158,10 +184,12 @@ def _syncing(s: Mapping, block: Block, plan: _Plan, out: Path):
         yield
         return
     try:
-        paths = [out]
+        # the profile folder, so the repository mirrors <profile>/<block>/...; the GNN checkpoints as the gnn feature
+        # reads the setting (relative to the working directory)
+        paths = [out.parent]
         if block.name == "gnn_train":
-            artifacts = Path(core.get(s, "gnn.artifacts_dir"))
-            paths.append(artifacts if artifacts.is_absolute() else core.SETTINGS_PATH.parents[1] / artifacts)
+            paths.append(Path(core.get(s, "gnn.artifacts_dir")))
+            paths.append(Path(core.get(s, "gnn_train.logs_dir")))
         handle = plan.sync.start(s, paths)
     except core.Unset as e:
         sys.exit(f"Refusing {block.name}: setting not set in profiles.toml: {e.args[0]}")
@@ -171,16 +199,31 @@ def _syncing(s: Mapping, block: Block, plan: _Plan, out: Path):
         yield
     finally:
         handle.stop()
+        summary = getattr(handle, "summary", None)
+        if summary and summary.get("failures"):
+            print(f"{block.name}: sync reported failures {summary['failures']} ({summary.get('commits')} commits)")
 
 
-def _probe(s: Mapping, block: Block, grid, specs: Mapping, platform: core.Platform, found: Mapping) -> None:
+def _threshold_cell(cell: tuple, choice: str | None) -> tuple:
+    """The calibration cell whose thresholds the units of `cell` take: under mock.legacy.matched_thresholds = 'base' a
+    matched-timing control takes those of the legacy arm it wraps (same topology and N)."""
+    arm = cell[0]
+    return (matched.base_arm(arm), *cell[1:]) if choice == "base" and matched.is_matched(arm) else cell
+
+
+def _probe(s: Mapping, block: Block, grid, specs: Mapping, platform: core.Platform, found: Mapping,
+           annotate=None, choice: str | None = None) -> None:
     """One tiny real batch (one episode) per (arm, capped or not, topology, attack, condition) in a temporary store,
-    before the block starts: a setting or a bug an arm meets only at run time stops the launch now, not hours in."""
+    before the block starts: a setting or a bug an arm meets only at run time stops the launch now, not hours in.
+    `annotate(unit)` adds what the block's units are handed with (the replayed schedule of llm_adaptive_check)."""
     name = block.name
+    if block.platform == "llm":      # one tiny conversation on the fake API: no live call, no file outside the temp store
+        s = {**s, "llm": {**s["llm"], "api": "fake", "allow_live": False}}
     with tempfile.TemporaryDirectory(prefix="bazt-probe-") as tmp:
         store = core.CheckpointStore(Path(tmp) / "preflight-probe")
-        for unit in grid.probes():
-            probe = {**unit, "id": unit_id(unit), "thresholds": (dict(found.get(cell_key(unit), {}))
+        for plain in _probe_units(block, grid):
+            unit = annotate(plain) if annotate is not None else plain
+            probe = {**unit, "id": unit_id(unit), "thresholds": (dict(found.get(_threshold_cell(cell_key(unit), choice), {}))
                                                                  if unit["arm"] != needs.ORACLE else
                                                                  _oracle_thresholds_of(found, unit))}
             try:
@@ -194,6 +237,18 @@ def _probe(s: Mapping, block: Block, grid, specs: Mapping, platform: core.Platfo
             except Exception as e:
                 sys.exit(f"Refusing {name}: a test episode of arm {unit['arm']!r} ({_describe(unit)}) failed: "
                          f"{type(e).__name__}: {e}")
+
+
+def _probe_units(block: Block, grid):
+    if block.platform == "mock":
+        yield from grid.probes()
+        return
+    seen = set()
+    for u in grid:
+        key = (u["arm"], u["attack"], u.get("sanitize_mode"), u["audit"] == "uncapped", u["intervention"] == "uncapped")
+        if key not in seen:
+            seen.add(key)
+            yield {**u, "conversations": 1}
 
 
 def _describe(unit: Mapping) -> str:
@@ -213,11 +268,20 @@ def _preflight(s: Mapping, block: Block, allow_live_llm: bool, wiring: Wiring, r
     missing = missing_runtime(s, block.platform)
     if missing:
         sys.exit(f"Refusing {name}: run-time variables not set in profiles.toml [runtime]: {', '.join(missing)}")
+    reason = unrunnable(block, s, wiring)  # no flag or kickoff makes these units runnable: said first
+    if reason:
+        sys.exit(f"Refusing {name}: {reason}")
     if block.platform == "llm":
         kickoff.guard(allow_live_llm)
     try:
         grid = block.units(s, True)
         batch_size = core.get(s, "mock.batch_size") if block.platform == "mock" else 1
+        n_workers = core.get(s, "compute.workers")
+        if not isinstance(n_workers, int) or isinstance(n_workers, bool) or n_workers < 1:
+            raise ValueError(f"compute.workers must be an integer >= 1, got {n_workers!r}")
+        if n_workers > 1 and block.platform == "mock" and block.kind == "evaluate" and not wiring.rebuild:
+            raise ValueError(f"compute.workers={n_workers} needs a wiring a worker process can rebuild "
+                             f"(Wiring.rebuild is not set)")
         alpha = core.get(s, "budgets.alpha") if block.kind == "calibrate" else None
         tracker, tracking = _tracking(s, name, wiring)
     except ValueError as e:      # a grid the settings cannot build (an unknown preset, a bad range)
@@ -228,6 +292,7 @@ def _preflight(s: Mapping, block: Block, allow_live_llm: bool, wiring: Wiring, r
         sys.exit(f"Refusing {name}: mock.batch_size must be a positive integer, got {batch_size!r}.")
     specs = _arm_specs(block, grid, wiring)
     adaptive = None
+    gnn_skipped: dict = {}
     try:
         needs.resolve(s, needs.required_keys(s, block.platform, grid.arms(), name))
         if block.platform == "mock" and not block.requires_freeze and needs.heldout_overlap(s, grid.seed_set()):
@@ -237,13 +302,29 @@ def _preflight(s: Mapping, block: Block, allow_live_llm: bool, wiring: Wiring, r
         if block.kind == "calibrate" and core.get(s, "calibration.mode") not in needs.CALIBRATION_MODES:
             raise ValueError(f"calibration.mode must be one of {list(needs.CALIBRATION_MODES)}, "
                              f"got {core.get(s, 'calibration.mode')!r}")
-        if set(needs.GNN_ARMS) & grid.arms() and block.kind == "evaluate":
-            _gnn_checkpoints(s, name, grid, wiring)
+        if block.name == "gnn_train":
+            _gnn_feature(wiring)
+        if set(needs.GNN_ARMS) & grid.arms() and block.kind in ("evaluate", "calibrate"):
+            found_skipped = _gnn_checkpoints(s, name, grid, wiring)      # a calibration has no cell without a GNN
+            gnn_skipped = found_skipped if block.kind == "evaluate" else {}
         if block.adaptive:
             if wiring.adaptive is None:
                 raise FeatureMissing("adaptive", "the composition root wires no adaptive feature")
             adaptive = wiring.adaptive()
             adaptive.search_episodes(grid, s)          # refuses what run_search would refuse, before any write
+        replayed = None
+        if block.replays:                              # D110: the schedule the check replays, read before any write
+            if wiring.adaptive is None:
+                raise FeatureMissing("adaptive", "the composition root wires no adaptive feature")
+            replayed = replay.load(s, grid, wiring.adaptive(), root, BLOCKS[block.replays].units(s, True))
+            replay.check_pin(root / s["profile"] / name / replay.PIN, replayed)
+        timing = None
+        if block.timing_source and any(matched.is_matched(a) for a in grid.arms()):     # D116: BAZT's rounds, read first
+            timing = matched.load(s, name, grid, block.timing_source, BLOCKS[block.timing_source].units(s, True), root)
+            matched.check_pin(root / s["profile"] / name / matched.PIN, timing)
+        choice = None
+        if block.kind == "evaluate" and any(matched.is_matched(a) and specs[a].calibrated for a in grid.arms()):
+            choice = matched.threshold_choice(s)
     except ValueError as e:      # a setting with an invalid value; the adaptive feature's Refusal is one, and an Unset too
         sys.exit(f"Refusing {name}: {e.args[0] if e.args else e}")
     except core.Unset as e:
@@ -263,6 +344,11 @@ def _preflight(s: Mapping, block: Block, allow_live_llm: bool, wiring: Wiring, r
             if not specs[arm].calibrated:
                 sys.exit(f"Refusing {name}: arm {arm!r} is not calibrated (ArmSpec.calibrated is False) but this "
                          f"block's settings list it for calibration.")
+            if matched.is_matched(arm) and core.get(s, "calibration.mode") == "closed_loop":
+                sys.exit(f"Refusing {name}: arm {arm!r} is a matched-timing control; calibration.mode = closed_loop runs "
+                         f"it acting, and the attack-free tune split has no BAZT rounds for it to act at (D116). "
+                         f"Calibrate it open loop, or take the thresholds of {matched.base_arm(arm)!r} "
+                         f"({matched.THRESHOLDS_KEY} = 'base') and drop it from {block.platform}.calibrated_arms.")
         saved_alpha = thresholds.saved_alpha(path)
         if saved_alpha is not None and saved_alpha != alpha:
             sys.exit(f"Refusing {name}: {path} was calibrated at alpha={saved_alpha}, this launch has alpha={alpha}. "
@@ -274,10 +360,11 @@ def _preflight(s: Mapping, block: Block, allow_live_llm: bool, wiring: Wiring, r
                      f"recalibrate every cell, or use a fresh results root.")
     elif block.kind == "evaluate":
         for arm in sorted(grid.arms()):
-            if specs[arm].calibrated and arm not in core.get(s, f"{block.platform}.calibrated_arms"):
-                sys.exit(f"Refusing {name}: arm {arm!r} reports a decision statistic (ArmSpec.calibrated) but is not "
-                         f"listed in {block.platform}.calibrated_arms, so no threshold would exist for it. Add it "
-                         f"to {block.platform}.calibrated_arms and run --block {calibration}.")
+            source_arm = _threshold_cell((arm,), choice)[0]
+            if specs[arm].calibrated and source_arm not in core.get(s, f"{block.platform}.calibrated_arms"):
+                sys.exit(f"Refusing {name}: arm {arm!r} reports a decision statistic (ArmSpec.calibrated) but "
+                         f"{source_arm!r} is not listed in {block.platform}.calibrated_arms, so no threshold would exist "
+                         f"for it. Add it to {block.platform}.calibrated_arms and run --block {calibration}.")
         stale = identity.read(path)
         if stale is not None and stale != identity.threshold_view(s, block.platform):
             sys.exit(f"Refusing {name}: the thresholds in {path} were calibrated under other settings: "
@@ -285,7 +372,8 @@ def _preflight(s: Mapping, block: Block, allow_live_llm: bool, wiring: Wiring, r
                      f"(--block {calibration}) in a fresh results root.")
         found, sha = thresholds.load(path), thresholds.sha256(path)
         _oracle_thresholds(name, grid, found)
-        lacking = sorted((c for c in grid.cells() if specs[c[0]].calibrated and c not in found),
+        lacking = sorted((_threshold_cell(c, choice) for c in grid.cells()
+                          if specs[c[0]].calibrated and _threshold_cell(c, choice) not in found),
                          key=lambda c: tuple(map(str, c)))
         if lacking:
             shown = "; ".join(thresholds.describe(c) for c in lacking[:3])
@@ -298,10 +386,12 @@ def _preflight(s: Mapping, block: Block, allow_live_llm: bool, wiring: Wiring, r
         sys.exit(f"Refusing {name}: {out} holds rows produced under other settings: "
                  f"{identity.differences(saved, view)}. Rows of two experiments would mix; use another "
                  f"--results-root or --profile.")
-    if block.platform == "mock":
-        _probe(s, block, grid, specs, platform, found)
+    if block.platform == "mock" or block.kind in ("calibrate", "evaluate"):
+        annotate = replayed.annotate if replayed is not None else timing.annotate if timing is not None else None
+        _probe(s, block, grid, specs, platform, found, annotate, choice)
     return _Plan(grid, specs, platform, batch_size, path, found, sha, alpha, adaptive, tracker, tracking,
-                 _sync_feature(s, name, wiring), view, out)
+                 _sync_feature(s, name, wiring), view, out, gnn_skipped=gnn_skipped, workers=n_workers,
+                 replay=replayed, timing=timing, matched_thresholds=choice)
 
 
 def _manifest(s: Mapping, block: Block, plan: _Plan, started_at: str) -> dict:
@@ -318,6 +408,15 @@ def _log(plan: _Plan, done: int, skipped: int, batches: int, size: int) -> None:
                       "runner/batch_units": size}, step=done + skipped)
 
 
+def _report_no_gnn(plan: _Plan, s: Mapping, name: str, root: Path) -> None:
+    """Say, and record for `status`, which GNN cells are skipped because no GNN exists for them."""
+    cells = [f"{arm}: attack={attack} task={task}" for (arm, attack, task) in sorted(plan.gnn_skipped or {})]
+    for line in cells:
+        print(f"{name}: skipped: no GNN for this cell (gnn.fallback_family = {core.get(s, 'gnn.fallback_family')}): "
+              f"{line.split(': ', 1)[1]}")
+    ledger.record_skipped(root, s["profile"], name, sum((plan.gnn_skipped or {}).values()), cells)
+
+
 def _search(plan: _Plan, s: Mapping, out: Path, wiring: Wiring):
     """mock_adaptive: the best responses of every cell, found against the cell's calibrated thresholds."""
     def thresholds_of(cell):
@@ -332,31 +431,49 @@ def _thresholds_of(plan: _Plan, unit: Mapping) -> dict:
     """The thresholds of the unit's cell; oracle_alloc takes random_alloc's audit_score (D96)."""
     if unit["arm"] == needs.ORACLE:
         return {"audit_score": plan.found[oracle_source_cell(unit)]["audit_score"]}
-    return dict(plan.found.get(cell_key(unit), {}))
+    return dict(plan.found.get(_threshold_cell(cell_key(unit), plan.matched_thresholds), {}))
 
 
-def _evaluate(plan: _Plan, s: Mapping, store: core.CheckpointStore, table=None) -> tuple:
-    """Group, drop the done units, annotate (id, thresholds of the unit's cell, attack_params), chunk, run."""
-    done = skipped = batches = 0
+def _pending(plan: _Plan, store: core.CheckpointStore, table, counts: dict):
+    """The batches still to run, in grid order: done units dropped, each unit annotated with its id, the thresholds
+    of its cell, attack_params, and (attacked mock units) the id of its attack-free twin."""
+    no_gnn = set(plan.gnn_skipped or {})
     for _, group in itertools.groupby(plan.grid, key=group_key):
         pending = []
         for unit in group:
+            if (unit["arm"], unit["attack"], unit.get("task")) in no_gnn:
+                continue
             uid = unit_id(unit)
             if store.is_done(uid):
-                skipped += 1
-            else:
-                annotated = table.annotate(unit) if table is not None else unit
-                pending.append({**annotated, "id": uid, "thresholds": _thresholds_of(plan, unit)})
+                counts["skipped"] += 1
+                continue
+            annotated = table.annotate(unit) if table is not None else unit
+            twin = ({"twin_id": unit_id({**unit, "attack": "none"})}
+                    if unit["platform"] == "mock" and unit["attack"] != "none" else {})
+            pending.append({**annotated, "id": uid, "thresholds": _thresholds_of(plan, unit), **twin})
         for i in range(0, len(pending), plan.batch_size):
-            batch = pending[i:i + plan.batch_size]
-            plan.platform.run_batch(batch, plan.specs[batch[0]["arm"]], s, store, plan.tracker)
-            undone = [b["id"] for b in batch if not store.is_done(b["id"])]
-            if undone:      # unmarked units would run again, and append their rows twice, at the next launch
-                raise RuntimeError(f"{plan.platform.name} platform returned from run_batch without marking "
-                                   f"{len(undone)} of {len(batch)} units done: {', '.join(undone[:3])}")
-            done, batches = done + len(batch), batches + 1
-            _log(plan, done, skipped, batches, len(batch))
-    return done, skipped
+            yield pending[i:i + plan.batch_size]
+
+
+def _evaluate(plan: _Plan, s: Mapping, store: core.CheckpointStore, table=None, wiring: Wiring | None = None,
+              out: Path | None = None) -> tuple:
+    """Run the pending batches, in this process or on compute.workers worker processes."""
+    counts = {"skipped": 0}
+    batches = _pending(plan, store, table, counts)
+    if plan.workers > 1 and plan.platform.name == "mock" and plan.manifest is not None:
+        done = workers.run(batches, plan.workers, wiring.rebuild, s, plan.platform.name, out, store,
+                           lambda finished, dispatched, n: _log(plan, finished, counts["skipped"], n, 0))
+        return done, counts["skipped"]
+    done = nbatches = 0
+    for batch in batches:
+        plan.platform.run_batch(batch, plan.specs[batch[0]["arm"]], s, store, plan.tracker)
+        undone = [b["id"] for b in batch if not store.is_done(b["id"])]
+        if undone:      # unmarked units would run again, and append their rows twice, at the next launch
+            raise RuntimeError(f"{plan.platform.name} platform returned from run_batch without marking "
+                               f"{len(undone)} of {len(batch)} units done: {', '.join(undone[:3])}")
+        done, nbatches = done + len(batch), nbatches + 1
+        _log(plan, done, counts["skipped"], nbatches, len(batch))
+    return done, counts["skipped"]
 
 
 def _calibrate(plan: _Plan, block: Block, s: Mapping, store: core.CheckpointStore) -> tuple:
@@ -406,8 +523,6 @@ def run_block(s: Mapping, name: str, allow_live_llm: bool, *, wiring: Wiring,
             f"Two launches would append the same rows twice.")
     with files.exclusive(out / LOCK, busy), _syncing(s, block, plan, out):
         started_at = dt.datetime.now(dt.UTC).isoformat(timespec="microseconds")
-        if not (out / SETTINGS_FILE).exists():
-            files.write_json(out / SETTINGS_FILE, {"settings": plan.view})
         manifest = _manifest(s, block, plan, started_at)
         manifest_path = out / f"manifest-{started_at.replace(':', '').replace('.', '')}.json"
 
@@ -421,6 +536,12 @@ def run_block(s: Mapping, name: str, allow_live_llm: bool, *, wiring: Wiring,
             sys.exit(f"Refusing {name}: setting not set in profiles.toml: {e.args[0]}")
         except RuntimeError as e:
             sys.exit(f"Refusing {name}: {e}")
+        if not (out / SETTINGS_FILE).exists():          # pinned only once the tracker started: a dead launch pins nothing
+            files.write_json(out / SETTINGS_FILE, {"settings": plan.view})
+        if plan.replay is not None and not (out / replay.PIN).exists():      # the best responses the rows replay
+            files.write_json(out / replay.PIN, plan.replay.pin())
+        if plan.timing is not None and not (out / matched.PIN).exists():     # D116: the BAZT rounds the rows replay
+            files.write_json(out / matched.PIN, plan.timing.pin())
         plan.manifest, plan.manifest_path = manifest, manifest_path
         files.write_json(manifest_path, manifest)
         try:
@@ -430,7 +551,12 @@ def run_block(s: Mapping, name: str, allow_live_llm: bool, *, wiring: Wiring,
             if block.kind == "calibrate":
                 done, skipped = _calibrate(plan, block, s, store)
             else:
-                done, skipped = _evaluate(plan, s, store, _search(plan, s, out, wiring) if block.adaptive else None)
+                _report_no_gnn(plan, s, name, root)
+                table = (_search(plan, s, out, wiring) if block.adaptive else
+                         plan.replay if plan.replay is not None else plan.timing)
+                done, skipped = _evaluate(plan, s, store, table, wiring, out)
+                if name == "gnn_train":
+                    _finish_gnn_training(s, name, wiring)
         except core.Unset as e:
             sys.exit(f"Refusing {name}: setting not set in profiles.toml: {e.args[0]}")
         finally:

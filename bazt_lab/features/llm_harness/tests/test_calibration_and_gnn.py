@@ -1,13 +1,16 @@
 """Unit fields in rows, the GNN family per cell, D104 training questions, closed-loop calibration."""
 import pytest
+import torch
 
 from bazt_lab.core import public as core
 from bazt_lab.features.llm_data import public as data
 from bazt_lab.features.llm_harness import public as harness
-from bazt_lab.features.llm_harness.private.platform import CLOSED_LOOP_TOLERANCE, NO_DEFENCE
+from bazt_lab.features.llm_harness.private.platform import NO_DEFENCE
 from bazt_lab.features.llm_harness.private.seedrun import Env, SeedRun
 from bazt_lab.features.llm_harness.tests.test_decisions import gnn_unit
 from bazt_lab.features.llm_harness.tests.test_platform import SETTINGS, N, Passive, arm, run, unit
+
+TOLERANCE = 0.1                                  # calibration.tolerance of the test settings
 
 
 @pytest.fixture()
@@ -17,8 +20,8 @@ def platform(families):
 
 # ------------------------------------------------------------------------------------------------ unit fields in rows
 def test_every_unit_field_reaches_the_row(platform, tmp_path):
-    rows, _ = run(platform, tmp_path, condition="gray_box", custom_axis=7)
-    assert all(r["condition"] == "gray_box" and r["custom_axis"] == 7 for r in rows)
+    rows, _ = run(platform, tmp_path, custom_axis=7, preset="good_classifier")
+    assert all(r["preset"] == "good_classifier" and r["custom_axis"] == 7 for r in rows)
     plain, _ = run(platform, tmp_path / "p")
     assert all(r["condition"] is None and r["preset"] is None for r in plain)          # shared keys, None where absent
 
@@ -94,7 +97,7 @@ def cal_units():
 
 
 def settings_mode(mode):
-    return {**SETTINGS, "calibration": {"mode": mode}}
+    return {**SETTINGS, "calibration": {"mode": mode, "tolerance": 0.1, "max_passes": 40}}
 
 
 def realised(platform, tmp_path, thresholds, s):
@@ -116,10 +119,10 @@ def test_open_loop_calibration_of_a_stateful_arm_denies_more_than_alpha_and_clos
     open_s, closed_s = settings_mode("open_loop"), settings_mode("closed_loop")
     open_th = platform.calibrate(cal_units(), arm(Feedback), open_s, core.CheckpointStore(tmp_path / "o"))
     closed_th = platform.calibrate(cal_units(), arm(Feedback), closed_s, core.CheckpointStore(tmp_path / "c"))
-    assert platform.last_calibration["mode"] == "closed_loop" and platform.last_calibration["converged"]
+    assert platform.last_calibration["mode"] == "closed_loop" and platform.last_calibration["within_tolerance"]
     assert realised(platform, tmp_path / "ro", open_th, open_s) > 1.25 * alpha                   # the defect
     rate = realised(platform, tmp_path / "rc", closed_th, closed_s)
-    assert abs(rate - alpha) <= CLOSED_LOOP_TOLERANCE * alpha, rate
+    assert abs(rate - alpha) <= TOLERANCE * alpha, rate
     assert closed_th["fb"] > open_th["fb"] and platform.last_calibration["rate"] == pytest.approx(rate)
 
 
@@ -178,3 +181,53 @@ def test_the_training_log_records_the_distinct_question_count(platform, tmp_path
                 core.CheckpointStore(tmp_path), core.NullTracker())
     assert len(logged) == 6 and all(1 <= r["distinct_questions"] <= 6 for r in logged)
     assert {r["distinct_questions"] for r in logged} == {len({r["question"] for r in logged})}
+
+
+class Mixed(Feedback):
+    """Always denies the edge 0 -> 1 (a fixed rule) besides the threshold denials, and says which ones the threshold caused."""
+    name = "mixed"
+
+    def decide(self, obs):
+        stat = core.uniforms(self.ctx.arm_stream(f"fb|{obs.t}", 0), (1, N, N)) + 0.1 * self.denied / N
+        by_threshold = obs.attempts & (stat > float(self.ctx.thresholds.get("fb", float("inf"))))
+        rule = torch.zeros_like(by_threshold)
+        rule[0, 0, 1] = True
+        self.denied += float(by_threshold.any(2).sum())
+        return core.Actions(deny=(by_threshold | rule) & obs.attempts, statistics={"fb": stat},
+                            threshold_restricted=by_threshold)
+
+
+def test_alpha_counts_only_the_restrictions_a_threshold_caused(platform, tmp_path):
+    alpha = SETTINGS["budgets"]["alpha"]
+    th = platform.calibrate(cal_units(), arm(Mixed), settings_mode("closed_loop"), core.CheckpointStore(tmp_path))
+    assert abs(platform.last_calibration["rate"] - alpha) <= TOLERANCE * alpha
+    rows = platform.run_batch([{**u, "thresholds": th} for u in cal_units()], arm(Mixed), settings_mode("closed_loop"),
+                              core.CheckpointStore(tmp_path / "r"), core.NullTracker())
+    all_restricted = sum(r["benign_restricted"] for r in rows) / sum(r["benign_deliveries"] for r in rows)
+    assert all_restricted > alpha + 0.01                       # the fixed rule's denials are on top of alpha
+
+
+def test_the_fallback_pass_never_denies_more_than_alpha_plus_tolerance(platform, tmp_path):
+    class Jumpy(Feedback):
+        name = "jumpy"
+
+        def decide(self, obs):
+            stat = core.uniforms(self.ctx.arm_stream(f"fb|{obs.t}", 0), (1, N, N)) + 3.0 * self.denied
+            deny = obs.attempts & (stat > float(self.ctx.thresholds.get("fb", float("inf"))))
+            self.denied += float(deny.any(2).sum())
+            return core.Actions(deny=deny, statistics={"fb": stat})
+
+    alpha = SETTINGS["budgets"]["alpha"]
+    platform.calibrate(cal_units(), arm(Jumpy), settings_mode("closed_loop"), core.CheckpointStore(tmp_path))
+    info = platform.last_calibration
+    assert info["rate"] <= alpha * (1 + TOLERANCE) and info["passes"] <= 40
+
+
+def test_events_without_a_batch_index_name_their_unit(platform, tmp_path):
+    class Say(Passive):
+        def decide(self, obs):
+            ev = [{"event": "budget_exhausted", "budget": "audit"}] if obs.t == 1 else []
+            return core.Actions(events=ev)
+
+    rows, _ = run(platform, tmp_path, cls=Say)
+    assert rows[0]["meta_events"] == [{"unit_id": "u1", "event": "budget_exhausted", "budget": "audit"}]

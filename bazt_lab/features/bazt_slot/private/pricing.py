@@ -7,7 +7,9 @@ r[b, i] is the posterior probability that agent i is compromised. What is at sta
   node[i]      d * H_i                  sum of the susceptibility weights it can still reach (truncated Katz)
   edge[i, j]   d * R_j                  the part behind the single edge i -> j (H_i = sum_j A_ij R_j)
   tail[i, j]   d * (R_j - R_j^(K-1))    what a one-round delay of that delivery removes
-with the susceptibility weight s_j = (1 - r_j) w_j (w = sink_weight at the sink, 1 elsewhere) and d = katz_decay.
+with the susceptibility weight s_j = (1 - r_j) w_j (w = sink_weight at the sink, 1 elsewhere) and d the Katz decay of the
+episode, bazt.katz_decay / rho(adj) (D115, `katz_decay`): one value per episode from its base graph, the same at every
+round and for every counterfactual graph (the reinstated one included), so d x rho <= bazt.katz_decay < 1 on all of them.
 The structural share of a node or an edge is its relative eigen-drop (NetShield, NetMelt) times the spread that does not
 start at the node itself, so a benign hub on the paths of other sources has value too.
 
@@ -46,6 +48,7 @@ class World:
     limited: Tensor       # bool [B, N]     reaches at most `rate_limit` receivers
     r: Tensor             # float64 [B, N]  posterior P(compromised)
     sink: Tensor          # int64 [B]
+    decay: Tensor | None = None   # [B] Katz decay of each episode (`katz_decay`); None: computed from `adj`
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,18 @@ def rounds_left(w: World) -> int:
     return w.T - w.t + 1
 
 
+def katz_decay(adj: Tensor, p: Params) -> Tensor:
+    """float64 [B]: the Katz decay of each episode, bazt.katz_decay / spectral radius of its base graph (D115). BAZT
+    computes it once per episode at reset and hands it to every World."""
+    return ct.relative_decay(adj, p.katz_fraction, p.iterations)
+
+
+def decay(w: World, p: Params) -> Tensor:
+    """[B] in the dtype of the posterior: the decay the World carries, or the one of its base graph."""
+    d = katz_decay(w.adj, p) if w.decay is None else w.decay
+    return d.to(dtype=w.r.dtype, device=w.r.device)
+
+
 def unit_cost(costs: Mapping[str, float], kind: core.ActionKind) -> float:
     try:
         return float(costs[kind.value])
@@ -82,31 +97,31 @@ def unit_cost(costs: Mapping[str, float], kind: core.ActionKind) -> float:
         raise core.Unset(f"costs.<main|robustness>.{kind.value}") from None
 
 
-def out_degree(mask: Tensor) -> Tensor:
-    return mask.sum(-1).to(torch.float64)
+def out_degree(mask: Tensor, dtype: torch.dtype = torch.float64) -> Tensor:
+    return mask.sum(-1).to(dtype)
 
 
 def centrality(w: World) -> Tensor:
     """float64 [B, N]: how much the task needs agent i: its share of the busiest sender's degree and the share of the
     horizon still ahead (the form of swarmlab.centrality, on the out-degree of the base graph)."""
-    deg = out_degree(w.adj)
+    deg = out_degree(w.adj, w.r.dtype)
     return 0.5 * deg / deg.amax(-1, keepdim=True).clamp_min(1.0) + 0.5 * (1.0 - w.t / w.T)
 
 
 def transmission(w: World, p: Params) -> Tensor:
     """float64 [B, N, N]: live edges scaled by how much of the sender's traffic still carries a payload."""
-    live = w.live.to(torch.float64)
-    out = out_degree(w.live)
+    live = w.live.to(w.r.dtype)
+    out = out_degree(w.live, w.r.dtype)
     rate = torch.where(w.limited & (out > p.rate_limit), p.rate_limit / out.clamp_min(1.0), torch.ones_like(out))
-    factor = (1.0 - p.sanitize_success * w.degraded.to(torch.float64)) * rate
+    factor = (1.0 - p.sanitize_success * w.degraded.to(w.r.dtype)) * rate
     return live * factor[..., None]
 
 
 def _susceptibility(w: World, p: Params, everyone: bool = False) -> Tensor:
     weight = torch.ones_like(w.r)
-    weight[torch.arange(w.r.shape[0]), w.sink] = p.sink_weight
+    weight[torch.arange(w.r.shape[0], device=w.r.device), w.sink] = p.sink_weight
     s = (1.0 - w.r) * weight
-    return s if everyone else s * w.active.to(torch.float64)
+    return s if everyone else s * w.active.to(w.r.dtype)
 
 
 def reach(w: World, A: Tensor, p: Params, topology: bool, pair: Tuple[Tensor, Tensor] | None = None,
@@ -121,11 +136,12 @@ def reach(w: World, A: Tensor, p: Params, topology: bool, pair: Tuple[Tensor, Te
         node = torch.full_like(w.r, on)
         return Reach(node, A * on, A * float(K_ == 1), (w.r * node * w.active).sum(-1), torch.zeros_like(w.r), zero_edge)
     s = _susceptibility(w, p)
-    H, R, _ = ct.katz(A, s, p.decay, K_)
-    _, R_short, _ = ct.katz(A, s, p.decay, K_ - 1)
-    node = p.decay * H
+    d = decay(w, p)
+    H, R, _ = ct.katz(A, s, d, K_)
+    _, R_short, _ = ct.katz(A, s, d, K_ - 1)
+    node = d[:, None] * H
     spread = (w.r * node * w.active).sum(-1)
-    edge, tail = p.decay * A * R[:, None, :], p.decay * A * (R - R_short)[:, None, :]
+    edge, tail = d[:, None, None] * A * R[:, None, :], d[:, None, None] * A * (R - R_short)[:, None, :]
     if not structure:
         return Reach(node, edge, tail, spread, torch.zeros_like(w.r), zero_edge)
     u0, v0 = (None, None) if pair is None else pair
@@ -138,7 +154,7 @@ def inspect_value(w: World, p: Params, rc: Reach) -> Tensor:
     """Value of one audit of agent i: q * min(r * at_stake, (1 - r) * lambda * centrality). Settling a true positive saves
     what its compromise puts at stake, clearing a false positive saves the utility its restriction would cost; the
     smaller of the two bounds what a verdict is worth (the form of bazt.actions.score_inspect)."""
-    send = (w.active & (w.live.any(-1))).to(torch.float64)
+    send = (w.active & (w.live.any(-1))).to(w.r.dtype)
     return send * p.q_inspect * torch.minimum(w.r * rc.node, (1.0 - w.r) * p.utility_weight * centrality(w))
 
 
@@ -153,7 +169,7 @@ def price(w: World, p: Params, costs: Mapping[str, float], elig: Tensor, kinds: 
     go = hops(w) > 0
     left = float(rounds_left(w))
     C = centrality(w)
-    out = out_degree(w.live)
+    out = out_degree(w.live, w.r.dtype)
     charged = out_degree(w.adj & w.active[:, :, None] & w.active[:, None, :])    # what the platform counts (see header)
     sends = w.active & (out > 0)
     r, lam, rho = w.r, p.utility_weight, p.rho
@@ -164,7 +180,8 @@ def price(w: World, p: Params, costs: Mapping[str, float], elig: Tensor, kinds: 
 
     def edge(kind, gain, cost, recurrence):
         net = gain - lam * (1.0 - r)[..., None] * rho[kind.value] * share[..., None]
-        out_[kind] = Priced(net, torch.full_like(A, cost), torch.full_like(A, recurrence), live_elig & go & (net > 0))
+        out_[kind] = Priced(net, torch.full(A.shape, cost, dtype=torch.float64, device=A.device),
+                            torch.full(A.shape, recurrence, dtype=torch.float64, device=A.device), live_elig & go & (net > 0))
 
     if K.ISOLATION in kinds:
         net = own + rc.node_rel * others - lam * (1.0 - r) * rho["isolation"] * C
@@ -194,13 +211,21 @@ def price(w: World, p: Params, costs: Mapping[str, float], elig: Tensor, kinds: 
 def _reinstatement(w: World, p: Params, costs: Mapping[str, float], topology: bool, C: Tensor, go: bool) -> Priced:
     """Lifting the restrictions of agent i regains the utility they cost a benign agent and re-exposes the swarm to i
     if it is compromised: its reach on the graph where it sends again. Worth doing exactly when the restriction no
-    longer pays (the two nets are complements), so no eligibility test is needed and a restriction does not flap."""
+    longer pays (the two nets are complements), so no eligibility test is needed and a restriction does not flap.
+
+    The graph where it sends again is `full` (every other quarantine stays) plus its own quarantined out-edges, which
+    the lift restores: its reach is H_i + sum_j q_ij R_j (first order in the lifted edges; without them an agent whose
+    out-edges are all quarantined would have no reach and be reinstated for free). The lift also reopens the
+    quarantined deliveries into i, each worth what its sender may carry: d R_i r_k per edge k -> i, the complement of
+    what quarantining it removed (one unit per edge without topology)."""
     full = w.adj & ~w.quarantined
-    n_full = out_degree(full)
+    q = (w.adj & w.quarantined).to(w.r.dtype)
+    senders_risk = torch.bmm(q.transpose(1, 2), w.r[..., None])[..., 0]        # sum_k q_ki r_k
+    n_full = out_degree(full, w.r.dtype)
     eff_rate = (1.0 - p.rate_limit / n_full.clamp_min(1.0)).clamp_min(0.0)
-    touching = (w.quarantined.sum(2) + w.quarantined.sum(1)).to(torch.float64)
-    q_share = touching / (out_degree(w.adj) + w.adj.sum(1).to(torch.float64)).clamp_min(1.0)   # edges lifted with it
-    q_out = out_degree(w.adj & w.quarantined) / out_degree(w.adj).clamp_min(1.0)               # its own cut reach
+    touching = (w.quarantined.sum(2) + w.quarantined.sum(1)).to(w.r.dtype)
+    q_share = touching / (out_degree(w.adj, w.r.dtype) + w.adj.sum(1).to(w.r.dtype)).clamp_min(1.0)   # edges lifted with it
+    q_out = out_degree(w.adj & w.quarantined, w.r.dtype) / out_degree(w.adj, w.r.dtype).clamp_min(1.0)               # its own cut reach
     one = torch.ones_like(w.r)
     zero = torch.zeros_like(w.r)
     eff = torch.stack([torch.where(w.isolated, one, zero),
@@ -211,14 +236,44 @@ def _reinstatement(w: World, p: Params, costs: Mapping[str, float], topology: bo
                        torch.where(w.degraded, one * p.rho["privilege_degradation"], zero),
                        torch.where(w.limited, eff_rate * p.rho["rate_limit"], zero),
                        torch.where(q_share > 0, q_share * p.rho["edge_quarantine"], zero)]).amax(0)
+    structural = zero
     if topology:
-        H, _, _ = ct.katz(full.to(torch.float64), _susceptibility(w, p, everyone=True), p.decay, hops(w))
-        node_full = p.decay * H
+        d = decay(w, p)
+        A_full = full.to(w.r.dtype)
+        H, R, _ = ct.katz(A_full, _susceptibility(w, p, everyone=True), d, hops(w))
+        node_full = d[:, None] * (H + torch.bmm(q, R[..., None])[..., 0])
+        reopened = d[:, None] * R * senders_risk
+        if bool(w.isolated.any()) or bool(w.quarantined.any()):      # D118: only isolation and quarantine carry structure
+            structural = _restored_structure(w, p, A_full, q, d[:, None] * H)
     else:
-        node_full = torch.full_like(w.r, float(hops(w) > 0))
-    net = p.utility_weight * (1.0 - w.r) * rho * C - eff * w.r * node_full
+        on = float(hops(w) > 0)
+        node_full = torch.full_like(w.r, on)
+        reopened = on * senders_risk
+    net = p.utility_weight * (1.0 - w.r) * rho * C - eff * w.r * node_full - reopened - structural
     restricted = w.isolated | w.degraded | w.limited | (q_share > 0)
     # charged per delivery the agent sends again over the remaining rounds (an upper bound: the base graph's out-degree)
     cost = unit_cost(costs, K.REINSTATEMENT) * out_degree(w.adj) * float(rounds_left(w))
     return Priced(net, cost, torch.ones_like(w.r), restricted & go & (net > 0))
+
+
+def _restored_structure(w: World, p: Params, A_full: Tensor, q: Tensor, node: Tensor) -> Tensor:
+    """[B, N] the structural share a reinstatement gives up (D118): what its restrictions were bought for beyond the
+    agent's own reach. One extra power iteration (`p.iterations`, cold start, so nothing to checkpoint) on the restored
+    graph `A_full` = adj & ~quarantined, where every isolated agent sends again:
+      isolated agent i     node_rel_i x others_i                   (NetShield, as in the isolation's price)
+      lifted edge k -> j   v_k u_j / (lam v.u) x others_k          (NetMelt to first order, the edge being absent from
+                                                                     A_full; as in the quarantine's price), summed over the
+                                                                     quarantined edges out of and into the agent
+    with others_k the spread that does not start at k in the same restored world: every agent, the isolated ones included,
+    on the same graph (`node` = d H, whose Katz reach already counts every agent's edges and susceptibility). With one
+    restricted agent this is the spread its isolation was priced against, so isolating agent i in the same world is worth
+    exactly minus reinstating it. With several isolated at once, each lift is priced as if the others were restored too
+    (the conservative reading: their spread still counts as a threat). An episode with neither an isolated agent nor a
+    quarantined edge gets 0, so the result does not depend on the other episodes of the batch."""
+    lam, u, v = ct.leading_pair(A_full, p.iterations)
+    node_rel, lifted_rel = ct.drops_from_pair(q, lam, u, v)
+    own = w.r * node
+    others = (own.sum(-1, keepdim=True) - own).clamp_min(0.0)
+    return (w.isolated.to(w.r.dtype) * node_rel * others + others * lifted_rel.sum(-1)
+            + (lifted_rel * others[:, :, None]).sum(1))
 

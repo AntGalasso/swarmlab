@@ -79,7 +79,7 @@ def compute(tr, margin: float, clean: torch.Tensor, flagged: torch.Tensor | None
     live = (tr.infected & tr.active).any(2)                        # [B, T] an infected agent is still active
     sink_own = tr.attackers[ar, tr.sink]                           # bool [B]: the sink is an insider
     sink_hit = tr.infected[ar, -1, tr.sink].to(F64).masked_fill(sink_own, NAN)   # D90: payload at the end, NaN for an insider
-    sink_exposed = tr.payload_delivered[ar, :, :, tr.sink].flatten(1).any(1)       # [B, T, N] -> [B]
+    sink_exposed = tr.payload_delivered[ar, :, :, tr.sink].flatten(1).any(1).to(F64).masked_fill(sink_own, NAN)   # NaN for an insider sink
 
     # Benign deliveries: attempts whose sender neither carries the payload nor is an attacker, that did not deliver the
     # payload and were not rewritten in transit (an AiTM rewrite makes the sender look clean). An attack-free trace has

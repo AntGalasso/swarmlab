@@ -26,3 +26,24 @@ def record(root: Path, profile: str, block: str, message: str | None) -> None:
         errors[block] = message
     (Path(root) / profile).mkdir(parents=True, exist_ok=True)
     files.write_json(Path(root) / profile / FILE, errors)
+
+
+SKIPPED = "skipped_cells.json"
+
+
+def read_skipped(root: Path, profile: str) -> Dict[str, dict]:
+    path = Path(root) / profile / SKIPPED
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def record_skipped(root: Path, profile: str, block: str, units: int, cells: list) -> None:
+    """Remember the units a block left out on purpose (a GNN cell without a GNN), or forget them when there are none."""
+    skipped = read_skipped(root, profile)
+    if not cells and block not in skipped:
+        return
+    if cells:
+        skipped[block] = {"units": units, "cells": cells}
+    else:
+        del skipped[block]
+    (Path(root) / profile).mkdir(parents=True, exist_ok=True)
+    files.write_json(Path(root) / profile / SKIPPED, skipped)

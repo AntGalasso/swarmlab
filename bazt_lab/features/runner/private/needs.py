@@ -10,14 +10,14 @@ MATCHED_SUFFIX = "_matched"
 UPSTREAM = "BAZT_upstream"          # the architecture track's package: it has its own parameters
 
 
-def _family(arm: str) -> str:
+def family(arm: str) -> str:
     """BAZT_no_budget and the other ablations are BAZT; BAZT_upstream is not."""
     return "BAZT" if arm.startswith("BAZT_") and arm != UPSTREAM else arm
 
 
 def sanitizes(arm: str) -> bool:
     """BAZT, its ablations and BAZT_upstream can sanitize; the other arms never do."""
-    return arm == UPSTREAM or _family(arm) == "BAZT"
+    return arm == UPSTREAM or family(arm) == "BAZT"
 
 
 GNN_ARMS = ("GNN", "GNN_recalibrated")
@@ -29,13 +29,17 @@ ORACLE_SOURCE = "random_alloc"       # D96: oracle_alloc acts on random_alloc's 
 
 def required_keys(s: Mapping, platform: str, arms: Iterable[str], block: str) -> list:
     """Dotted keys the arms (and their capped variants) and the platform read during the run."""
-    families = {_family(a) for a in arms}
+    families = {family(a) for a in arms}
     keys = []
     if families & {"C", "BAZT"}:
         keys += [f"conventional.c.judge_score_bins.{platform}", "conventional.c.presence_window_rounds"]
     if block != "gnn_train" and families & set(core.get(s, "llm.judge_arms")):
         keys += (["llm.judge.provider", "llm.judge.top_logprobs", "llm.judge.floor_probability"] if platform == "llm"
                  else ["mock.auditor.binormal_method"])
+    if platform == "llm" and families & {"BAZT", UPSTREAM}:
+        keys.append("runtime.sanitize_success")      # BAZT prices sanitize with it (the mock lists it among its own)
+    if UPSTREAM in set(arms):
+        keys.append("bazt_upstream.verdict_probability")
     if families & set(GNN_ARMS) and block != "gnn_train":
         keys += list(GNN_KEYS)
     return keys

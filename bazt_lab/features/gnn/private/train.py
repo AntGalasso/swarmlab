@@ -37,7 +37,7 @@ from bazt_lab.features.gnn.private.graph import (
     family_key,
     node_features,
 )
-from bazt_lab.features.gnn.private.logs import read_conversations
+from bazt_lab.features.gnn.private.logs import check_logged, read_conversations
 
 SPLITS = ("sequential", "shuffled")
 KEYS = ("backbone", "agents", "rounds", "hidden_dim", "num_heads", "num_layers", "dropout", "aggr_type", "epochs", "lr",
@@ -59,13 +59,27 @@ def checkpoint_path(settings: Mapping, family: str) -> Path:
     return Path(core.get(settings, "gnn.artifacts_dir")) / f"gnn_{family}.pt"
 
 
+def _fingerprints(settings: Mapping, cfg: dict, records: Sequence[dict]) -> dict:
+    """What a training depends on: the gnn_train settings (and embedding), and the ids of the conversations."""
+    emb = {k: core.get(settings, f"gnn.embedding.{k}") for k in ("model", "revision")}
+    emb["fake"] = bool(core.get(settings, "gnn.embedding.fake")) if core.is_set(settings, "gnn.embedding.fake") else False
+    digest = lambda obj: hashlib.sha256(json.dumps(obj, sort_keys=True).encode()).hexdigest()[:16]   # noqa: E731
+    return {"settings": digest({"cfg": cfg, "embedding": emb}), "records": digest([r["id"] for r in records])}
+
+
 def training_finished(settings: Mapping, family: str) -> bool:
-    """True when `family` has a checkpoint whose training ran all `gnn_train.epochs` epochs to the end."""
+    """True when `family` has a checkpoint that ran all `gnn_train.epochs` epochs to the end with the current
+    gnn_train settings and, when conversations are logged for the family, on exactly those conversations."""
     path = checkpoint_path(settings, family)
     if not path.is_file():
         return False
     meta = load_checkpoint(path)[1]
-    return bool(meta.get("finished")) and len(meta.get("history", ())) == core.get(settings, "gnn_train.epochs")
+    if not (meta.get("finished") and len(meta.get("history", ())) == core.get(settings, "gnn_train.epochs")):
+        return False
+    logged = read_conversations(settings, family) if core.is_set(settings, "gnn_train.logs_dir") else []
+    now = _fingerprints(settings, _config(settings), logged)
+    saved = meta.get("identity") or {}
+    return saved.get("settings") == now["settings"] and (not logged or saved.get("records") == now["records"])
 
 
 def _config(settings: Mapping) -> dict:
@@ -81,12 +95,12 @@ def _config(settings: Mapping) -> dict:
 
 
 def split_examples(items: Sequence, split: str, train_fraction: float, family: str, seed: int) -> Tuple[list, list]:
-    """(train, validation). "sequential": the first `int(n * train_fraction)` items (upstream's positional 80/20);
+    """(train, validation). "sequential": the first `round(n * train_fraction)` items (upstream's positional 80/20);
     "shuffled": the same sizes from a permutation keyed by (seed, family)."""
     if split not in SPLITS:
         raise ValueError(f"gnn_train.split must be one of {SPLITS}, got {split!r}")
     items, n = list(items), len(items)
-    n_train = int(n * train_fraction)
+    n_train = round(n * train_fraction)
     if n_train < 1:
         raise ValueError(f"gnn_train.train_fraction={train_fraction} leaves no training graph out of {n}")
     if n_train >= n:
@@ -99,23 +113,27 @@ def split_examples(items: Sequence, split: str, train_fraction: float, family: s
 def evaluate(model: torch.nn.Module, examples: Sequence[Example]) -> Tuple[float, float]:
     """(mean over graphs of the graph's mean BCE, share of nodes classified right) with dropout off."""
     model.eval()
+    dev = next(model.parameters(), torch.empty(0)).device       # a parameter-free stub model runs on the CPU
     losses, correct, total = [], 0, 0
     with torch.no_grad():
         for ex in examples:
-            out = model(node_features(ex.edge_attr, ex.edge_index, ex.y.numel(), "target"), ex.edge_index, ex.edge_attr)
-            losses.append(F.binary_cross_entropy_with_logits(out, ex.y.float().unsqueeze(-1)).item())
-            correct += ((torch.sigmoid(out) >= 0.5).squeeze(-1) == ex.y.bool()).sum().item()
+            x, ei, ea, y = (t.to(dev) for t in (node_features(ex.edge_attr, ex.edge_index, ex.y.numel(), "target"),
+                                                ex.edge_index, ex.edge_attr, ex.y))
+            out = model(x, ei, ea)
+            losses.append(F.binary_cross_entropy_with_logits(out, y.float().unsqueeze(-1)).item())
+            correct += ((torch.sigmoid(out) >= 0.5).squeeze(-1) == y.bool()).sum().item()
             total += ex.y.numel()
     return sum(losses) / len(losses), correct / total
 
 
 def _train_epoch(model, optimizer, train: Sequence[Example], cfg: dict, family: str, epoch: int) -> Tuple[float, float]:
     model.train()
+    dev = next(model.parameters()).device
     order = torch.randperm(len(train), generator=core.stream("gnn_train", cfg["seed"], family, "order", epoch)).tolist()
     losses, correct, total = [], 0, 0
     for start in range(0, len(order), cfg["batch_size"]):
-        x, edge_index, edge_attr, y = collate([train[i] for i in order[start:start + cfg["batch_size"]]],
-                                              cfg["train_node_index"])
+        x, edge_index, edge_attr, y = (t.to(dev) for t in collate(
+            [train[i] for i in order[start:start + cfg["batch_size"]]], cfg["train_node_index"]))
         optimizer.zero_grad()
         out = model(x, edge_index, edge_attr)
         loss = F.binary_cross_entropy_with_logits(out, y.float().unsqueeze(-1))
@@ -157,8 +175,8 @@ def train_family(settings: Mapping, family: str, records: Sequence[dict],
     if store.is_done(uid):
         meta = load_checkpoint(path)[1] if path.is_file() else None
         if meta is None or meta.get("unit_id") != uid:
-            raise RuntimeError(f"training {uid} is finished but {path} is not its checkpoint; "
-                               f"delete {store.root} and {path} to train {family} again")
+            raise RuntimeError(f"training {uid} is finished but {path} is not its checkpoint; delete {store.root}, "
+                               f"{epoch_path} and {path} to train {family} again")
         return meta
 
     embed = embed or shared_embedder(settings)
@@ -171,7 +189,7 @@ def train_family(settings: Mapping, family: str, records: Sequence[dict],
             "aggr_type": cfg["aggr_type"]}
     with torch.random.fork_rng():
         torch.manual_seed(core.seed_of("gnn_train", cfg["seed"], family, "init"))
-        model = build_model(arch)
+        model = build_model(arch).to(core.device(settings))
     optimizer = Adam(model.parameters(), lr=cfg["lr"], weight_decay=cfg["weight_decay"])
     scheduler = CosineAnnealingLR(optimizer, T_max=cfg["scheduler_t_max"], eta_min=cfg["scheduler_eta_min"])
     meta = {"arch": arch, "family": family, "backbone": cfg["backbone"], "n_train": len(train), "n_val": len(val),
@@ -209,8 +227,8 @@ def train_family(settings: Mapping, family: str, records: Sequence[dict],
     best_model, saved = load_checkpoint(path)
     if saved["best_epoch"] != max(row["epoch"] for row in history if row["best"]):
         raise RuntimeError(f"{path} holds epoch {saved['best_epoch']} but the training history says otherwise; "
-                           f"delete {store.root} and {path} to train {family} again")
-    meta = {**saved, "history": history, "finished": True}
+                           f"delete {store.root}, {epoch_path} and {path} to train {family} again")
+    meta = {**saved, "history": history, "finished": True, "identity": _fingerprints(settings, cfg, records)}
     save_checkpoint(path, best_model, meta)
     store.mark_done(uid)
     return meta
@@ -226,17 +244,29 @@ def train_unit(unit: Mapping, settings: Mapping,
     families = sorted(family_key(*f) for f in core.get(settings, "gnn_train.families"))
     if family not in families:
         raise ValueError(f"{family} is not one of the gnn_train.families: {families}")
+    return _train_logged(settings, family, embed)
+
+
+def _train_logged(settings: Mapping, family: str, embed) -> dict:
     need = (core.get(settings, "gnn_train.conversations_per_setting") * len(core.get(settings, "gnn_train.edge_probabilities"))
             * len(core.get(settings, "gnn_train.attackers")))
-    agents, rounds, backbone = (core.get(settings, f"gnn_train.{k}") for k in ("agents", "rounds", "backbone"))
+    check_logged(settings, family)
     records = read_conversations(settings, family)
-    for record in records:
-        for what, got, want in (("agents", len(record["adj"]), agents), ("rounds", len(record["turns"]), rounds),
-                                ("backbone", record["backbone"], backbone)):
-            if got != want:
-                raise ValueError(f"record {record['id']}: {what} is {got}, gnn_train.{what} is {want}")
     if len(records) < need:
         raise TrainingDataIncomplete(family, len(records), need)
     if len(records) > need:
         raise ValueError(f"family {family} has {len(records)} conversations, the gnn_train settings ask for {need}")
     return train_family(settings, family, records, embed)
+
+
+def train_pending(settings: Mapping, embed: Optional[Callable[[Sequence[str]], torch.Tensor]] = None) -> list:
+    """Train, or resume, every gnn_train family whose conversations are all logged and whose training is not
+    finished. Returns the metadata of the trainings it ran; a no-op (empty list) when nothing is pending."""
+    need = (core.get(settings, "gnn_train.conversations_per_setting") * len(core.get(settings, "gnn_train.edge_probabilities"))
+            * len(core.get(settings, "gnn_train.attackers")))
+    families = sorted(family_key(*f) for f in core.get(settings, "gnn_train.families"))
+    for f in families:
+        check_logged(settings, f)                 # foreign logs refuse before anything trains
+    pending = [f for f in families
+               if len(read_conversations(settings, f)) >= need and not training_finished(settings, f)]
+    return [_train_logged(settings, f, embed) for f in pending]

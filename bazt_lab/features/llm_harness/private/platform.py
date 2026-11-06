@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import math
 from typing import Callable, Dict, List, Mapping
 
 import torch
@@ -17,7 +16,7 @@ from bazt_lab.core import public as core
 from bazt_lab.features.gnn import public as gnn
 from bazt_lab.features.judge import public as judge_feature
 from bazt_lab.features.llm_data import public as data
-from bazt_lab.features.llm_harness.private import fake, prompts
+from bazt_lab.features.llm_harness.private import fake, prompts, schedule
 from bazt_lab.features.llm_harness.private.seedrun import Env, SeedRun
 
 
@@ -38,8 +37,6 @@ class _NoDefence:
 
 
 CALIBRATION_MODES = ("open_loop", "closed_loop")
-CLOSED_LOOP_TOLERANCE = 0.25          # of alpha: the realised deny rate may differ from alpha by this share of it
-CLOSED_LOOP_PASSES = 10
 NO_DEFENCE = core.ArmSpec("no_defence", _NoDefence, platforms=("llm",))
 
 
@@ -66,6 +63,9 @@ def _fake_judge():
 
 class LLMPlatform:
     name = "llm"
+    # D110: the held-out check replays the mock's gray-box best response (private/schedule.py); SeedRun refuses a unit
+    # that carries another condition
+    adaptive_conditions: tuple = schedule.ADAPTIVE_CONDITIONS
 
     def __init__(self, backend=None, judge=None, sample=None, families=None) -> None:
         """Every argument replaces what settings would select (tests): a backend, a Judge, a sampler
@@ -134,17 +134,23 @@ class LLMPlatform:
         `[1,N,N]` statistics over open deliveries, `[1,N]` over active agents). `calibration.mode` (owner key, no default):
 
         open_loop    the (1 - alpha) quantile of the statistics of one pass in which the arm acts on nothing.
-        closed_loop  the arm acts on attack-free conversations. Thresholds are the (1 - a) quantiles of the open-loop
-                     statistics; `a` is searched (doubling from alpha, then bisection, at most CLOSED_LOOP_PASSES passes,
-                     deterministic) until the realised restricted share of open deliveries is alpha within
-                     CLOSED_LOOP_TOLERANCE x alpha. A stateful arm (C's network threat level) denies more than alpha
-                     after an open-loop calibration, because its own denials raise its later statistics.
+        closed_loop  the arm acts on attack-free conversations, with the same search as mock_engine: candidate thresholds are
+                     the quantiles at one common level of the open-loop statistics, the level is bisected (start 1 - alpha,
+                     at most `calibration.max_passes` passes, deterministic) until the realised rate is alpha within
+                     `calibration.tolerance` x alpha (both owner-set settings, no default). The realised rate counts the deliveries restricted because a calibrated
+                     statistic crossed its threshold (`Actions.threshold_restricted`, D108); an arm that does not provide
+                     it counts every restriction. If no pass lands within the band (one more denial raises the next
+                     statistics, so the rate can jump over it) the pass with the highest rate not above alpha x (1 +
+                     tolerance) is returned, never one that denies more; if every pass is above it, the lowest rate.
 
-        `self.last_calibration` = {mode, passes, rate, alpha, converged}. Callable again on finished units: every pass is
-        read back from the store."""
+        `self.last_calibration` = {mode, level, rate, passes, simulated, within_tolerance, alpha}. Callable again on
+        finished units: every pass is read back from the store."""
         mode = core.get(settings, "calibration.mode")
         if mode not in CALIBRATION_MODES:
             raise ValueError(f"calibration.mode must be one of {CALIBRATION_MODES}, got {mode!r}")
+        if mode == "closed_loop":                          # owner-set, no default: refuse before any pass is paid for
+            core.get(settings, "calibration.tolerance")
+            core.get(settings, "calibration.max_passes")
         for unit in units:
             if unit["attack"] != "none":
                 raise ValueError(f"calibration runs attack-free conversations, unit {unit['id']} has attack {unit['attack']!r}")
@@ -157,33 +163,29 @@ class LLMPlatform:
             if values.numel() == 0:
                 raise ValueError(f"statistic {name!r} has no finite value in the calibration conversations")
 
-        def at(share: float) -> Dict[str, float]:
-            return {n: float(torch.quantile(v, 1.0 - share, interpolation="higher")) for n, v in base.items()}
+        def at(level: float) -> Dict[str, float]:
+            return {n: float(torch.quantile(v, level, interpolation="higher")) for n, v in base.items()}
 
-        best, passes, converged = at(alpha), 1, mode == "open_loop"
-        self.last_calibration = {"mode": mode, "passes": 1, "rate": rate, "alpha": alpha, "converged": converged}
-        if mode == "closed_loop":
-            lo, hi, share, gap = 0.0, None, alpha, math.inf
-            while passes <= CLOSED_LOOP_PASSES:
-                thresholds = at(share)
-                _, rate = self._pass(units, arm, settings, env, store, thresholds, f".p{passes}")
-                passes += 1
-                if abs(rate - alpha) < gap:
-                    best, gap = thresholds, abs(rate - alpha)
-                    self.last_calibration.update(rate=rate, passes=passes)
-                if gap <= CLOSED_LOOP_TOLERANCE * alpha:
-                    converged = True
-                    break
-                if rate > alpha:
-                    hi = share
-                else:
-                    lo = share
-                nxt = (lo + hi) / 2 if hi is not None else min(1.0, share * 2)
-                if nxt == share:
-                    break
-                share = nxt
-            self.last_calibration.update(passes=passes - 1, converged=converged)
-        return best
+        if mode == "open_loop":
+            self.last_calibration = {"mode": mode, "level": 1.0 - alpha, "rate": rate, "passes": 1, "simulated": 1,
+                                     "within_tolerance": True, "alpha": alpha}
+            return at(1.0 - alpha)
+        tolerance = float(core.get(settings, "calibration.tolerance"))      # of alpha, as mock_engine
+        max_passes = int(core.get(settings, "calibration.max_passes"))
+        lo, hi, level, seen = 0.0, 1.0, 1.0 - alpha, []
+        for n in range(1, max_passes + 1):
+            thresholds = at(level)
+            _, rate = self._pass(units, arm, settings, env, store, thresholds, f".p{n}")
+            seen.append((level, rate, thresholds))
+            if abs(rate - alpha) <= tolerance * alpha or hi - lo < 1e-12:
+                break
+            lo, hi = (level, hi) if rate > alpha else (lo, level)          # a higher level means fewer denies
+            level = 0.5 * (lo + hi)
+        below = [x for x in seen if x[1] <= alpha * (1.0 + tolerance)]
+        best = max(below, key=lambda x: x[1]) if below else min(seen, key=lambda x: x[1])
+        self.last_calibration = {"mode": mode, "level": best[0], "rate": best[1], "passes": n, "simulated": n + 1,
+                                 "within_tolerance": abs(best[1] - alpha) <= tolerance * alpha, "alpha": alpha}
+        return best[2]
 
     def _train(self, unit: Mapping, settings: Mapping, env: Env, store) -> None:
         """A gnn_train unit: attacked conversations without a defence, logged for the GNN (spec 2.7). The unit is one

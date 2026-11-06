@@ -30,9 +30,10 @@ class _Allocation(common.Arm):
         self.c_cut = common.cost_of(ctx, core.ActionKind.EDGE_QUARANTINE)
         if self.c_inspect <= 0:
             raise ValueError("costs.*.inspect must be > 0: the audit budget is paced in audit units")
-        self.last_audit = torch.zeros(ctx.B, ctx.N, dtype=torch.int64)     # round of the agent's last audit, 0 = never
-        self.n_audited = torch.zeros(ctx.B, dtype=torch.float64)           # audit units requested so far
-        self.cut = torch.zeros(ctx.B, ctx.N, dtype=torch.bool)             # senders whose out-edges are quarantined
+        dev = ctx.device
+        self.last_audit = torch.zeros(ctx.B, ctx.N, dtype=torch.int64, device=dev)     # round of the agent's last audit, 0 = never
+        self.n_audited = torch.zeros(ctx.B, dtype=torch.float64, device=dev)           # audit units requested so far
+        self.cut = torch.zeros(ctx.B, ctx.N, dtype=torch.bool, device=dev)             # senders whose out-edges are quarantined
         self.setup(ctx)
 
     def setup(self, ctx: core.EpisodeContext) -> None:
@@ -65,7 +66,7 @@ class _Allocation(common.Arm):
         if chosen.any():
             audit = obs.audit(chosen)
         else:
-            audit = torch.full((B, N), float("nan"), dtype=torch.float64)
+            audit = torch.full((B, N), float("nan"), dtype=self.ctx.dtype, device=self.ctx.device)
         done = chosen & ~audit.isnan()                                     # audits the platform actually performed
         self.last_audit = torch.where(done, torch.full_like(self.last_audit, obs.t), self.last_audit)
         self.n_audited = self.n_audited + done.sum(-1).double()
@@ -114,10 +115,10 @@ class BraGreedy(_Allocation):
     name = "bra_greedy"
 
     def setup(self, ctx):
-        self.curve = common.downstream_curve(ctx.adj, ctx.T)               # [B, N, T+1], static graph
+        self.curve = common.downstream_curve(ctx.adj, ctx.T, ctx.dtype)               # [B, N, T+1], static graph
         self.tie = common.predraw(ctx, f"{self.name}.tie", (ctx.T, ctx.N))
 
     def priority(self, obs, send):
-        gap = (obs.t - self.last_audit).double()
+        gap = (obs.t - self.last_audit).to(self.ctx.dtype)
         impact = 1.0 + self.curve[:, :, self.ctx.T - obs.t]
         return gap * impact, send, self.tie[:, obs.t - 1]

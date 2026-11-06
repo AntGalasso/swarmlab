@@ -198,7 +198,8 @@ def test_the_dry_run_hours_add_the_checkpoint_cost_per_unit(capsys):
     argv = ["--dry-run", "--block", "mock_frontier", "--set", "estimates.mock_checkpoint_seconds_per_unit=0.5"]
     rx.main(argv, wiring=fakes.wiring())
     s = rx.load_settings()
-    n = len(rx.units_mock_frontier(s, False))
-    per_episode = core.get(s, "estimates.mock_seconds_per_episode")["12"]
+    grid = rx.units_mock_frontier(s, False)
+    from bazt_lab.features.runner.private import sizing
+    cpu = sum(c * (sizing.seconds_per_episode(s, a, kind, size) + 0.5) for (a, kind, size), c in grid.cost_groups().items())
     frontier = next(ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("mock_frontier"))
-    assert f"{n * (per_episode + 0.5) / 3600:.1f}" in frontier
+    assert f"{cpu / 3600:.2f}" in frontier

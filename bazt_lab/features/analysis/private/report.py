@@ -29,6 +29,7 @@ SECONDARY = (("ladder", hypotheses.ladder), ("ablations", hypotheses.ablations))
 SUPPORTED = {"H-budget": lambda c: c["summary"]["supported"], "H-adaptive": lambda c: c["summary"]["supported"],
              "H-topology": lambda c: c["supported"]}
 PRE_REGISTERED = ("ni_margin_accuracy", "rank_agreement_threshold")
+FINGERPRINTED = (*PRE_REGISTERED, "recovery_margin")        # the margin sets recovery_time_accuracy of LLM rows
 
 
 def jsonable(x):
@@ -52,7 +53,7 @@ def jsonable(x):
 def fingerprint(settings: Mapping) -> str:
     """sha256 of the analysis settings and the two pre-registered values: equal fingerprints, same analysis."""
     chosen = {"analysis": core.get(settings, "analysis"),
-              **{f"runtime.{k}": core.get(settings, f"runtime.{k}") for k in PRE_REGISTERED}}
+              **{f"runtime.{k}": core.get(settings, f"runtime.{k}") for k in FINGERPRINTED}}
     return hashlib.sha256(json.dumps(chosen, sort_keys=True).encode()).hexdigest()
 
 
@@ -103,7 +104,8 @@ def build(root: Path, tables: Mapping[str, table.Table], cfg: Cfg, settings: Map
                  "settings_sha256": fingerprint(settings), "analysis_settings": core.get(settings, "analysis"),
                  "manifests": check_manifests(root, blocks, cfg),
                  "platforms": {p: {"rows": t.n, "blocks": list(cfg.all_blocks(p)), "blocks_missing": t.missing_blocks,
-                                   "torn_lines": t.torn_lines, "empty_metrics": t.empty_metrics,
+                                   "torn_lines": t.torn_lines, "uncommitted_files": t.uncommitted_files,
+                                   "empty_metrics": t.empty_metrics,
                                    "sink_attacker_excluded": sink_attacker_excluded(t)}
                                for p, t in tables.items()}},
         "hypotheses": found,

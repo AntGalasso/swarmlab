@@ -265,6 +265,7 @@ def test_the_analysis_gets_the_profile_the_run_time_values_and_its_own_test_valu
     (session.results_root / "sprint").mkdir(parents=True)
     report = e2e.Report()
     result = e2e.stage_analysis(session, report, "fake_analysis:echo")
+    assert result.pop("meta") == {"platforms": {}}
     assert result == {"results_dir": str(session.results_root / "sprint"), "profile": "sprint", "n_insiders": 3,
                       "baseline": "C"}
     assert report.failures == []
@@ -354,6 +355,7 @@ def test_llm_smoke_run_passes_with_the_explicit_kickoff_override(capsys, monkeyp
     code, out = run_e2e(e2e_llm_fake, capsys, "--kickoff-override", "2000-01-01T00:00:00+00:00")
     assert code == 0, out
     assert "llm_headline: killed" in out and "llm_capped" in out and "e2e llm-fake: passed" in out
+    assert "part-written" in out and "resume path not exercised" not in out, out
 
 
 def test_llm_smoke_run_catches_a_torn_line_after_the_restart(capsys, monkeypatch):
@@ -430,3 +432,344 @@ def test_an_orphan_batch_rows_file_is_not_a_committed_unit(tmp_path):
     write_batch(units, "aa", [good_row()], ["B-1"], done=False)
     assert any("not marked done" in p for p in e2e.check_block(tmp_path, 0, 1))
     assert e2e.progress(units).done == 0 and e2e.progress(units).rows == 1
+
+
+# ------------------------------------------------------------------------- a resumed run equals a straight run
+def test_two_runs_are_compared_episode_by_episode_ignoring_timings():
+    a = [good_row(seed=1, latency=1.0), good_row(seed=2, asr_final=NAN)]
+    b = [good_row(seed=2, asr_final=NAN), good_row(seed=1, latency=9.0)]
+    assert e2e.compare_runs(a, b) == []
+    changed = [good_row(seed=1), good_row(seed=2, asr_final=0.9)]
+    (problem,) = e2e.compare_runs(a, changed)
+    assert "asr_final" in problem and "seed" not in problem.split("differ")[0].split(":")[1]
+    assert any("only in the resumed" in p for p in e2e.compare_runs(a + [good_row(seed=3)], b))
+    assert any("only in the straight" in p for p in e2e.compare_runs(a, b + [good_row(seed=3)]))
+
+
+def test_llm_smoke_run_catches_rows_that_a_resume_changes(capsys, monkeypatch):
+    monkeypatch.setenv("FAKE_BUG", "resume_shift")
+    code, out = run_e2e(e2e_llm_fake, capsys, "--kickoff-override", "2000-01-01T00:00:00+00:00")
+    assert code == 1 and "uninterrupted" in out and "benign_delivery_rate" in out, out
+
+
+def test_mock_smoke_run_catches_arms_that_disagree_on_the_ground_truth(capsys, monkeypatch):
+    monkeypatch.setenv("FAKE_BUG", "crn")
+    code, out = run_e2e(e2e_mock, capsys)
+    assert code == 1 and "n_attackers" in out and "share its ground truth" in out, out
+
+
+def test_rows_of_one_episode_without_a_conversation_field_are_compared_in_order():
+    a = [good_row(seed=1, asr_final=0.1), good_row(seed=1, asr_final=0.2)]
+    assert e2e.compare_runs(a, [dict(r) for r in a]) == []
+    b = [good_row(seed=1, asr_final=0.1), good_row(seed=1, asr_final=0.9)]
+    assert len(e2e.compare_runs(a, b)) == 1
+
+
+def test_estimates_are_not_decisions_and_need_no_test_value():
+    text = '[estimates]\n# B = 1\n# note = "x"\n[estimates.mock_seconds_per_episode_by_arm."12"]\n# C = 2\n[bazt]\n# katz_decay = <float>\n'
+    assert e2e.documented_arm_keys(text) == ["bazt.katz_decay"]
+
+
+def test_the_compute_values_are_the_reference_ones_and_the_dtype_is_the_profiles():
+    """D117: every run computes in compute.dtype of profiles.toml (float32); the e2e runs that dtype, not a pinned one
+    (check_gpu.py keeps its CPU float64 combination as the reference float32 is compared against)."""
+    assert (e2e.ARM_TEST_VALUES["compute.device"], e2e.ARM_TEST_VALUES["compute.compile"],
+            e2e.ARM_TEST_VALUES["compute.deterministic"], e2e.ARM_TEST_VALUES["compute.workers"]) == (
+        "cpu", False, True, 1)
+    import tomllib
+
+    from bazt_lab.features.runner import public as rx
+    profile_dtype = tomllib.loads((REPO / "experiments" / "profiles.toml").read_text(encoding="utf-8"))["compute"][
+        "dtype"]
+    for module, extra in ((e2e_mock, ["--quick", "--workers", "2"]), (e2e_llm_fake, ["--with-gnn"])):
+        plan = module.build_plan(args_of(module, *extra))
+        assert "compute.dtype" not in plan.sets, module.__name__
+        settings = rx.load_settings(overrides=e2e.override_items(plan.sets))
+        assert settings["compute"]["dtype"] == profile_dtype, module.__name__
+
+
+def test_every_repo_global_path_setting_is_moved_into_the_temporary_directory(tmp_path):
+    sets = e2e.isolated_paths(tmp_path)
+    assert set(sets) == {"gnn_train.logs_dir", "gnn.artifacts_dir"}
+    assert all(Path(v).is_relative_to(tmp_path) for v in sets.values())
+    text = (REPO / "experiments" / "profiles.toml").read_text(encoding="utf-8")
+    import re
+    in_profile = set(re.findall(r'^(\w+_dir)\s*=\s*"results/', text, re.M))
+    assert in_profile == {"logs_dir", "artifacts_dir"}, "a new results path in profiles.toml needs isolating in the e2e"
+
+
+def test_a_worker_shard_folder_below_units_is_read_like_the_flat_layout(tmp_path):
+    units = tmp_path / "units"
+    write_batch(units / "w0", "aa", [good_row(), good_row(arm="C")], ["B-1", "C-2"])
+    write_batch(units / "w1", "bb", [good_row()], ["B-3"])
+    assert e2e.check_block(tmp_path, 3, 1) == []
+    assert e2e.progress(units) == e2e.Progress(started=2, done=3)
+    assert set(e2e.snapshot(units)) == {"w0/batch-aa.jsonl", "w1/batch-bb.jsonl"}
+    assert len(e2e.all_rows(units)) == 3 and e2e.check_rows(units, e2e.columns()) == []
+
+
+def test_llm_containment_reads_the_headline_block_where_the_reference_arm_runs():
+    assert e2e.ANALYSIS_TEST_VALUES["analysis.blocks"]["containment"]["llm"] == ["llm_capped", "llm_headline"]
+
+
+# ------------------------------------------------------------------- committed rows (core.committed_row_files)
+def test_rows_are_read_from_committed_files_only_in_units_and_every_shard(tmp_path):
+    units = tmp_path / "units"
+    write_batch(units / "w0", "aa", [good_row(), good_row(arm="C")], ["B-1", "C-2"])
+    write_batch(units / "w1", "bb", [good_row()], ["B-3"])
+    write_batch(units / "w2", "cc", [good_row(asr_final=1.5)], ["B-4"], done=False)    # an orphan in a stale shard
+    write_unit(units, "B-5", [good_row(asr_final=1.5)], done=False)                     # a unit still running
+    assert len(e2e.all_rows(units)) == 3
+    assert e2e.check_rows(units, e2e.columns()) == []
+    assert e2e.committed_rows(tmp_path) == 3
+    assert e2e.committed_rows(tmp_path / "no_such_block") == 0
+
+
+def test_left_over_temporary_and_state_files_are_found_in_every_shard_and_listed_once(tmp_path):
+    units = tmp_path / "units"
+    write_batch(units / "w0", "aa", [good_row()], ["B-1"])
+    (units / "w0" / "batch-bb.jsonl.tmp").write_text("x")
+    (tmp_path / "state" / "w1").mkdir(parents=True)
+    (tmp_path / "state" / "w1" / "B-1.pt").write_bytes(b"x")
+    (tmp_path / "state" / "w1" / "B-1.pt.tmp").write_bytes(b"x")
+    (tmp_path / "thresholds.json.tmp").write_text("x")
+    problems = e2e.check_block(tmp_path, 1, 1)
+    for name in ("units/w0/batch-bb.jsonl.tmp", "state/w1/B-1.pt", "state/w1/B-1.pt.tmp", "thresholds.json.tmp"):
+        assert problems.count(f"left over: {name}") == 1, (name, problems)
+    assert len(problems) == 4, problems
+
+
+def test_a_temporary_file_the_kill_left_is_tolerated_but_one_made_after_it_is_not(tmp_path):
+    """The store writes a batch to <name>.jsonl.tmp and renames it; a kill in between leaves the .tmp, which nothing
+    reads, and a resume that regroups its batches never rewrites it. Only the .tmp files that existed right after the
+    kill are crash artifacts; a new one after the last launch is a real leftover."""
+    units = tmp_path / "units"
+    write_batch(units / "w1", "aa", [good_row()], ["B-1"])
+    (units / "w1" / "batch-killed.jsonl.tmp").write_text("x")
+    assert e2e.tmp_files(tmp_path) == {"units/w1/batch-killed.jsonl.tmp"}
+    assert e2e.check_block(tmp_path, 1, 1, stale_tmp=e2e.tmp_files(tmp_path)) == []
+    (units / "w1" / "batch-new.jsonl.tmp").write_text("x")
+    problems = e2e.check_block(tmp_path, 1, 1, stale_tmp={"units/w1/batch-killed.jsonl.tmp"})
+    assert problems == ["left over: units/w1/batch-new.jsonl.tmp"], problems
+
+
+def test_a_restart_may_remove_a_batch_rows_file_that_has_no_done_list():
+    """CheckpointStore.append_batch removes the orphans of its write folder before writing: their units are not done
+    and run again in another batch. A unit's part-written file must still be continued, never dropped."""
+    before = {"w0/batch-aa.jsonl": b'{"a": 1}\n', "w0/batch-bb.jsonl": b'{"b": 1}\n', "B-1.jsonl": b'{"c": 1}\n'}
+    done_before = {"batch-aa"}
+    after = {"w0/batch-aa.jsonl": b'{"a": 1}\n', "w0/batch-cc.jsonl": b'{"b": 1}\n',
+             "B-1.jsonl": b'{"c": 1}\n{"c": 2}\n'}
+    assert e2e.check_resume(before, after, done_before) == []
+    assert any("B-1.jsonl: lost" in p for p in e2e.check_resume(
+        before, {k: v for k, v in after.items() if k != "B-1.jsonl"}, done_before))
+    assert any("batch-aa.jsonl: lost" in p for p in e2e.check_resume(
+        before, {k: v for k, v in after.items() if k != "w0/batch-aa.jsonl"}, done_before))
+
+
+# --------------------------------------------------------------------- the analysis read what the run wrote
+def platform_meta(rows: int, blocks: list, missing: list = ()) -> dict:
+    return {"rows": rows, "blocks": list(blocks), "blocks_missing": list(missing), "uncommitted_files": 0}
+
+
+def shard_rows(results: Path) -> None:
+    """mock_frontier with three committed rows in two worker shards and an orphan in a third (not a result)."""
+    units = results / "mock_frontier" / "units"
+    write_batch(units / "w0", "aa", [good_row(), good_row(arm="C")], ["B-1", "C-2"])
+    write_batch(units / "w1", "bb", [good_row()], ["B-3"])
+    write_batch(units / "w2", "cc", [good_row()], ["B-4"], done=False)
+
+
+def test_the_analysis_must_have_read_every_committed_row_of_the_blocks_it_reads(tmp_path):
+    shard_rows(tmp_path)
+    llm = platform_meta(0, ["llm_capped"], ["llm_capped"])
+    good = {"meta": {"platforms": {"mock": platform_meta(3, ["mock_frontier"]), "llm": llm}}}
+    assert e2e.check_analysis(good, tmp_path, ["mock_frontier"]) == []
+    blind = {"meta": {"platforms": {"mock": platform_meta(0, ["mock_frontier"], ["mock_frontier"]), "llm": llm}},
+             "hypotheses": {"H-budget": {"mock": {"status": "no_data", "blocks_missing": ["mock_frontier"]}}}}
+    problems = e2e.check_analysis(blind, tmp_path, ["mock_frontier"])
+    assert any(p.startswith("mock:") and "read 0 rows" in p and "hold 3" in p for p in problems), problems
+    assert any("mock_frontier" in p and "blocks_missing" in p for p in problems), problems
+    assert any("H-budget" in p and "no_data" in p for p in problems), problems
+    with_orphan = {"meta": {"platforms": {"mock": platform_meta(4, ["mock_frontier"]), "llm": llm}}}
+    assert any("read 4 rows" in p for p in e2e.check_analysis(with_orphan, tmp_path, ["mock_frontier"]))
+    assert any("llm_headline" in p and "reads" in p for p in e2e.check_analysis(good, tmp_path, ["llm_headline"]))
+    assert any("meta.platforms" in p for p in e2e.check_analysis({"rows": 3}, tmp_path, ["mock_frontier"]))
+
+
+def shard_session(tmp_path) -> e2e.Session:
+    plan = e2e.Plan("t", {"runtime.n_insiders": 3}, [], [e2e.Evaluation("mock_frontier", 3, 1)],
+                    analysis_sets={"analysis.blocks": e2e.ANALYSIS_TEST_VALUES["analysis.blocks"]})
+    return e2e.Session(plan, Path("launcher.py"), tmp_path / "results", "sprint", {}, 1, tmp_path)
+
+
+def test_the_analysis_stage_fails_an_analysis_that_reads_no_row_of_the_worker_shards(tmp_path, capsys):
+    session = shard_session(tmp_path)
+    shard_rows(session.results_root / "sprint")
+    report = e2e.Report()
+    e2e.stage_analysis(session, report, "fake_analysis:analyze")
+    assert report.failures == []
+    capsys.readouterr()
+    report = e2e.Report()
+    e2e.stage_analysis(session, report, "fake_analysis:top_folder_only")
+    out = capsys.readouterr().out
+    assert len(report.failures) == 1 and "committed row" in report.failures[0], report.failures
+    assert "mock: the analysis read 0 rows, the committed rows files of mock_frontier hold 3" in out, out
+    assert "mock_frontier: in mock.blocks_missing" in out, out
+
+
+def test_the_analysis_stage_fails_a_full_report_of_an_empty_results_directory(tmp_path, capsys):
+    session = shard_session(tmp_path)
+    (session.results_root / "sprint").mkdir(parents=True)
+    report = e2e.Report()
+    e2e.stage_analysis(session, report, "fake_analysis:top_folder_only")
+    out = capsys.readouterr().out
+    assert len(report.failures) == 1 and "mock_frontier: in mock.blocks_missing" in out, out
+
+
+# ------------------------------------------------------------------- a kill that cuts a unit in the middle
+def test_a_part_written_unit_holds_some_but_not_all_of_its_rows_and_no_done_marker(tmp_path):
+    units = tmp_path / "units"
+    write_unit(units, "A-1", [good_row()], done=False)                      # 1 of 2 rows: cut in the middle
+    write_unit(units, "A-2", [good_row(), good_row()], done=False)          # every row, done marker not yet written
+    write_unit(units, "A-3", [good_row()])                                  # done
+    write_unit(units, "A-4", [], done=False, tail='{"arm": "ha')            # a torn first line: no row yet
+    write_batch(units, "aa", [good_row()], ["B-1", "B-2"], done=False)      # an orphan batch is not a unit
+    assert e2e.part_written(units, 2) == ["A-1.jsonl"]
+    assert e2e.part_written(units, 1) == []
+    assert e2e.part_written(tmp_path / "no_such_units", 2) == []
+
+
+def test_a_kill_that_cuts_no_unit_is_followed_by_another_launch_and_kill(tmp_path, monkeypatch):
+    session = analysis_session(tmp_path)
+    units = session.block_dir("llm_headline") / "units"
+    launches = []
+
+    def run_and_kill(block, n_units, rows_per_unit, cut_at=3):
+        launches.append(block)
+        n = len(launches)
+        write_unit(units, f"A-{n}", [good_row(), good_row()])                   # whole units only ...
+        if n == cut_at:
+            write_unit(units, f"B-{n}", [good_row()], done=False)               # ... until this kill cuts one
+        return e2e.Progress(started=n, done=n), True
+
+    monkeypatch.setattr(session, "run_and_kill", run_and_kill)
+    found = session.interrupt(e2e.Evaluation("llm_headline", 10, 2, interrupt=True))
+    assert (found.killed, found.launches, found.cut) == (True, 3, ("B-3.jsonl",))
+    launches.clear()
+    import shutil
+    shutil.rmtree(units)
+    monkeypatch.setattr(session, "run_and_kill", lambda *a: run_and_kill(*a, cut_at=99))
+    found = session.interrupt(e2e.Evaluation("llm_headline", 10, 2, interrupt=True))
+    assert (found.launches, found.cut) == (e2e.KILL_ATTEMPTS, ())
+    launches.clear()
+    found = session.interrupt(e2e.Evaluation("mock_frontier", 10, 1, interrupt=True))   # whole batches: one kill
+    assert found.launches == 1
+
+
+def test_the_stage_fails_when_no_kill_left_a_unit_part_written(tmp_path, monkeypatch):
+    session = analysis_session(tmp_path)
+    monkeypatch.setattr(e2e.Session, "interrupt",
+                        lambda self, ev: e2e.Interruption(e2e.Progress(1, 1), True, e2e.KILL_ATTEMPTS, ()))
+    monkeypatch.setattr(e2e.Session, "run_block", lambda self, block: None)
+    report = e2e.Report()
+    e2e.stage_evaluation(session, report, e2e.Evaluation("llm_headline", 2, 2, interrupt=True, metrics=False))
+    assert any("resume path not exercised" in f for f in report.failures), report.failures
+
+
+def test_a_frozen_launcher_writes_nothing_until_it_is_let_go(tmp_path):
+    import subprocess
+    import time
+    out = tmp_path / "ticks"
+    code = ("import sys, time\nwith open(sys.argv[1], 'a') as f:\n    while True:\n"
+            "        f.write('x\\n'); f.flush(); time.sleep(0.005)\n")
+    proc = subprocess.Popen([sys.executable, "-c", code, str(out)], start_new_session=True)
+
+    def grows(seconds: float) -> bool:
+        start = out.stat().st_size if out.exists() else 0
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            if out.exists() and out.stat().st_size > start:
+                return True
+            time.sleep(0.01)
+        return False
+
+    try:
+        assert grows(30)
+        assert e2e.freeze(proc)
+        time.sleep(0.05)
+        assert not grows(0.4)
+        assert e2e.thaw(proc)
+        assert grows(10)
+    finally:
+        e2e.kill_tree(proc)
+        proc.wait()
+
+
+def test_on_posix_the_kill_and_the_freeze_take_the_launchers_whole_process_group(monkeypatch):
+    calls = []
+    monkeypatch.setattr(e2e, "WINDOWS", False)
+    monkeypatch.setattr(e2e.os, "killpg", lambda pid, sig: calls.append((pid, sig)), raising=False)
+    for name, number in (("SIGKILL", 9), ("SIGSTOP", 19), ("SIGCONT", 18)):
+        monkeypatch.setattr(e2e.signal, name, number, raising=False)
+
+    class Proc:
+        pid = 4321
+
+        def kill(self):
+            calls.append("kill")
+
+    e2e.kill_tree(Proc())
+    assert calls[0] == (4321, 9)
+    calls.clear()
+    assert e2e.freeze(Proc()) and e2e.thaw(Proc())
+    assert calls == [(4321, 19), (4321, 18)]
+
+
+def test_the_launcher_starts_in_its_own_process_group(tmp_path, monkeypatch):
+    seen = {}
+
+    class Finished:
+        pid, returncode = 1, 0
+
+        def __init__(self, argv, **kwargs):
+            seen.update(kwargs)
+
+        def poll(self):
+            return 0
+
+        def wait(self):
+            return 0
+
+    monkeypatch.setattr(e2e.subprocess, "Popen", Finished)
+    session = analysis_session(tmp_path)
+    assert session.run_and_kill("mock_frontier", 4, 1) == (e2e.Progress(0, 0), False)
+    assert seen.get("start_new_session") is True
+
+
+def test_a_block_that_finishes_without_a_cut_is_started_over_on_a_fresh_block_folder(tmp_path, monkeypatch):
+    """Under load the remaining units can all finish inside the grace period of a later attempt. The attempts so far
+    are then useless (nothing left to cut): the block is wiped and the kill starts again, within KILL_ATTEMPTS."""
+    session = shard_session(tmp_path)
+    evaluation = e2e.Evaluation("mock_frontier", 3, 2, interrupt=True)
+    units = session.block_dir("mock_frontier") / "units"
+    seen_before = []
+    script = iter(["cut_missed", "finished", "cut"])
+
+    def fake(self, block, n_units, rows_per_unit):
+        seen_before.append(sorted(p.name for p in units.rglob("*")) if units.is_dir() else [])
+        step = next(script)
+        if step == "cut_missed":                         # killed, but every unit was complete
+            for i in range(3):
+                write_unit(units, f"B-{i}", [good_row(), good_row()])
+            return e2e.progress(units), True
+        if step == "finished":                           # not killed: the rest finished within the grace period
+            return e2e.progress(units), False
+        write_unit(units, "B-0", [good_row()], done=False)
+        return e2e.progress(units), True
+
+    monkeypatch.setattr(e2e.Session, "run_and_kill", fake)
+    kill = session.interrupt(evaluation)
+    assert kill.killed and kill.cut == ("B-0.jsonl",), kill
+    assert kill.launches == 1, kill                     # launches counted since the last wipe: the manifests on disk
+    assert seen_before[-1] == [], seen_before           # the last attempt ran on a wiped block folder

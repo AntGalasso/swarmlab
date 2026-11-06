@@ -64,7 +64,7 @@ class _Legacy(common.Arm):
     def risk(self, obs: core.Observation, p: torch.Tensor):
         """swarmlab.risk_score: (R, C) with R = p * H - lam * (1 - p) * C, both float64 [B, N]."""
         H = self.reach(obs, 1.0 - p)
-        deg = self.ctx.adj.sum(-1).double()
+        deg = self.ctx.adj.sum(-1).to(self.ctx.dtype)
         C = 0.5 * deg / deg.amax(-1, keepdim=True).clamp(min=1.0) + 0.5 * (1.0 - obs.t / self.ctx.T)
         return p * H - self.par["lam"] * (1.0 - p) * C, C
 
@@ -100,7 +100,7 @@ class ScoreOnly(_Legacy):
     _state = ("alarm_run",)
 
     def setup(self, ctx):
-        self.alarm_run = torch.zeros(ctx.B, ctx.N, dtype=torch.int64)
+        self.alarm_run = torch.zeros(ctx.B, ctx.N, dtype=torch.int64, device=ctx.device)
 
     def act(self, obs):
         p = obs.monitor
@@ -121,7 +121,7 @@ class CentralityOnly(_Legacy):
     thresholded = False
 
     def act(self, obs):
-        reach = self.reach(obs, torch.ones(self.ctx.B, self.ctx.N, dtype=torch.float64))
+        reach = self.reach(obs, torch.ones(self.ctx.B, self.ctx.N, dtype=self.ctx.dtype, device=self.ctx.device))
         cand = obs.active & (reach > 0)
         # sorted(((reach, i) ...), reverse=True): equal reach goes to the higher index
         iso = self.isolate(obs, common.rank_desc(reach, cand, ties_high=True), cand)
@@ -141,11 +141,11 @@ class RandomCapped(_Legacy):
     def setup(self, ctx):
         steps = int(self.par["random_steps"])
         when = common.predraw(ctx, f"{self.name}.when", (ctx.T,)).argsort(dim=-1)[:, :min(steps, ctx.T)]
-        self.when = torch.zeros(ctx.B, ctx.T, dtype=torch.bool).scatter_(-1, when, True)
+        self.when = torch.zeros(ctx.B, ctx.T, dtype=torch.bool, device=ctx.device).scatter_(-1, when, True)
         self.who = common.predraw(ctx, f"{self.name}.who", (ctx.T, ctx.N))
 
     def act(self, obs):
-        gate = self.when[:, obs.t - 1] if self.own_timing else torch.ones(self.ctx.B, dtype=torch.bool)
+        gate = self.when[:, obs.t - 1] if self.own_timing else torch.ones(self.ctx.B, dtype=torch.bool, device=self.ctx.device)
         cand = obs.active & gate[:, None]
         order = common.rank_desc(self.who[:, obs.t - 1], cand)
         fits = self.isolate(obs, order, cand)

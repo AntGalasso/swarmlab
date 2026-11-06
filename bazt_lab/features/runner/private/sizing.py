@@ -64,11 +64,23 @@ def _adaptive_line(units, s: Mapping, wiring) -> str:
         return f"adaptive search: not sized ({e})"
 
 
+def seconds_per_episode(s: Mapping, arm: str, kind: str, n: int) -> float | None:
+    """Measured CPU seconds of one mock episode (estimates.mock_seconds_per_episode_by_arm); an arm without a value takes
+    the slowest arm of the same kind and N; None when nothing is measured for N."""
+    table = core.get(s, "estimates.mock_seconds_per_episode_by_arm").get(str(n))
+    if not table:
+        return None
+    if f"{arm}|{kind}" in table:
+        return table[f"{arm}|{kind}"]
+    same = [v for k, v in table.items() if k.endswith(f"|{kind}")]
+    return max(same) if same else max(table.values())
+
+
 def dry_run(s: Mapping, names: List[str], wiring=None) -> None:
     rate = core.get(s, "estimates.calls_per_second")
-    per_episode = {int(k): v for k, v in core.get(s, "estimates.mock_seconds_per_episode").items()}
-    print(f"profile: {s['profile']}\n")
-    print(f"{'block':<26}{'units':>10}{'conv/episodes':>15}{'LLM calls':>13}{'USD est':>10}{'hours':>9}")
+    workers = core.get(s, "compute.workers")
+    print(f"profile: {s['profile']}   compute.workers {workers}\n")
+    print(f"{'block':<26}{'units':>10}{'conv/episodes':>15}{'LLM calls':>13}{'USD est':>10}{'cpu h':>9}{'wall h':>9}")
     all_llm: List[dict] = []
     totals = dict.fromkeys(CALL_KINDS, 0)
     for name in names:
@@ -88,14 +100,16 @@ def dry_run(s: Mapping, names: List[str], wiring=None) -> None:
                 totals[k] += calls[k]
             n = sum(calls.values())
             print(f"{name:<26}{len(units):>10,}{sum(u['conversations'] for u in units):>15,}{n:>13,}"
-                  f"{_usd(calls, s):>10,.0f}{n / rate / 3600:>9.1f}")
+                  f"{_usd(calls, s):>10,.0f}{'-':>9}{n / rate / 3600:>9.1f}")
         else:
-            by_n = units.by_agents()
-            count = sum(by_n.values())
-            known = all(n in per_episode for n in by_n)
+            groups = units.cost_groups()
+            count = sum(groups.values())
             io = core.get(s, "estimates.mock_checkpoint_seconds_per_unit")
-            hours = f"{sum(c * (per_episode[n] + io) for n, c in by_n.items()) / 3600:.1f}" if known else "n/a"
-            print(f"{name:<26}{count:>10,}{count:>15,}{'0':>13}{'0':>10}{hours:>9}")
+            costs = {key: seconds_per_episode(s, key[0], key[1], key[2]) for key in groups}
+            known = all(v is not None for v in costs.values())
+            cpu = sum(c * (costs[key] + io) for key, c in groups.items()) / 3600 if known else None
+            print(f"{name:<26}{count:>10,}{count:>15,}{'0':>13}{'0':>10}"
+                  f"{f'{cpu:.2f}' if known else 'n/a':>9}{f'{cpu / workers:.2f}' if known else 'n/a':>9}")
             if block.adaptive:
                 print(f"{'':<26}{_adaptive_line(units, s, wiring)}")
     total = sum(totals.values())

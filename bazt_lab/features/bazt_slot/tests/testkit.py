@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import torch
 
 from bazt_lab.core import public as core
@@ -51,6 +52,46 @@ def adj_of(B: int, edges, N: int) -> torch.Tensor:
     return a
 
 
+# ------------------------------------------------- the grid topologies as numpy 0/1 arrays (symmetric, empty diagonal)
+def star_hub(n: int) -> np.ndarray:
+    a = np.zeros((n, n))
+    a[0, 1:] = a[1:, 0] = 1.0
+    return a
+
+
+def small_world(n: int, k: int = 4, p: float = 0.1, seed: int = 0) -> np.ndarray:
+    """Watts-Strogatz: ring lattice with k // 2 neighbours per side, each lattice edge rewired with probability p."""
+    rng = np.random.default_rng(seed)
+    a = np.zeros((n, n))
+    for i in range(n):
+        for d in range(1, k // 2 + 1):
+            a[i, (i + d) % n] = a[(i + d) % n, i] = 1.0
+    for i in range(n):
+        for d in range(1, k // 2 + 1):
+            j, c = (i + d) % n, int(rng.integers(n))
+            if rng.random() < p and c != i and not a[i, c]:
+                a[i, j] = a[j, i] = 0.0
+                a[i, c] = a[c, i] = 1.0
+    return a
+
+
+def barabasi_albert(n: int, m: int = 3, seed: int = 0) -> np.ndarray:
+    """A star on 0..m, then each agent attaches to m distinct earlier ones with probability proportional to degree."""
+    rng = np.random.default_rng(seed)
+    a = np.zeros((n, n))
+    a[0, 1:m + 1] = a[1:m + 1, 0] = 1.0
+    for v in range(m + 1, n):
+        deg = a[:v, :v].sum(1)
+        for t in rng.choice(v, size=m, replace=False, p=deg / deg.sum()):
+            a[v, t] = a[t, v] = 1.0
+    return a
+
+
+def spectral_radius_np(a: np.ndarray) -> float:
+    """max |eigenvalue| of the directed adjacency, from numpy (the reference the power iteration is checked against)."""
+    return float(np.abs(np.linalg.eigvals(a)).max())
+
+
 def make_ctx(adj, arm="BAZT", *, thresholds=None, audit_cap=INF, intervention_cap=INF, settings=None, costs=None,
              T=6, sink=0):
     B, N, _ = adj.shape
@@ -69,22 +110,28 @@ class Overspend(AssertionError):
 
 
 class Fake:
-    def __init__(self, ctx, *, quarantine_charged_once=False):
+    def __init__(self, ctx, *, quarantine_charged_once=False, isolated_channel=False):
         self.ctx = ctx
+        self.isolated_channel = isolated_channel          # D123: offer `Observation.audit_isolated`
+        self.iso_calls = []                                # its requests, one entry per call
+        self.iso_round = []
         B, N = ctx.B, ctx.N
         self.remaining_audit = ctx.audit_cap.clone()
         self.remaining_intervention = ctx.intervention_cap.clone()
         self.isolated = torch.zeros(B, N, dtype=torch.bool)
         self.scores = torch.zeros(B, N, dtype=torch.float64)       # what the auditor says about each sender
         self.audit_calls = []
+        self.audit_round = []                                       # the round of each entry of audit_calls
         self.spent_audit = torch.zeros(B, dtype=torch.float64)
         self.spent_intervention = torch.zeros(B, dtype=torch.float64)
         self.quarantine_charged_once = quarantine_charged_once
         self.history = []
 
-    def audit(self, mask):
-        self.audit_calls.append(mask.clone())
-        out = torch.full(mask.shape, NAN, dtype=torch.float64)
+    def audit(self, mask, record=True):
+        if record:
+            self.audit_calls.append(mask.clone())
+            self.audit_round.append(getattr(self, "t", 0))
+        out = torch.full(mask.shape, NAN, dtype=self.ctx.dtype, device=self.ctx.device)
         unit = self.ctx.costs["inspect"]
         for b in range(mask.shape[0]):
             for i in range(mask.shape[1]):
@@ -94,6 +141,12 @@ class Fake:
                     self.spent_audit[b] += unit
         return out
 
+    def audit_isolated(self, mask):
+        """D123: grants only isolated agents, from the same budget and unit cost; `audit` never grants them here."""
+        self.iso_calls.append(mask.clone())
+        self.iso_round.append(getattr(self, "t", 0))
+        return self.audit(mask & self.isolated, record=False)
+
     def obs(self, t, *, monitor=None, authentic=None, attempts=None, T=None):
         """`T` is the episode length the defender is told (core contract: obs.T counts the whole episode)."""
         ctx = self.ctx
@@ -102,7 +155,7 @@ class Fake:
         return core.Observation(
             t=t, T=self.T, active=~self.isolated, attempts=self.attempts, monitor=monitor,
             remaining_audit=self.remaining_audit.clone(), remaining_intervention=self.remaining_intervention.clone(),
-            audit=self.audit, authentic=authentic)
+            audit=self.audit, authentic=authentic, audit_isolated=self.audit_isolated if self.isolated_channel else None)
 
     def charge_of(self, actions):
         """float64 [B]: intervention units the platform charges for these actions at the current round."""

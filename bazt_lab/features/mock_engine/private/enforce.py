@@ -26,6 +26,7 @@ from typing import Callable, Dict, Mapping
 import torch
 
 from bazt_lab.core import public as core
+from bazt_lab.features.mock_engine.private.bits import band, bandnot, bor
 
 Tensor = torch.Tensor
 KINDS = [k.value for k in core.ActionKind]
@@ -51,9 +52,9 @@ class Persistent:
     degr: Tensor       # bool [B, N] degraded senders: every outgoing delivery is sanitized
 
     @classmethod
-    def zeros(cls, B: int, N: int) -> Persistent:
-        agent = lambda: torch.zeros(B, N, dtype=torch.bool)              # noqa: E731
-        return cls(agent(), torch.zeros(B, N, N, dtype=torch.bool), agent(), agent())
+    def zeros(cls, B: int, N: int, device=None) -> Persistent:
+        agent = lambda: torch.zeros(B, N, dtype=torch.bool, device=device)              # noqa: E731
+        return cls(agent(), torch.zeros(B, N, N, dtype=torch.bool, device=device), agent(), agent())
 
     def clone(self) -> Persistent:
         return Persistent(*(getattr(self, f.name).clone() for f in fields(self)))
@@ -92,9 +93,10 @@ def _apply(acts: Mapping[str, Tensor], st: Persistent, live: Tensor, auth: Tenso
            c: Mapping[str, float], limit: int, rate_u: Callable[[Tensor], Tensor]) -> Round:
     B, N, _ = live.shape
     rem = float(T - t + 1)
-    no_agent, no_edge = torch.zeros(B, N, dtype=torch.bool), torch.zeros(B, N, N, dtype=torch.bool)
+    dev = live.device
+    no_agent, no_edge = torch.zeros(B, N, dtype=torch.bool, device=dev), torch.zeros(B, N, N, dtype=torch.bool, device=dev)
     given = lambda name: acts.get(name, no_edge if name in EDGE_FIELDS else no_agent)      # noqa: E731
-    counts = torch.zeros(B, len(KINDS), dtype=torch.int64)
+    counts = torch.zeros(B, len(KINDS), dtype=torch.int64, device=dev)
 
     # reinstatement lifts isolation, degradation, rate limit and the quarantines of the agent's edges
     had = st.iso | st.rate | st.degr | st.quar.any(2) | st.quar.any(1)
@@ -114,17 +116,18 @@ def _apply(acts: Mapping[str, Tensor], st: Persistent, live: Tensor, auth: Tenso
         cost = cost + c["isolation"] * _total(iso_new * still, 1) * rem
     counts[:, INDEX["isolation"]] = iso_new.sum(1)
     iso2 = iso1 | iso_new
-    iso_block = iso2[:, :, None] | iso2[:, None, :]
+    iso_block = bor(iso2[:, :, None], iso2[:, None, :])
 
     q_new = given("edge_quarantine") & adj & ~quar1 & ~iso_block if "edge_quarantine" in acts else no_edge
     cost = cost + c["edge_quarantine"] * _total(q_new, (1, 2)) * rem
     counts[:, INDEX["edge_quarantine"]] = q_new.sum((1, 2))
     quar2 = quar1 | q_new
 
-    open_ = live & ~iso_block & ~quar2                       # deliveries that survive the persistent cuts so far
+    open_ = bandnot(bandnot(live, iso_block), quar2)         # deliveries that survive the persistent cuts so far
     n_open = open_.sum(2)
+    surviving = torch.where(rate1, n_open.clamp(max=limit), n_open)    # a rate-limited sender keeps `limit` deliveries
     d_new = given("privilege_degradation") & ~degr1 & ~iso2
-    cost = cost + c["privilege_degradation"] * _total(d_new * n_open, 1) * rem
+    cost = cost + c["privilege_degradation"] * _total(d_new * surviving, 1) * rem
     counts[:, INDEX["privilege_degradation"]] = d_new.sum(1)
     degr2 = degr1 | d_new
 
@@ -133,29 +136,31 @@ def _apply(acts: Mapping[str, Tensor], st: Persistent, live: Tensor, auth: Tenso
     counts[:, INDEX["rate_limit"]] = l_new.sum(1)
     rate2 = rate1 | l_new
     rate_drop = torch.zeros_like(live)
-    need = rate2 & (n_open > limit)
+    need = band(rate2, n_open > limit)
     rows = need.any(1).nonzero().flatten()
     if len(rows):
         cand = open_[rows] & need[rows][:, :, None]
         rank = rate_u(rows).masked_fill(~cand, math.inf).argsort(-1).argsort(-1)       # lowest draws are kept
         rate_drop[rows] = cand & (rank >= limit)
 
-    after_persistent = open_ & ~rate_drop
-    deny = given("deny") & after_persistent
-    cost = cost + c["deny"] * _total(deny & auth, (1, 2))
+    after_persistent = bandnot(open_, rate_drop)
+    deny = band(given("deny"), after_persistent)
+    cost = cost + c["deny"] * _total(band(deny, auth), (1, 2))
     counts[:, INDEX["deny"]] = deny.sum((1, 2))
-    after_deny = after_persistent & ~deny
-    delay = given("delay") & after_deny
+    after_deny = bandnot(after_persistent, deny)
+    delay = band(given("delay"), after_deny)
     cost = cost + c["delay"] * _total(delay, (1, 2))
     counts[:, INDEX["delay"]] = delay.sum((1, 2))
-    explicit = given("sanitize") & after_deny
-    cost = cost + c["sanitize"] * _total(explicit, (1, 2))
-    counts[:, INDEX["sanitize"]] = explicit.sum((1, 2))
-    sanitized = explicit | (degr2[:, :, None] & after_deny)
+    explicit = band(given("sanitize"), after_deny)
+    fresh = bandnot(bandnot(explicit, delay), degr2[:, :, None].expand(B, N, N))        # a delivery already delayed or already sanitized by a degradation is charged once
+    cost = cost + c["sanitize"] * _total(fresh, (1, 2))
+    counts[:, INDEX["sanitize"]] = fresh.sum((1, 2))
+    sanitized = bor(explicit, band(degr2[:, :, None], after_deny))
 
-    restricted = live & ~iso_block & (quar2 | rate_drop | deny | delay | sanitized)
-    return Round(Persistent(iso2, quar2, rate2, degr2), after_deny & ~delay, delay, sanitized, restricted, cost,
-                 torch.zeros(B, dtype=torch.bool), counts)
+    restricted = bandnot(live, iso_block)
+    restricted = band(restricted, bor(quar2, rate_drop, deny, delay, sanitized))
+    return Round(Persistent(iso2, quar2, rate2, degr2), bandnot(after_deny, delay), delay, sanitized, restricted, cost,
+                 torch.zeros(B, dtype=torch.bool, device=dev), counts)
 
 
 def apply_actions(actions: core.Actions, state: Persistent, live: Tensor, authentic: Tensor, adj: Tensor,
