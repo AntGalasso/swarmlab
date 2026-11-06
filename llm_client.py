@@ -257,6 +257,17 @@ def make_llm_policy(model: str, cache: SQLiteLLMCache, max_concurrency: int = 40
 
 
 # ------------------------------------------------------------------------------- smoke test
+def _smoke_model_groups():
+    """Use the selected provider's catalog; OpenRouter slugs are not Adaption IDs."""
+    if _provider() == "adaption":
+        return (
+            ("primary", [os.getenv("ADAPTION_SMOKE_PRIMARY_MODEL", "gemma-4-31b-it"),
+                         os.getenv("ADAPTION_SMOKE_FALLBACK_MODEL", "deepseek-v4-flash")]),
+            ("H4", [os.getenv("ADAPTION_SMOKE_H4_MODEL", "qwen3.8-27b")]),
+        )
+    return (("primary", [PRIMARY_MODEL, FALLBACK_MODEL]), ("H4", [H4_MODEL]))
+
+
 def run_connectivity_smoke_test(db_path: str = "llm_cache.sqlite", transport: Optional[Transport] = None) -> bool:
     """The ONLY live call permitted before kickoff: 'Reply with the single word READY.' / 'Ping.'"""
     if transport is None and not _api_key():
@@ -266,12 +277,13 @@ def run_connectivity_smoke_test(db_path: str = "llm_cache.sqlite", transport: Op
     try:
         system, user = "Reply with the single word READY.", "Ping."
         rows, all_ok = [], True
-        for label, models in (("primary", [PRIMARY_MODEL, FALLBACK_MODEL]), ("H4", [H4_MODEL])):
+        max_tokens = 512 if _provider() == "adaption" else 8
+        for label, models in _smoke_model_groups():
             used, first, lat1 = None, "", 0.0
             for slug in models:
                 # Probe, not resilience test: fail fast (one attempt) and fall back to the next slug.
                 backend = LLMBackend(slug, cache, transport, max_concurrency=1, temperature=0.0,
-                                     max_tokens=8, retries=0)
+                                     max_tokens=max_tokens, retries=0)
                 try:
                     t0 = time.perf_counter()
                     first = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
@@ -280,16 +292,25 @@ def run_connectivity_smoke_test(db_path: str = "llm_cache.sqlite", transport: Op
                     break
                 except Exception as e:  # slug unavailable -> try the fallback
                     print(f"[{label}] {slug} failed: {e!s:.120}")
+                finally:
+                    backend.close()
             if used is None:
                 rows.append((label, models[0], "-", float("nan"), float("nan"), "FAIL"))
                 all_ok = False
                 continue
             backend = LLMBackend(used, cache, transport, max_concurrency=1, temperature=0.0,
-                                 max_tokens=8, retries=0)
-            t0 = time.perf_counter()
-            second = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
-            lat2 = (time.perf_counter() - t0) * 1000
-            ok = (second == first) and (lat2 < 50.0)
+                                 max_tokens=max_tokens, retries=0)
+            before = cache.stats()
+            try:
+                t0 = time.perf_counter()
+                second = backend.generate([(system, user, "smoke-0")], temperature=0.0)[0]
+                lat2 = (time.perf_counter() - t0) * 1000
+            finally:
+                backend.close()
+            after = cache.stats()
+            ok = (first == "READY" and second == first
+                  and after["cache_hits"] == before["cache_hits"] + 1
+                  and after["live_calls"] == before["live_calls"])
             all_ok &= ok
             rows.append((label, used, first[:20].replace("\n", " "), lat1, lat2, "PASS" if ok else "FAIL"))
         print(f"\n{'Arm':<8}{'Model slug':<34}{'Output':<22}{'Live ms':>9}{'Cache ms':>10}  Exact match")

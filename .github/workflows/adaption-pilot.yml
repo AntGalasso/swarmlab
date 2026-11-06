@@ -1,0 +1,70 @@
+name: Adaption integration pilot
+
+on:
+  push:
+    branches: [ricardo/adaption-pilot-20261106]
+    paths:
+      - llm_client.py
+      - scripts/run_adaption_pilot.py
+      - tests/test_adaption_smoke.py
+      - .github/workflows/adaption-pilot.yml
+  workflow_dispatch:
+    inputs:
+      live_pilot:
+        description: Run the six-episode Adaption pilot using the repository secret
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ricardo-adaption-pilot
+  cancel-in-progress: false
+
+jobs:
+  verify-and-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install main dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run offline regressions
+        run: python -m pytest -q --junitxml=results/ricardo_ci/pytest.xml
+      - name: Verify complete pilot with a local fake transport
+        run: python scripts/run_adaption_pilot.py --mode fake --out results/ricardo_ci/fake
+      - name: Run requested live Adaption pilot
+        if: github.event_name == 'push' || inputs.live_pilot
+        env:
+          ADAPTION_API_KEY: ${{ secrets.ADAPTION_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, sys
+          if not os.environ.get('ADAPTION_API_KEY'):
+              target = pathlib.Path('results/ricardo_ci/live_status.json')
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(json.dumps({'status': 'blocked_missing_api_key', 'remote_calls': 0, 'credits_used': 0}, indent=2))
+              print('::error::ADAPTION_API_KEY is not configured as an accessible repository secret; no live request was sent.')
+              sys.exit(2)
+          PY
+          python scripts/run_adaption_pilot.py --mode pilot --allow-live-llm --max-credits 1 --out results/ricardo_ci/live
+      - name: Save verification and pilot results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: adaption-pilot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            results/ricardo_ci/**/*.json
+            results/ricardo_ci/**/*.csv
+            results/ricardo_ci/pytest.xml
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,71 @@
+{
+  "module": "bazt.runner",
+  "mode": "mock",
+  "split": "tune",
+  "seeds": [
+    9001,
+    9002
+  ],
+  "n_seeds": 2,
+  "arms": [
+    "no_defense",
+    "static_zta",
+    "bazt"
+  ],
+  "topologies": [
+    "star_hub",
+    "small_world"
+  ],
+  "regimes": [
+    "clean",
+    "decoy"
+  ],
+  "entry_source": "patient_zero",
+  "evasion_adapter": "none",
+  "equalize_budget": true,
+  "bazt_config": {
+    "budget_mode": "pooled",
+    "B": 12,
+    "K_hard": 3,
+    "B_soft": 6,
+    "cost_inspect": 1,
+    "cost_sanitize": 1,
+    "cost_restrict": 2,
+    "cost_block": 2,
+    "cost_isolate": 3,
+    "q_inspect": 0.8,
+    "inspect_ttl": 2,
+    "ttl_restrict": 3,
+    "tau_release": 0.3,
+    "quarantine_ttl": null,
+    "w_prov": 1.0,
+    "delta_hop": 0.7,
+    "own_decay": 0.8,
+    "n_ingress": 2,
+    "lam": 1.0,
+    "rho_san": 0.15,
+    "rho_res": 0.35,
+    "theta0": 0.15,
+    "kappa": 1.5,
+    "n_privileged": 3,
+    "priv_bonus": 0.5,
+    "strip_degrades_weight": true,
+    "stripped_edge_weight": 0.35,
+    "precision_hp": 1.0,
+    "precision_lp": 0.6,
+    "noisy_frac": 0.4,
+    "unlimited": false,
+    "use_pacing": true,
+    "use_topology": true,
+    "use_provenance": true,
+    "use_utility": true,
+    "binary_actions": false
+  },
+  "swarm_config": {
+    "N": 12,
+    "T": 12,
+    "K": 3,
+    "B_san": 6
+  },
+  "note": "mock numbers are pipeline checks, not findings"
+}
