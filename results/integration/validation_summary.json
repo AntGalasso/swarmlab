@@ -1,0 +1,91 @@
+{
+  "tests": 3740,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 35,
+  "passed": 3705,
+  "utc": "2026-11-06T22:34:01.871251+00:00",
+  "runtime": "Python 3.11.17; locked CPU dependencies",
+  "groups": [
+    {
+      "group": "tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/core/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/adaptive/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/analysis/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/bazt_slot/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/conventional/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/gnn/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/judge/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/llm_data/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/llm_harness/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/metrics/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/mock_engine/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/references/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/runner/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/sync/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "bazt_lab/features/tracking/tests",
+      "exit_code": 0
+    },
+    {
+      "group": "scripts/tests/test_check_env.py",
+      "exit_code": 0
+    },
+    {
+      "group": "scripts/tests/test_check_gpu.py",
+      "exit_code": 0
+    },
+    {
+      "group": "scripts/tests/test_check_static.py",
+      "exit_code": 0
+    },
+    {
+      "group": "scripts/tests/test_e2e.py",
+      "exit_code": 0
+    }
+  ]
+}

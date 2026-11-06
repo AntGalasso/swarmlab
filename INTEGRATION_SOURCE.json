@@ -20,7 +20,8 @@
     "independently reproduced isolated-audit golden digests"
   ],
   "lightweight_root_tests_passed": 480,
-  "full_lab_validation": "in progress; no GPU/live GNN evaluation claimed",
+  "full_validation": {"tests":3740,"passed":3705,"skipped":35,"failures":0,"errors":0},
+  "full_lab_validation": "complete offline CPU validation; no GPU/live GNN evaluation claimed",
   "runtime": "Python 3.11.17, uv.lock CPU build",
   "credentials_committed": false
 }

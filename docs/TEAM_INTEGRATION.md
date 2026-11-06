@@ -61,17 +61,31 @@ are not directly instructed to adopt it when exposed.
    deployable comparators, and the same total intervention cost cap.
 2. `--phase challenge`: five new tune seeds and two topologies, N=12 and T=12,
    with genuine attack-free controls. No incomplete episode is accepted.
-3. `--phase main`: freeze parameters/source before 12 independent evaluation
+3. `budget_study_analysis.py --phase freeze --out <study-dir>`: save the exact
+   analysis implementation hash and comparison families before evaluation rows.
+4. `--phase main`: freeze parameters/source before 12 independent evaluation
    seeds. Score-only and centrality-only baselines, BAZT and its no-pacing
    ablation share a 12-unit cap; no defence is the untreated reference.
-4. `--phase heldout --confirm-frozen-analysis`: six reserved seeds, after main.
+5. `budget_study_analysis.py --phase main --out <study-dir>`: analyze all 240
+   completed rows at the seed level, including every comparator and both regimes.
+6. `--phase heldout --confirm-frozen-analysis`: six reserved seeds, after main;
+   analyze these separately with `budget_study_analysis.py --phase heldout`.
 
 The first integrated challenge attempt at 512 output tokens stopped on an
 incomplete response before accepting any episode. Version 2 also stopped on an
 incomplete response at 2048 tokens. Version 3 makes at most one larger-budget
 retry (2048, then 8192 tokens) and rejects incomplete output. These transport
 changes were made before main evaluation; the original failed receipts are
-retained. Resuming an interrupted phase reuses completed cached requests and
+retained. Version 3 later hit an HTTP 504 and repetitive greedy output on tune
+examples. Version 4 uses Gemma 4's documented temperature of 1.0 and up to two
+retries for transient HTTP errors, with unknown usage recorded. This change
+preceded any evaluation rows and used a fresh cache. That run encountered HTTP
+429 after 500 successful requests. Version 5 starts requests at least 0.15
+seconds apart and honours numeric Retry-After headers (bounded to 60 seconds per
+wait). It can reuse the version 4 tune-only cache because prompts and sampling
+parameters are unchanged; a cache-import manifest records this provenance.
+Resuming an interrupted
+phase with the same protocol reuses completed cached requests and
 keeps an additional usage receipt for every attempt. API credit calculations are
 separate from enforcement units and
 are not verified account invoices.
