@@ -269,7 +269,7 @@ def fig5(rows, path):
 def _load_jsonl(root: str) -> List[dict]:
     rows: List[dict] = []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d != "paper_pack"]
+        dirnames[:] = [d for d in dirnames if d != "paper_pack" and not d.startswith("_")]
         for fn in sorted(filenames):
             if not fn.endswith(".jsonl"):
                 continue
@@ -313,10 +313,14 @@ def fig_exp1(rows, path):
             z = [float(r["asr_final"]) for r in cell if r["arm"] == "bazt"]
             if not c or not z:
                 continue
-            gain = np.mean(c) - np.mean(z)
+            cs = {(r["topology"], int(r["N"]), r["seed"]): float(r["asr_final"]) for r in cell if r["arm"] == "arm_C"}
+            zs = {(r["topology"], int(r["N"]), r["seed"]): float(r["asr_final"]) for r in cell if r["arm"] == "bazt"}
+            d = np.array([cs[k] - zs[k] for k in cs if k in zs], dtype=float)     # paired per episode
+            if d.size == 0:
+                continue
             xs.append(0 if b is None else float(b) * 100)
-            ys.append(gain * 100)
-            es.append(float(np.std(c, ddof=1) / np.sqrt(len(c))) if len(c) > 1 else 0.0)
+            ys.append(float(d.mean()) * 100)
+            es.append(float(np.std(d, ddof=1) / np.sqrt(d.size)) * 100 if d.size > 1 else 0.0)
         if xs:
             ax.errorbar(xs, ys, yerr=es, fmt="o-", ms=5, capsize=3, lw=1.7, label=sc)
     ax.axhline(0, color="#888888", lw=1, ls=":")
@@ -373,14 +377,16 @@ def fig_exp3(rows, path):
     for k, arm in enumerate(focus):
         vals, errs, xs = [], [], []
         for j, topo in enumerate(topos):
-            for _n in ns:
-                cell = [float(r["asr_final"]) for r in scale if r["arm"] == arm and r["topology"] == topo]
+            for m, _n in enumerate(ns):
+                cell = [float(r["asr_final"]) for r in scale
+                        if r["arm"] == arm and r["topology"] == topo and int(r["N"]) == _n]
                 v = float(np.mean(cell)) if cell else float("nan")
                 e = float(np.std(cell, ddof=1) / np.sqrt(len(cell))) if len(cell) > 1 else 0.0
-                xs.append(j + (k - (len(focus) - 1) / 2) * width)
+                xs.append(j + (m - (len(ns) - 1) / 2) * 0.8 / len(ns)
+                          + (k - (len(focus) - 1) / 2) * width / len(ns))
                 vals.append(v)
                 errs.append(e)
-        ax.bar(xs, vals, width=width, yerr=errs, capsize=2,
+        ax.bar(xs, vals, width=width / len(ns), yerr=errs, capsize=2,
                color=C_HIGHLIGHT.get(arm, "#333"), alpha=0.85, label=arm)
     ax.set_xticks(range(len(topos)))
     ax.set_xticklabels([t.replace("_", "\n") for t in topos], fontsize=7.5)
@@ -465,12 +471,16 @@ def _md_table(headers: Sequence[str], body: Sequence[Sequence[str]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _tex_cell(x) -> str:
+    return str(x).replace("\\_", "_").replace("_", "\\_")
+
+
 def _tex_table(headers: Sequence[str], body: Sequence[Sequence[str]], caption: str, label: str) -> str:
     cols = "l" + "r" * (len(headers) - 1)
     out = ["\\begin{table}[t]", "\\centering", f"\\caption{{{caption}}}", f"\\label{{{label}}}",
            f"\\begin{{tabular}}{{{cols}}}", "\\toprule", " & ".join(headers) + " \\\\", "\\midrule"]
     for row in body:
-        out.append(" & ".join(str(x) for x in row) + " \\\\")
+        out.append(" & ".join(_tex_cell(x) for x in row) + " \\\\")
     out += ["\\bottomrule", "\\end{tabular}", "\\end{table}", ""]
     return "\n".join(out)
 
@@ -521,7 +531,7 @@ def table2(rows, out_dir):
                 if not cell:
                     continue
                 exh = float(np.mean([int(r.get("budget_exhausted", 0)) for r in cell]))
-                body.append([topo.replace("_", "\\_"), n, arm, _mean_pp(cell, "asr_final"),
+                body.append([topo, n, arm, _mean_pp(cell, "asr_final"),
                              _mean_pp(cell, "accuracy"), f"{exh:.2f}", len(cell)])
     md = os.path.join(out_dir, "table2_ablations_and_scale.md")
     with open(md, "w") as f:

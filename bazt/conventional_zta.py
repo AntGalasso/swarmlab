@@ -154,9 +154,7 @@ class ConventionalGateway:
             self._identity_blocks.add((int(t), sender, receiver))
             return False
         until = self._blocked.get((sender, receiver))
-        if until is not None and (until is None or t <= until):
-            return False
-        return True
+        return until is None or t > until
 
     def pop_released(self, t: int) -> List[int]:
         due = sorted(i for i, until in self._quarantined.items() if until > 0 and until <= t)
@@ -169,8 +167,13 @@ class ConventionalGateway:
 
     def on_deliver(self, t: int, outgoing: Dict[int, bool]) -> None:
         self._step_count += 1
+        # A message emitted at step t is delivered at t + 1: a denied edge (identity or active block at that
+        # step) delivers nothing, exactly as BAZT removes it from its send lists. Counting it would inflate
+        # harm_exposure_auc / message_throughput / benign_deliveries (and bias calibration deny rates low).
         self._log_delivered[t] = [(s, r, stripped) for s, stripped in outgoing.items()
-                                  for r in self._out[s] if r not in self._quarantined]
+                                  for r in self._out[s]
+                                  if r not in self._quarantined and (s, r) in self._allow
+                                  and self._blocked.get((s, r), -1) < t + 1]
         for s in outgoing:
             for r in self._out[s]:
                 self._edge_history[(s, r)] = self._edge_history.get((s, r), 0) + 1
@@ -610,8 +613,8 @@ def make_conventional_gateway(arm: str, zcfg: ZtaConfig, bcfg: BaztConfig, sl_cf
                          matched_steps=matched_steps)
 
 
-def conventional_bazt_config(zcfg: ZtaConfig, audit_pct: Optional[float], intervention_pct: Optional[float],
-                             total_deliveries: int = 0) -> BaztConfig:
+def conventional_bazt_config(zcfg: ZtaConfig, audit_pct: Optional[float],
+                             intervention_pct: Optional[float]) -> BaztConfig:
     """The SHARED dual-percentage budget every compared defender runs under (arm_B, arm_C, bazt, baselines)."""
     return BaztConfig(budget_mode="dual_pct", audit_pct=audit_pct, intervention_pct=intervention_pct,
                       cost_inspect=1, cost_sanitize=1, cost_restrict=2, cost_block=1, cost_isolate=3,

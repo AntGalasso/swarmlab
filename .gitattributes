@@ -1,0 +1,2 @@
+# tests/test_core.py is pinned by md5 in tests/test_bazt_integration.py: keep its bytes as committed (no CRLF conversion on Windows)
+tests/test_core.py -text

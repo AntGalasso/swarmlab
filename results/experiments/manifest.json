@@ -168,6 +168,6 @@
   "platform": "mock",
   "resume": false,
   "smoke": false,
-  "split": "main",
-  "stage": "paper-pack"
+  "split": "tune",
+  "stage": "calibrate"
 }
