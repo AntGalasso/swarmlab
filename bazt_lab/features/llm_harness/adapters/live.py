@@ -80,6 +80,12 @@ class LiveBackend:
         cache.conn.execute("CREATE TABLE IF NOT EXISTS empty_replies (k TEXT PRIMARY KEY)")
         cache.conn.commit()
 
+    def close(self) -> None:
+        """Close the request cache's SQLite connection (the clients are closed per loop, see `_client`)."""
+        conn = getattr(self.cache, "conn", None)
+        if conn is not None:
+            conn.close()
+
     def _client(self, loop: asyncio.AbstractEventLoop):
         """The client of the running loop, built on first use. With it starts a task that only waits; asyncio.run cancels
         it when the conversation's coroutine returns, while the loop still runs, and the task then closes the client

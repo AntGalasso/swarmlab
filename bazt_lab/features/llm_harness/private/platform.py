@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import sys
 from typing import Callable, Dict, List, Mapping
 
 import torch
@@ -55,6 +56,26 @@ class _LazyJudge:
             self._judge = self._build()
         return self._judge.score(texts)
 
+    def close(self) -> None:
+        close = getattr(self._judge, "close", None)         # nothing was built when no arm audited
+        if callable(close):
+            close()
+
+
+def _close_all(owned: List[object]) -> None:
+    """Close what a call built (a live backend's cache connection, a judge's HTTP client and cache), every one even
+    when an earlier close fails; the first failure is raised after all were tried, and never hides the call's own error."""
+    first = None
+    for obj in owned:
+        close = getattr(obj, "close", None)
+        if callable(close):
+            try:
+                close()
+            except Exception as e:                                    # keep closing the rest
+                first = first or e
+    if first is not None and sys.exc_info()[0] is None:
+        raise first
+
 
 def _fake_judge():
     return judge_feature.FakeJudge({prompts.REPLICATION_MARKER: 0.9, fake.AITM_MARK: 0.9, "the user is right": 0.9,
@@ -83,7 +104,8 @@ class LLMPlatform:
             self._families[name] = upstream.load_family(self._root, name)
         return self._families[name]
 
-    def _environment(self, settings: Mapping, store) -> Env:
+    def _environment(self, settings: Mapping, store, owned: List[object] | None = None) -> Env:
+        """`owned` collects what this call builds itself (a given backend or judge belongs to the caller), to be closed."""
         backend, judge, sample, families = self._given
         if core.is_set(settings, "llm.api") and core.get(settings, "llm.api") == "fake":
             backend, judge, sample = backend or fake.FakeBackend(), judge or _fake_judge(), sample or fake.sample
@@ -91,31 +113,41 @@ class LLMPlatform:
             from bazt_lab.features.llm_harness.adapters import live
             allow = bool(core.get(settings, "llm.allow_live"))
             shared = store.root.parent                # one cache for all blocks of a profile: arms share requests
-            backend = backend or live.backend(settings, allow_live=allow, cache_path=shared / "llm_cache.sqlite")
-            judge = judge or _LazyJudge(lambda: judge_feature.live_judge(
-                settings, allow_live=allow, cache_path=shared / "judge_cache.sqlite"))
+            if backend is None:
+                backend = live.backend(settings, allow_live=allow, cache_path=shared / "llm_cache.sqlite")
+                if owned is not None:
+                    owned.append(backend)
+            if judge is None:
+                judge = _LazyJudge(lambda: judge_feature.live_judge(
+                    settings, allow_live=allow, cache_path=shared / "judge_cache.sqlite"))
+                if owned is not None:
+                    owned.append(judge)
             sample = sample or data.sample
         return Env(backend, judge, sample, families or self._load_family)
 
     # ---------------------------------------------------------------------------------------- the contract
     def run_batch(self, units: List[dict], arm: core.ArmSpec, settings: Mapping, store, tracker) -> List[dict]:
-        env = self._environment(settings, store)
-        rows: List[dict] = []
-        for unit in units:
-            if not store.is_done(unit["id"]):
-                if "edge_probability" in unit:                                  # a gnn_train unit
-                    self._train(unit, settings, env, store)
-                else:
-                    SeedRun(unit, arm, settings, env, store, calibrating=False).run()
-            rows += store.resume_rows(unit["id"])
-        # A unit is marked done once its conversations are logged, so a crash while the GNN trains is repaired here: on
-        # every run, each family whose logs are complete and whose training has not finished is trained.
-        for unit in (u for u in units if "edge_probability" in u):
-            family = f"{unit['attack']}__{unit['task']}"
-            if not gnn.training_finished(settings, family):
-                with contextlib.suppress(gnn.TrainingDataIncomplete):
-                    gnn.train_unit(dict(unit), settings)
-        return rows
+        owned: List[object] = []
+        try:
+            env = self._environment(settings, store, owned)
+            rows: List[dict] = []
+            for unit in units:
+                if not store.is_done(unit["id"]):
+                    if "edge_probability" in unit:                                  # a gnn_train unit
+                        self._train(unit, settings, env, store)
+                    else:
+                        SeedRun(unit, arm, settings, env, store, calibrating=False).run()
+                rows += store.resume_rows(unit["id"])
+            # A unit is marked done once its conversations are logged, so a crash while the GNN trains is repaired here: on
+            # every run, each family whose logs are complete and whose training has not finished is trained.
+            for unit in (u for u in units if "edge_probability" in u):
+                family = f"{unit['attack']}__{unit['task']}"
+                if not gnn.training_finished(settings, family):
+                    with contextlib.suppress(gnn.TrainingDataIncomplete):
+                        gnn.train_unit(dict(unit), settings)
+            return rows
+        finally:
+            _close_all(owned)
 
     # ------------------------------------------------------------------------------------------ calibration
     def _pass(self, units, arm, settings, env, store, thresholds: Mapping, tag: str):
@@ -154,7 +186,13 @@ class LLMPlatform:
         for unit in units:
             if unit["attack"] != "none":
                 raise ValueError(f"calibration runs attack-free conversations, unit {unit['id']} has attack {unit['attack']!r}")
-        env = self._environment(settings, store)
+        owned: List[object] = []
+        try:
+            return self._calibrate(units, arm, settings, store, mode, self._environment(settings, store, owned))
+        finally:
+            _close_all(owned)
+
+    def _calibrate(self, units, arm, settings, store, mode: str, env: Env) -> Dict[str, float]:
         alpha = float(core.get(settings, "budgets.alpha"))
         base, rate = self._pass(units, arm, settings, env, store, {}, "")
         if not base:

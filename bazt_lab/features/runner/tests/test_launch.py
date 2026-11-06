@@ -257,6 +257,25 @@ def test_a_setting_the_platform_needs_is_refused_with_its_key_and_the_tracker_is
     assert tracker.kinds()[-1] == "finish"
 
 
+@pytest.mark.parametrize("failing", ["settings.json", "manifest-"])
+def test_an_oserror_writing_the_pins_or_the_manifest_after_the_tracker_started_still_finishes_the_run(
+        tmp_path, monkeypatch, failing):
+    from bazt_lab.features.runner.private import files
+    real = files.write_json
+
+    def write_json(path, obj):
+        if failing in str(path.name):
+            raise OSError("disk full")
+        return real(path, obj)
+    monkeypatch.setattr(files, "write_json", write_json)
+    tracker = fakes.RecordingTracker()
+    s = fakes.settings(*MOCK_A, ["tracking.enabled=true"])
+    with pytest.raises(OSError):
+        launch(s, "mock_frontier", tmp_path, tracker=tracker)
+    kinds = tracker.kinds()
+    assert "start" in kinds and kinds[-1] == "finish"
+
+
 def test_a_feature_that_is_not_built_is_named_with_the_block_that_needs_it(tmp_path):
     arms = {k: v for k, v in fakes.ARMS.items() if k != "A"}
     with pytest.raises(SystemExit, match=r"Refusing mock_frontier: feature conventional is not built"):

@@ -109,6 +109,8 @@ thinking = false
 [llm.adaptive_check]                       # the one held-out LLM adaptive check (spec §3); scope not specified
 # arms = []
 # families = []
+# tasks = []                               # OPEN: the tasks the check runs, each one of the tasks the LLM side runs (the tasks of
+                                           # llm.attack_cells and llm.attack_free_tasks), e.g. ["mmlu"]; one unit per task
 # condition = ""                           # D110: the LLM harness runs "gray_box" only (the mock's best response replayed)
 # mock_cell = [<audit>, <intervention>]    # OPEN: the cell of mock.adaptive.cells whose best response is replayed (the
                                            # LLM check runs uncapped), e.g. ["uncapped", "uncapped"] if that cell is searched

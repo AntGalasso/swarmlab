@@ -11,7 +11,7 @@ from bazt_lab.features.runner.tests.test_launch import LLM as LLM_LAUNCH
 from bazt_lab.features.runner.tests.test_launch import MOCK_B, calibrate_then, launch, past_kickoff
 
 ADAPTIVE_CHECK = ["llm.adaptive_check.arms=['B']", "llm.adaptive_check.families=['insider_pi']",
-                  "llm.adaptive_check.condition='gray_box'"]
+                  "llm.adaptive_check.condition='gray_box'", "llm.adaptive_check.tasks=['mmlu']"]
 
 
 class ConditionRefusing(fakes.FakePlatform):

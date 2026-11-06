@@ -302,14 +302,15 @@ def units_gnn_train(s, strict):
 
 
 def units_llm_adaptive_check(s, strict):
-    arms, families, condition = (core.get(s, f"llm.adaptive_check.{k}") for k in ("arms", "families", "condition"))
+    arms, families, condition, tasks = (core.get(s, f"llm.adaptive_check.{k}")
+                                        for k in ("arms", "families", "condition", "tasks"))
     return UnitList(
         dict(block="llm_adaptive_check", platform="llm", arm=arm, audit="uncapped", intervention="uncapped",
-             backbone=b, topology=t, attack=fam, task="mmlu", condition=condition, seed=seed,
+             backbone=b, topology=t, attack=fam, task=task, condition=condition, seed=seed,
              conversations=_per_seed(s, "llm.conversations_per_cell"), agents=core.get(s, "llm.agents"),
              rounds=core.get(s, "llm.rounds"), sanitize_mode=mode)
-        for arm, fam, b, t, seed in itertools.product(
-            arms, families, _backbones(s, strict), core.get(s, "llm.topologies"), _llm_seeds(s, "llm_seeds", strict))
+        for arm, fam, task, b, t, seed in itertools.product(
+            arms, families, tasks, _backbones(s, strict), core.get(s, "llm.topologies"), _llm_seeds(s, "llm_seeds", strict))
         for mode in sanitize_modes(s, arm))
 
 

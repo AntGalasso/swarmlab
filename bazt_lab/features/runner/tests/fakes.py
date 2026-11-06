@@ -337,7 +337,7 @@ SCOPED = ["mock.epidemiology.topologies=['chain']", "mock.epidemiology.arms=['A'
           "mock.costs_robustness.arms=['C', 'BAZT']", "mock.costs_robustness.cells=[[10, 10], [2, 2]]",
           "mock.legacy.arms=['fixed_early']", "mock.legacy.cells=[[10, 10]]",
           "llm.adaptive_check.arms=['B']", "llm.adaptive_check.families=['insider_pi']",
-          "llm.adaptive_check.condition='gray_box'", "gnn_train.backbone='bb1'"]
+          "llm.adaptive_check.condition='gray_box'", "llm.adaptive_check.tasks=['mmlu']", "gnn_train.backbone='bb1'"]
 
 
 def settings(*groups, profile=None):

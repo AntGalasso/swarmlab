@@ -536,15 +536,15 @@ def run_block(s: Mapping, name: str, allow_live_llm: bool, *, wiring: Wiring,
             sys.exit(f"Refusing {name}: setting not set in profiles.toml: {e.args[0]}")
         except RuntimeError as e:
             sys.exit(f"Refusing {name}: {e}")
-        if not (out / SETTINGS_FILE).exists():          # pinned only once the tracker started: a dead launch pins nothing
-            files.write_json(out / SETTINGS_FILE, {"settings": plan.view})
-        if plan.replay is not None and not (out / replay.PIN).exists():      # the best responses the rows replay
-            files.write_json(out / replay.PIN, plan.replay.pin())
-        if plan.timing is not None and not (out / matched.PIN).exists():     # D116: the BAZT rounds the rows replay
-            files.write_json(out / matched.PIN, plan.timing.pin())
-        plan.manifest, plan.manifest_path = manifest, manifest_path
-        files.write_json(manifest_path, manifest)
-        try:
+        try:                                    # every write after the start is inside: an OSError still finishes the run
+            if not (out / SETTINGS_FILE).exists():          # pinned only once the tracker started: a dead launch pins nothing
+                files.write_json(out / SETTINGS_FILE, {"settings": plan.view})
+            if plan.replay is not None and not (out / replay.PIN).exists():      # the best responses the rows replay
+                files.write_json(out / replay.PIN, plan.replay.pin())
+            if plan.timing is not None and not (out / matched.PIN).exists():     # D116: the BAZT rounds the rows replay
+                files.write_json(out / matched.PIN, plan.timing.pin())
+            plan.manifest, plan.manifest_path = manifest, manifest_path
+            files.write_json(manifest_path, manifest)
             if plan.tracking:
                 files.write_text(run_id_file, run_id)
             plan.tracker.artifact(str(manifest_path), f"{name}-manifest", "manifest")
