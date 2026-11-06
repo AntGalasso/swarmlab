@@ -1,0 +1,20 @@
+{
+  "frozen_utc": "2026-11-06T22:42:25.289655+00:00",
+  "protocol_sha256": "4cda75bff2b264a4ec36829286f4bd52e0d3dad56056836cffdcb4618da00143",
+  "specification": {
+    "H2": "one-sided score-only decoy-minus-clean propagation AUC, greater than zero",
+    "H3": "BAZT minus each of three comparators, reported separately for clean and decoy",
+    "H3_family": "12 one-sided tests: 3 comparators x 2 regimes x safety/utility; Holm correction",
+    "analysis_sha256": "938eef647d3bcd1fd210863d4bb53b6859b73ed8b53403fcf22898fcf77f7b78",
+    "bootstrap": "20,000 seed-cluster resamples; percentile two-sided 95% intervals",
+    "heldout_rule": "separate analysis; never pooled with main to increase significance",
+    "paired_test": "exact paired sign-flip at the seed level; exchangeability assumption applies",
+    "random_seed": 20261106,
+    "replication_unit": "seed; average paired differences across the two topologies",
+    "safety_null": "paired mean AUC difference >= 0",
+    "support_rule": "both adjusted p < .05 and upper 95% interval < corresponding null margin",
+    "utility_noninferiority_margin": 0.5,
+    "utility_null": "paired mean MAE difference >= 0.5 sensor units",
+    "version": 1
+  }
+}

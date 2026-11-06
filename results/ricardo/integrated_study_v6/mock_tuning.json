@@ -1,0 +1,260 @@
+{
+  "candidates": {
+    "bazt": [
+      {
+        "J": 0.43984724546304466,
+        "parameters": {
+          "kappa": 1.5,
+          "theta0": 0.5
+        }
+      },
+      {
+        "J": 0.5092450734216121,
+        "parameters": {
+          "kappa": 1.5,
+          "theta0": 1.0
+        }
+      },
+      {
+        "J": 0.5371715032024341,
+        "parameters": {
+          "kappa": 3.0,
+          "theta0": 0.15
+        }
+      },
+      {
+        "J": 0.578556602981387,
+        "parameters": {
+          "kappa": 1.5,
+          "theta0": 0.15
+        }
+      },
+      {
+        "J": 0.5877115635766051,
+        "parameters": {
+          "kappa": 3.0,
+          "theta0": 0.5
+        }
+      },
+      {
+        "J": 0.6098997416162592,
+        "parameters": {
+          "kappa": 6.0,
+          "theta0": 0.15
+        }
+      },
+      {
+        "J": 0.6392291257353653,
+        "parameters": {
+          "kappa": 3.0,
+          "theta0": 1.0
+        }
+      },
+      {
+        "J": 0.6734568268501765,
+        "parameters": {
+          "kappa": 6.0,
+          "theta0": 0.5
+        }
+      },
+      {
+        "J": 0.6983592411439581,
+        "parameters": {
+          "kappa": 6.0,
+          "theta0": 1.0
+        }
+      },
+      {
+        "J": 0.7559659254714785,
+        "parameters": {
+          "kappa": 1.5,
+          "theta0": 2.0
+        }
+      },
+      {
+        "J": 0.7860748924989343,
+        "parameters": {
+          "kappa": 3.0,
+          "theta0": 2.0
+        }
+      },
+      {
+        "J": 0.7893842646216627,
+        "parameters": {
+          "kappa": 6.0,
+          "theta0": 2.0
+        }
+      },
+      {
+        "J": 0.995845189795069,
+        "parameters": {
+          "kappa": 1.5,
+          "theta0": 4.0
+        }
+      },
+      {
+        "J": 0.995845189795069,
+        "parameters": {
+          "kappa": 3.0,
+          "theta0": 4.0
+        }
+      },
+      {
+        "J": 0.995845189795069,
+        "parameters": {
+          "kappa": 6.0,
+          "theta0": 4.0
+        }
+      },
+      {
+        "J": 0.9960648148148148,
+        "parameters": {
+          "kappa": 1.5,
+          "theta0": 8.0
+        }
+      },
+      {
+        "J": 0.9960648148148148,
+        "parameters": {
+          "kappa": 3.0,
+          "theta0": 8.0
+        }
+      },
+      {
+        "J": 0.9960648148148148,
+        "parameters": {
+          "kappa": 6.0,
+          "theta0": 8.0
+        }
+      }
+    ],
+    "bazt_no_pacing": [
+      {
+        "J": 0.41896230769192466,
+        "parameters": {
+          "theta0": 1.0
+        }
+      },
+      {
+        "J": 0.5205084875759969,
+        "parameters": {
+          "theta0": 0.5
+        }
+      },
+      {
+        "J": 0.6008800616096562,
+        "parameters": {
+          "theta0": 2.0
+        }
+      },
+      {
+        "J": 0.8263672888003735,
+        "parameters": {
+          "theta0": 0.15
+        }
+      },
+      {
+        "J": 0.995845189795069,
+        "parameters": {
+          "theta0": 4.0
+        }
+      },
+      {
+        "J": 0.9960648148148148,
+        "parameters": {
+          "theta0": 8.0
+        }
+      }
+    ],
+    "centrality_only": [
+      {
+        "J": 0.2949349947649071,
+        "parameters": {}
+      }
+    ],
+    "score_only": [
+      {
+        "J": 0.5422727017352224,
+        "parameters": {
+          "tau_p": 0.5
+        }
+      },
+      {
+        "J": 0.5945549806407293,
+        "parameters": {
+          "tau_p": 0.65
+        }
+      },
+      {
+        "J": 0.6773370958751641,
+        "parameters": {
+          "tau_p": 0.8
+        }
+      },
+      {
+        "J": 0.7459657030909143,
+        "parameters": {
+          "tau_p": 0.9
+        }
+      }
+    ]
+  },
+  "objective": "AUC + 0.25 * MAE / matched no_defense MAE; both regimes and topologies",
+  "purpose": "software proxy calibration, not empirical LLM findings",
+  "seeds": [
+    9001,
+    9002,
+    9003,
+    9004,
+    9005,
+    9006,
+    9007,
+    9008,
+    9009,
+    9010,
+    9011,
+    9012,
+    9013,
+    9014,
+    9015,
+    9016,
+    9017,
+    9018,
+    9019,
+    9020,
+    9021,
+    9022,
+    9023,
+    9024,
+    9025,
+    9026,
+    9027,
+    9028,
+    9029,
+    9030
+  ],
+  "selected": {
+    "bazt": {
+      "kappa": 1.5,
+      "theta0": 0.5
+    },
+    "bazt_no_pacing": {
+      "theta0": 1.0
+    },
+    "centrality_only": {},
+    "score_only": {
+      "tau_p": 0.5
+    }
+  },
+  "source_sha256": {
+    "bazt/arms.py": "e560ba39802ac5f411704656e5ad8c21238e0d9874ef2509d055ef9347fb5c96",
+    "bazt/config.py": "491476b68cd5688b7c120c56486be2f3fbf280c60bf4e12b25f71e6939c7fe75",
+    "bazt/gateway.py": "5c5efff4b86d3cfc293eb1419c9b1b28df11e0736d8069a1ce58150e3f45f236",
+    "bazt/metrics.py": "7639065a7d5eed5781acd4e792325e7c0170dc86ff5cfbda44a0ef620bce7b56",
+    "bazt/optimizer.py": "42f7e9b87e0dfe69ef90a33ad6d3f5500287c9c295876da672fe2650b1f49ae8",
+    "budget_study.py": "b59d81e1f74b27d93404864487f3e90a697b2f1d51c42967e72a9d2a934f3535",
+    "llm_client.py": "33cee6dc4566979f48792b2f1acc8808a892a2d9f347a405981212f4c3104b7b",
+    "swarmlab.py": "c8b7b9b95788f634a7dee8ea0f62c6d3e288ff69c03fbc8a5bc4d3645cbf8efd",
+    "uv.lock": "60d5d13606be61283461174e52e2aba9442db80ec414712844a77af5780c3d96"
+  }
+}

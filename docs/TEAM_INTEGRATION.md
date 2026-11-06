@@ -90,6 +90,13 @@ keeps an additional usage receipt for every attempt. API credit calculations are
 separate from enforcement units and
 are not verified account invoices.
 
+Version 5 still stopped after bounded HTTP 504 retries. Version 6 tries the
+separately labelled `gemma-4-26b-a4b-it` model granted by the account catalog,
+with a fresh cache and no pooled 31B outcomes. Standard input/output rates are
+0.0765/0.255 credits per million tokens, verified in the Adaption hosted-model
+documentation on 6 November. The analysis implementation and families are
+frozen again before any evaluation rows for that model.
+
 The statistical unit is the seed, with paired contrasts averaged across
 topologies. H2 concerns the decoy penalty of the score-only reference; H3 concerns
 BAZT's safety/utility comparison. Predefined paired tests and uncertainty are
