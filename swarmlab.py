@@ -74,6 +74,17 @@ SCALING_POLICIES = ["no_defense", "score_only", "centrality_only", "risk_aware",
 # through `run_episode` when `hooks.gateway_factory` is supplied, so every legacy grid stays unchanged.
 BAZT_POLICIES = ("bazt", "bazt_no_prov", "bazt_no_topo", "bazt_no_pacing", "bazt_no_util",
                  "bazt_binary", "bazt_unlimited")
+# Extended gateway registry for the sprint experiment suite (`experiments.py`). Strictly additive: the seven
+# BAZT arms above, the conventional ZTA ladder (arm_A / arm_B / arm_C), the matched-timing legacy controls and
+# the reference baselines. Every legacy arm (POLICIES / SCALING_POLICIES) is in NEITHER tuple, so a run without
+# a gateway factory -- or of a legacy arm -- executes exactly the pre-existing statements.
+CONVENTIONAL_POLICIES = ("arm_A", "arm_B", "arm_C")
+REFERENCE_BASELINE_POLICIES = ("gsafeguard_standin", "bra_audit_greedy", "random_dual", "oracle_dual")
+MATCHED_TIMING_POLICIES = ("mt_score_only", "mt_risk_aware", "mt_risk_aware_tiered")
+GATEWAY_POLICIES = (tuple(BAZT_POLICIES) + CONVENTIONAL_POLICIES + REFERENCE_BASELINE_POLICIES
+                    + MATCHED_TIMING_POLICIES)
+# Opt-in topologies used by bazt/scenarios.py (arbitrary N). NOT added to TOPOLOGIES: the legacy grid must not move.
+EXPERIMENT_TOPOLOGIES = ("barabasi_albert", "watts_strogatz", "star_hub", "star_leaf", "chain", "small_world")
 PAYLOADS = ["canary_tag", "consensus_drift"]
 SPLITS = {"main": (1, 30), "heldout": (31, 60), "tune": (9001, 9030)}  # inclusive seed ranges
 KICKOFF_UTC = _dt.datetime(2026, 11, 6, 20, 0, tzinfo=_dt.timezone.utc)  # approx.; override via env
@@ -143,6 +154,9 @@ class EpisodeHooks:
     # BAZT hooks (package `bazt/`). Both default to None = classic behaviour.
     gateway_factory: Optional[Callable] = None   # f(policy, world, cfg, base_adj, decoys, hooks) -> gateway
     edge_weight_modifier: Optional[Callable[[int, int, int, str], float]] = None   # f(j, i, t, msg_j) -> scale
+    # Optional post-episode readout: f(est, x, readout_indices). Default None = classic behaviour. Used by the
+    # sprint orchestrator to compute readout accuracy at a task-specific tolerance without touching the return dict.
+    final_state: Optional[Callable] = None
 
     def extra_metrics(self) -> dict:
         total = int(self.total_sends)
@@ -245,6 +259,43 @@ def _build_graph(topology: str, n: int, rng: np.random.Generator, custom_adj=Non
         for i in range(n):
             for j in range(i + 1, n):
                 add(i, j)
+    elif topology == "watts_strogatz":   # opt-in: WS(k=4, p=0.25) at ARBITRARY N (12 and 100). small_world stays frozen.
+        k, p = 4, 0.25
+        edges = [(i, (i + d) % n) for i in range(n) for d in range(1, k // 2 + 1)]
+        for (i, j) in edges:
+            if rng.random() < p:
+                for _ in range(20):
+                    j2 = int(rng.integers(0, n))
+                    if j2 != i and j2 not in nb[i]:
+                        j = j2
+                        break
+            add(i, j)
+        for i in range(n):                      # keep the ring connected at tiny N
+            add(i, (i + 1) % n)
+    elif topology == "barabasi_albert":  # opt-in: BA(m=2) preferential attachment at ARBITRARY N
+        m = 2
+        m0 = max(2, min(n, m + 1))
+        for i in range(m0):
+            for j in range(i + 1, m0):
+                add(i, j)
+        targets = [j for j in range(m0) for _ in range(max(1, len(nb[j])))]
+        for i in range(m0, n):
+            chosen = []
+            for _ in range(200):
+                if len(chosen) >= min(m, i):
+                    break
+                cand = targets[int(rng.integers(0, len(targets)))]
+                if cand != i and cand not in chosen:
+                    chosen.append(cand)
+            if not chosen:                      # pathological draw: attach to the current hub
+                chosen = [max(range(i), key=lambda j: len(nb[j]))]
+            for j in chosen:
+                add(i, j)
+                targets.extend([i] * max(1, len(nb[i])))
+                targets.extend([j] * max(1, len(nb[j])))
+        for i in range(1, n):                   # connect isolated tail nodes deterministically
+            if not nb[i]:
+                add(i, i - 1)
     else:
         raise ValueError(topology)
     return [sorted(s) for s in nb]
@@ -452,7 +503,7 @@ def run_episode(world: World, policy: str, cfg: Config, agent, decoys: frozenset
     # BAZT: a gateway exists only for a BAZT policy AND an explicit factory. Everything below that touches
     # `gw` / `ewm` is guarded, so legacy arms execute exactly the pre-existing statements.
     gw = (hooks.gateway_factory(policy, world, cfg, base_adj, decoys, hooks)
-          if (hooks is not None and hooks.gateway_factory is not None and policy in BAZT_POLICIES) else None)
+          if (hooks is not None and hooks.gateway_factory is not None and policy in GATEWAY_POLICIES) else None)
     ewm = hooks.edge_weight_modifier if hooks is not None else None
     open_edge = gw.edge_open if gw is not None else None
     infected_series: List[List[bool]] = []
@@ -603,6 +654,8 @@ def run_episode(world: World, policy: str, cfg: Config, agent, decoys: frozenset
 
     readout = [i for i in range(N) if not (cfg.quarantine_mode == "node_removal" and i in quarantined)]
     mae = float(np.mean([abs(est[i] - mu_true) for i in readout])) if readout else float("nan")
+    if hooks is not None and hooks.final_state is not None:
+        hooks.final_state(est, world.x, readout)
     result = {
         "auc_ever_infected": float(np.mean(cum_ever)) / N,
         "auc_active_unquarantined": float(np.mean(act_inf)) / N,

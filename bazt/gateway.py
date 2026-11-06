@@ -34,7 +34,16 @@ class EnforcementGateway:
         self.privileged = frozenset(i for i, a in self.identities.items() if a.privileged)
         ingress = frozenset(i for i, a in self.identities.items() if a.role == INGRESS)
         self.lineage = LineageTracker(self.n, ingress, recv, cfg, sl_cfg.p_strip)
-        self.ledger = BudgetLedger(cfg)
+        # dual_pct caps are fractions of the episode's edge deliveries, so the ledger needs the denominator.
+        self.e_dir = sum(len(r) for r in recv)
+        self.ledger = BudgetLedger(cfg, total_deliveries=(self.T - 1) * self.e_dir)
+        # Identity tier (arm_A): the authenticated directed allowlist is the BASE graph. A receive edge that the
+        # base graph does not contain (an injected / rewritten incoming edge) fails authentication at zero cost.
+        self._allow: Set[Tuple[int, int]] = {(u, v) for v in range(self.n) for u in recv[v] if v in base_adj[u]}
+        self._identity_blocks: Set[Tuple[int, int, int]] = set()
+        self.fallback_active = False                 # True from the step a dual_pct pool ran dry
+        self.fallback_step = None
+        self.budget_exhausted = []                   # [{"pool", "step", "cap"}]
         self.inspection = InspectionState(cfg.inspect_ttl)
         self.optimizer = BudgetedOptimizer(cfg, sl_cfg)
         self.audit = AuditLog()
@@ -48,9 +57,19 @@ class EnforcementGateway:
         self._restricted: Dict[int, int] = {}                              # node -> last restricted step
         self._quarantined: Dict[int, Optional[int]] = {}                   # node -> release step (None = never)
         self._log = EpisodeLog(self.n, self.T, sum(len(r) for r in recv))
+        self._block_events: List[Tuple[int, int, int]] = []      # (t, sender, receiver) denied deliveries
+        self.telemetry: dict = {}                                # experiment-only metrics (see telemetry_metrics)
 
     # ------------------------------------------------------------------------- run_episode hooks
-    def edge_open(self, sender: int, receiver: int, t: int = 0) -> bool:   # noqa: ARG002 (blocks are permanent)
+    def edge_open(self, sender: int, receiver: int, t: int = 0) -> bool:
+        """A delivery needs (a) an authenticated directed edge and (b) no active block.
+
+        The identity check is free and never inspects content, so it is exactly arm_A's rule. When the base
+        graph IS the receive graph (every legacy BAZT run) it is a no-op, which keeps those runs bit-identical.
+        """
+        if (sender, receiver) not in self._allow:
+            self._identity_blocks.add((int(t), sender, receiver))
+            return False
         return (sender, receiver) not in self._blocked
 
     def pop_released(self, t: int) -> List[int]:
@@ -71,6 +90,9 @@ class EnforcementGateway:
 
     def decide(self, view: sl.StepView, truth: Callable[[int], bool]) -> Plan:
         t, aset = view.t, set(view.active)
+        if self.fallback_active:
+            # Budget exhausted: only the arm_A identity/allowlist rules survive for the rest of the episode.
+            return Plan()
         self._restricted = {i: last for i, last in self._restricted.items() if last >= t}
         tau = self.lineage.advance(t, lambda j, i: (j, i) not in self._blocked, aset)
         for i in view.active:
@@ -97,7 +119,15 @@ class EnforcementGateway:
                         inspect=lambda i: self._inspect(i, t, truth))
         plan = self.optimizer.plan(sit, self.ledger)
         self._apply(t, plan, s_mon, tau)
+        for ev in self.ledger.mark_exhausted(t):
+            self.budget_exhausted.append(ev)
+            self.fallback_active = True
+            self.fallback_step = t
         return plan
+
+    def action_steps(self) -> List[int]:
+        """Steps at which this gateway spent a delivery-changing action (matched-timing reference)."""
+        return sorted({t for t, _k, _n in self._log.actions})
 
     def on_deliver(self, t: int, outgoing: Dict[int, bool]) -> None:
         """`outgoing`: every sender whose message left the gateway at step t -> was it successfully stripped."""
@@ -106,7 +136,30 @@ class EnforcementGateway:
                                   for i in self._out_adj[j] if i not in self._quarantined]
 
     def extra_metrics(self, infected_series: Sequence[Sequence[bool]], world=None) -> dict:  # noqa: ARG002
-        return episode_metrics(self._log, infected_series, self.ledger, self.audit)
+        """EXACTLY `BAZT_METRICS` (the section-15 contract). Experiment telemetry travels separately."""
+        m = episode_metrics(self._log, infected_series, self.ledger, self.audit)
+        self.telemetry = self.telemetry_metrics(infected_series)
+        return m
+
+    def telemetry_metrics(self, infected_series: Sequence[Sequence[bool]]) -> dict:
+        """Dual-pct / calibration telemetry for the sprint orchestrator (not part of BAZT_METRICS)."""
+        T, ever = self.T, [False] * self.n
+        ever_at: List[List[bool]] = []
+        for row in infected_series:
+            ever = [e or bool(x) for e, x in zip(ever, row)]
+            ever_at.append(ever)
+        benign_den = sum(1 for t, s, _r in self._block_events if t >= 1 and not ever_at[t - 1][s])
+        benign_del = benign_den + sum(1 for t in range(1, T) for s, _r, _st in self._log.delivered.get(t, ())
+                                     if not ever_at[t - 1][s])
+        return {"benign_deliveries": benign_del, "benign_denied_deliveries": benign_den,
+                "benign_delivery_deny_rate": (benign_den / benign_del) if benign_del else 0.0,
+                "budget_exhausted": int(bool(self.budget_exhausted)),
+                "budget_exhausted_first_step": self.fallback_step if self.fallback_step is not None else -1,
+                "budget_exhausted_pools": ",".join(sorted({e["pool"] for e in self.budget_exhausted})),
+                "audit_spend": self.ledger.audit_spend(),
+                "intervention_spend": self.ledger.intervention_spend(),
+                "identity_blocks": len(self._identity_blocks),
+                "fallback_to_arm_a": int(self.fallback_active)}
 
     # ------------------------------------------------------------------------------ internals
     def _inspect(self, node: int, t: int, truth: Callable[[int], bool]) -> Optional[float]:
@@ -136,5 +189,6 @@ class EnforcementGateway:
             self._restricted[i] = t + self.cfg.ttl_restrict - 1
         for i, j in plan.block:
             self._blocked.add((i, j))
+            self._block_events.append((int(t), int(i), int(j)))
             self._out_adj[i].remove(j)
         self._log.degraded[t] = set(self._restricted) | set(plan.sanitize) | set(self._quarantined)

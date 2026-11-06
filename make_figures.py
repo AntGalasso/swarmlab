@@ -265,14 +265,312 @@ def fig5(rows, path):
     return path
 
 
+# ==================================================================== sprint BAZT suite (exp 1-4)
+def _load_jsonl(root: str) -> List[dict]:
+    rows: List[dict] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d != "paper_pack"]
+        for fn in sorted(filenames):
+            if not fn.endswith(".jsonl"):
+                continue
+            with open(os.path.join(dirpath, fn)) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rows.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+    return rows
+
+
+def _sel(rows, **kw):
+    out = []
+    for r in rows:
+        if all(r.get(k) == v for k, v in kw.items()):
+            out.append(r)
+    return out
+
+
+def _budget_label(v) -> str:
+    return "uncapped" if v is None else f"{float(v) * 100:.0f}%"
+
+
+def fig_exp1(rows, path):
+    """Exp 1: safety gain from capping, per scenario, as the dual budget tightens."""
+    sub = [r for r in rows if r.get("stage") == "mock_frontier"]
+    if not sub:
+        return None
+    scenarios = sorted({str(r["scenario"]) for r in sub})
+    budgets = sorted({r.get("audit_pct") for r in sub}, key=lambda v: (v is not None, v or 0))
+    fig, ax = plt.subplots(figsize=(8.6, 5.2))
+    for k, sc in enumerate(scenarios):
+        xs, ys, es = [], [], []
+        for b in budgets:
+            cell = [r for r in sub if r["scenario"] == sc and r.get("audit_pct") == b]
+            c = [float(r["asr_final"]) for r in cell if r["arm"] == "arm_C"]
+            z = [float(r["asr_final"]) for r in cell if r["arm"] == "bazt"]
+            if not c or not z:
+                continue
+            gain = np.mean(c) - np.mean(z)
+            xs.append(0 if b is None else float(b) * 100)
+            ys.append(gain * 100)
+            es.append(float(np.std(c, ddof=1) / np.sqrt(len(c))) if len(c) > 1 else 0.0)
+        if xs:
+            ax.errorbar(xs, ys, yerr=es, fmt="o-", ms=5, capsize=3, lw=1.7, label=sc)
+    ax.axhline(0, color="#888888", lw=1, ls=":")
+    ax.set_xlabel("dual budget per pool (% of episode edge deliveries; 0 = uncapped)")
+    ax.set_ylabel(r"safety gain  $ASR_{final}(C) - ASR_{final}(BAZT)$  [pp]")
+    ax.set_title("Exp 1: gain from adaptive, topology-aware enforcement under a capped budget", fontsize=10.5)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=7.5, frameon=False, ncol=2)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def fig_exp2(rows, path):
+    """Exp 2: the dual-budget frontier -- containment against intervention spend, per arm."""
+    sub = [r for r in rows if r.get("stage") == "mock_frontier"]
+    if not sub:
+        return None
+    arms = sorted({str(r["arm"]) for r in sub})
+    fig, ax = plt.subplots(figsize=(8.6, 5.2))
+    for arm in arms:
+        rs = [r for r in sub if r["arm"] == arm]
+        xs = [float(r.get("intervention_spend", 0.0) or 0.0) for r in rs]
+        ys = [float(r.get("asr_final", float("nan"))) for r in rs]
+        pairs = [(x, y) for x, y in zip(xs, ys) if x == x and y == y]
+        if not pairs:
+            continue
+        pairs.sort()
+        ax.plot([p[0] for p in pairs], [p[1] for p in pairs], "o-", ms=3.5, lw=1.3,
+                color=C_HIGHLIGHT.get(arm, "#333333"), label=arm, alpha=0.85)
+    ax.set_xlabel("intervention spend per episode (cost units)")
+    ax.set_ylabel(r"$ASR_{final}$  (lower is better)")
+    ax.set_title("Exp 2: dual-budget frontier (audit + intervention caps)", fontsize=10.5)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=7, frameon=False, ncol=2)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def fig_exp3(rows, path):
+    """Exp 3: topology x scale, and the four BAZT single-mechanism ablations."""
+    scale = [r for r in rows if r.get("stage") == "mock_topology_scale"]
+    if not scale:
+        return None
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.8))
+    ax = axes[0]
+    topos = sorted({str(r["topology"]) for r in scale})
+    ns = sorted({int(r["N"]) for r in scale})
+    focus = [a for a in ("arm_C", "bazt") if any(r["arm"] == a for r in scale)]
+    width = 0.8 / max(1, len(focus))
+    for k, arm in enumerate(focus):
+        vals, errs, xs = [], [], []
+        for j, topo in enumerate(topos):
+            for _n in ns:
+                cell = [float(r["asr_final"]) for r in scale if r["arm"] == arm and r["topology"] == topo]
+                v = float(np.mean(cell)) if cell else float("nan")
+                e = float(np.std(cell, ddof=1) / np.sqrt(len(cell))) if len(cell) > 1 else 0.0
+                xs.append(j + (k - (len(focus) - 1) / 2) * width)
+                vals.append(v)
+                errs.append(e)
+        ax.bar(xs, vals, width=width, yerr=errs, capsize=2,
+               color=C_HIGHLIGHT.get(arm, "#333"), alpha=0.85, label=arm)
+    ax.set_xticks(range(len(topos)))
+    ax.set_xticklabels([t.replace("_", "\n") for t in topos], fontsize=7.5)
+    ax.set_ylabel(r"$ASR_{final}$")
+    ax.set_title(f"Topology x scale (N in {ns})", fontsize=10.5)
+    ax.legend(fontsize=7.5, frameon=False)
+    ax.grid(alpha=0.25, axis="y")
+    ax = axes[1]
+    abl = sorted({str(r["arm"]) for r in scale if r["arm"].startswith("bazt")})
+    base = [float(r["asr_final"]) for r in scale if r["arm"] == "bazt"]
+    base_m = float(np.mean(base)) if base else float("nan")
+    for i, arm in enumerate(abl):
+        cell = [float(r["asr_final"]) for r in scale if r["arm"] == arm]
+        if not cell:
+            continue
+        ax.barh(i, float(np.mean(cell)) - base_m, color="#d62728" if arm != "bazt" else "#2ca02c", alpha=0.8)
+        ax.text(0.002, i, f"{float(np.mean(cell)) - base_m:+.3f}", va="center", fontsize=7.5)
+    ax.set_yticks(range(len(abl)))
+    ax.set_yticklabels(abl, fontsize=7.5)
+    ax.axvline(0, color="#555", lw=1)
+    ax.set_xlabel(r"$\Delta ASR_{final}$ vs full BAZT (positive = ablation is worse)")
+    ax.set_title("Single-mechanism ablations", fontsize=10.5)
+    ax.grid(alpha=0.25, axis="x")
+    fig.tight_layout()
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def fig_exp4(rows, path):
+    """Exp 4: adaptive best-response attack families, and budget exhaustion frequency."""
+    ad = [r for r in rows if r.get("stage") == "mock_adaptive"]
+    if not ad:
+        return None
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.8))
+    ax = axes[0]
+    fams = sorted({str(r["scenario"]) for r in ad})
+    focus = [a for a in ("arm_C", "bazt") if any(r["arm"] == a for r in ad)]
+    width = 0.8 / max(1, len(focus))
+    for k, arm in enumerate(focus):
+        vals, errs, xs = [], [], []
+        for j, fam in enumerate(fams):
+            cell = [float(r["asr_final"]) for r in ad if r["arm"] == arm and r["scenario"] == fam]
+            vals.append(float(np.mean(cell)) if cell else float("nan"))
+            errs.append(float(np.std(cell, ddof=1) / np.sqrt(len(cell))) if len(cell) > 1 else 0.0)
+            xs.append(j + (k - (len(focus) - 1) / 2) * width)
+        ax.bar(xs, vals, width=width, yerr=errs, capsize=2, color=C_HIGHLIGHT.get(arm, "#333"),
+               alpha=0.85, label=arm)
+    ax.set_xticks(range(len(fams)))
+    ax.set_xticklabels(fams, fontsize=8)
+    ax.set_ylabel(r"$ASR_{final}$")
+    ax.set_title("Adaptive best-response attack families", fontsize=10.5)
+    ax.legend(fontsize=7.5, frameon=False)
+    ax.grid(alpha=0.25, axis="y")
+    ax = axes[1]
+    front = [r for r in rows if r.get("stage") == "mock_frontier"]
+    budgets = sorted({r.get("audit_pct") for r in front}, key=lambda v: (v is not None, v or 0))
+    for arm in ("arm_C", "bazt"):
+        ys = []
+        for b in budgets:
+            cell = [int(r.get("budget_exhausted", 0)) for r in front
+                    if r["arm"] == arm and r.get("audit_pct") == b]
+            ys.append(float(np.mean(cell)) if cell else float("nan"))
+        ax.plot(range(len(budgets)), ys, "o-", ms=5, lw=1.7, color=C_HIGHLIGHT.get(arm, "#333"), label=arm)
+    ax.set_xticks(range(len(budgets)))
+    ax.set_xticklabels([_budget_label(b) for b in budgets], fontsize=7.5)
+    ax.set_ylabel("fraction of episodes with an exhausted pool")
+    ax.set_title("Budget exhaustion and the arm_A fallback", fontsize=10.5)
+    ax.set_ylim(-0.05, 1.05)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=7.5, frameon=False)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def _md_table(headers: Sequence[str], body: Sequence[Sequence[str]]) -> str:
+    lines = ["| " + " | ".join(headers) + " |", "|" + "|".join(["---"] * len(headers)) + "|"]
+    for row in body:
+        lines.append("| " + " | ".join(str(x) for x in row) + " |")
+    return "\n".join(lines) + "\n"
+
+
+def _tex_table(headers: Sequence[str], body: Sequence[Sequence[str]], caption: str, label: str) -> str:
+    cols = "l" + "r" * (len(headers) - 1)
+    out = ["\\begin{table}[t]", "\\centering", f"\\caption{{{caption}}}", f"\\label{{{label}}}",
+           f"\\begin{{tabular}}{{{cols}}}", "\\toprule", " & ".join(headers) + " \\\\", "\\midrule"]
+    for row in body:
+        out.append(" & ".join(str(x) for x in row) + " \\\\")
+    out += ["\\bottomrule", "\\end{tabular}", "\\end{table}", ""]
+    return "\n".join(out)
+
+
+def _mean_pp(rows, key, scale=100.0):
+    xs = [float(r.get(key, float("nan"))) for r in rows]
+    xs = [x for x in xs if x == x]
+    return f"{np.mean(xs) * scale:.2f}" if xs else "-"
+
+
+def table1(rows, out_dir):
+    """Primary results: capped (2%, 2%) and uncapped, arm_C vs BAZT, per scenario."""
+    front = [r for r in rows if r.get("stage") == "mock_frontier"]
+    headers = ["scenario", "budget", "arm", "ASR (pp)", "accuracy (pp)", "intervention spend",
+               "exhausted (frac)", "n"]
+    body = []
+    for b in (0.02, None):
+        for sc in sorted({str(r["scenario"]) for r in front}):
+            for arm in ("arm_C", "bazt"):
+                cell = [r for r in front if r["scenario"] == sc and r["arm"] == arm
+                        and r.get("audit_pct") == b]
+                if not cell:
+                    continue
+                exh = float(np.mean([int(r.get("budget_exhausted", 0)) for r in cell]))
+                body.append([sc, _budget_label(b), arm, _mean_pp(cell, "asr_final"),
+                             _mean_pp(cell, "accuracy"), _mean_pp(cell, "intervention_spend", 1.0),
+                             f"{exh:.2f}", len(cell)])
+    md = os.path.join(out_dir, "table1_primary_results.md")
+    with open(md, "w") as f:
+        f.write("# Table 1 -- primary results (arm_C vs BAZT, dual budget)\n\n")
+        f.write(_md_table(headers, body))
+        f.write("\nMock platform: pipeline check, not a finding.\n")
+    with open(os.path.join(out_dir, "table1_primary_results.tex"), "w") as f:
+        f.write(_tex_table(headers, body, "Primary results: capped and uncapped dual budget.",
+                           "tab:primary"))
+    return md
+
+
+def table2(rows, out_dir):
+    """Ablations and scale: BAZT mechanisms and topology x N."""
+    scale = [r for r in rows if r.get("stage") == "mock_topology_scale"]
+    headers = ["topology", "N", "arm", "ASR (pp)", "accuracy (pp)", "exhausted (frac)", "n"]
+    body = []
+    for topo in sorted({str(r["topology"]) for r in scale}):
+        for n in sorted({int(r["N"]) for r in scale}):
+            for arm in sorted({str(r["arm"]) for r in scale}):
+                cell = [r for r in scale if r["topology"] == topo and int(r["N"]) == n and r["arm"] == arm]
+                if not cell:
+                    continue
+                exh = float(np.mean([int(r.get("budget_exhausted", 0)) for r in cell]))
+                body.append([topo.replace("_", "\\_"), n, arm, _mean_pp(cell, "asr_final"),
+                             _mean_pp(cell, "accuracy"), f"{exh:.2f}", len(cell)])
+    md = os.path.join(out_dir, "table2_ablations_and_scale.md")
+    with open(md, "w") as f:
+        f.write("# Table 2 -- topology x scale and single-mechanism ablations\n\n")
+        f.write(_md_table(headers, body))
+        f.write("\nMock platform: pipeline check, not a finding.\n")
+    with open(os.path.join(out_dir, "table2_ablations_and_scale.tex"), "w") as f:
+        f.write(_tex_table(headers, body, "Topology x scale and single-mechanism ablations.",
+                           "tab:ablations"))
+    return md
+
+
+def bazt_suite(exp_dir: str, out_dir: str) -> List[str]:
+    """`--bazt-suite`: four vector PDFs plus the two summary tables."""
+    os.makedirs(out_dir, exist_ok=True)
+    rows = _load_jsonl(exp_dir)
+    made: List[str] = []
+    for fn, builder in (("fig_exp3_topology_scale_ablations.pdf", fig_exp3),
+                        ("fig_exp4_adaptive_and_exhaustion.pdf", fig_exp4),
+                        ("fig_exp1_capped_gains.pdf", fig_exp1),
+                        ("fig_exp2_dual_budget_frontier.pdf", fig_exp2)):
+        p = builder(rows, os.path.join(out_dir, fn))
+        if p:
+            made.append(p)
+    made.append(table1(rows, out_dir))
+    made.append(table2(rows, out_dir))
+    if not rows:
+        print("bazt-suite: no episode rows found under", exp_dir, file=sys.stderr)
+    return made
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
+    ap.add_argument("--bazt-suite", default=None,
+                    help="results/experiments directory: emit the four sprint PDFs + summary tables")
     ap.add_argument("--file", default=None, help="per-seed CSV (default results/per_seed_main.csv)")
     ap.add_argument("--episodes", default=None, help="episodes JSONL (default results/episodes_main.jsonl)")
     ap.add_argument("--out", default="results/figures")
     ap.add_argument("--regime", default="decoy")
+    ap.add_argument("--bazt-out", default=None, help="output directory for --bazt-suite (default <dir>/paper_pack)")
     args = ap.parse_args(argv)
+
+    if args.bazt_suite:
+        out = args.bazt_out or os.path.join(args.bazt_suite, "paper_pack")
+        made = bazt_suite(args.bazt_suite, out)
+        for p in made:
+            print("wrote", p)
+        return 0 if made else 1
 
     per_seed = args.file or os.path.join(args.results, "per_seed_main.csv")
     episodes = args.episodes or os.path.join(args.results, "episodes_main.jsonl")
