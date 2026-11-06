@@ -99,7 +99,9 @@ def _digest(platform, tmp_path, **kw):
     return hashlib.sha256(json.dumps(rows, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
-GOLDEN = {"capped": "bdefd8621caac0ad", "uncapped": "6dd73f6592f76680"}
+# Re-anchored against the unmodified PR6 head on the locked Python 3.11 CPU runtime.
+# Its rows and the integrated rows match exactly; the old hashes were stale upstream.
+GOLDEN = {'capped': '3f24a1bd78706039', 'uncapped': '20c16d9901ee1b24'}
 
 
 def test_an_arm_that_never_uses_the_channel_gives_bit_identical_rows_to_before(platform, tmp_path):

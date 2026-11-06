@@ -1,0 +1,10 @@
+{
+  "source_ref": "PR6 4cf48fa3e6a34781b0ed0232dbda570a0d33c742",
+  "unmodified_and_integrated_rows_identical": true,
+  "expected_current_digests": {
+    "capped": "3f24a1bd78706039",
+    "uncapped": "20c16d9901ee1b24"
+  },
+  "reason": "Old literal hash fails on unmodified PR6 as well. Re-anchored only after exact row comparison on the locked runtime.",
+  "submodule_fix": "Parity loader executes compiled source without writing bytecode into the pinned checkout."
+}
