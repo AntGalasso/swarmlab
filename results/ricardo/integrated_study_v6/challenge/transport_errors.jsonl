@@ -1,0 +1,2 @@
+{"attempt": 1, "call": 2079, "cap": 2048, "http_status": 502, "type": "InternalServerError", "usage_unknown": true}
+{"attempt": 1, "call": 2077, "cap": 2048, "http_status": 502, "type": "InternalServerError", "usage_unknown": true}
