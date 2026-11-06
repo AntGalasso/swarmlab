@@ -146,6 +146,7 @@ def make_openrouter_transport() -> Transport:
         u = getattr(r, "usage", None)
         return text, int(getattr(u, "prompt_tokens", 0) or 0), int(getattr(u, "completion_tokens", 0) or 0)
 
+    transport.aclose = client.close
     return transport
 
 
@@ -168,6 +169,7 @@ def make_adaption_transport() -> Transport:
 
         async def _create(**kwargs):
             return await client.responses.create(**kwargs)
+        _close_client = client.close
     except ImportError:  # fall back to the sync client; LLMBackend calls us from its own loop
         from adaption import Adaption
 
@@ -175,6 +177,9 @@ def make_adaption_transport() -> Transport:
 
         async def _create(**kwargs):
             return await asyncio.to_thread(sync_client.responses.create, **kwargs)
+
+        async def _close_client():
+            await asyncio.to_thread(sync_client.close)
 
     async def transport(model: str, messages: Messages, temperature: float, max_tokens: int):
         system = "\n".join(m["content"] for m in messages if m["role"] == "system")
@@ -190,6 +195,7 @@ def make_adaption_transport() -> Transport:
         ct = int(getattr(u, "output_tokens", 0) or getattr(u, "completion_tokens", 0) or 0)
         return text, pt, ct
 
+    transport.aclose = _close_client
     return transport
 
 

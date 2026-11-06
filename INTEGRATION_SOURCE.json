@@ -1,0 +1,27 @@
+{
+  "team_repo": "AntGalasso/swarmlab",
+  "base_main": "a94ebe2fbabb6094254d2b3b34306ae000d580b1",
+  "PR5_head": "6890db0d0e3897169f887b3308cbf8ac01748b28",
+  "PR5_merge": "706eecc511a51a38ec0fc02b55a5e0058eea8c83",
+  "PR6_original_head": "4cf48fa3e6a34781b0ed0232dbda570a0d33c742",
+  "PR6_head": "c105a67b3857558123d47f2458bb7f48d71e6752",
+  "PR6_merge": "cc03766e42d58966060c798641f70d224d6b2ce7",
+  "PR7_head": "d91143e2e09af0d0f0a17ed73cb940d941358fca",
+  "PR7_merge": "fe350beac1aaa0e32e1d10b9441e10b89846e3ec",
+  "additional_changes": [
+    "live cached-client/harness bridge",
+    "separate strict live judge",
+    "provider client cleanup",
+    "Adaption pinned in pyproject/uv.lock",
+    "integrated offline CI",
+    "versioned H2/H3 study driver",
+    "bounded-memory grouped validation",
+    "non-mutating pinned upstream import",
+    "independently reproduced isolated-audit golden digests"
+  ],
+  "lightweight_root_tests_passed": 480,
+  "full_validation": {"tests":3740,"passed":3705,"skipped":35,"failures":0,"errors":0},
+  "full_lab_validation": "complete offline CPU validation; no GPU/live GNN evaluation claimed",
+  "runtime": "Python 3.11.17, uv.lock CPU build",
+  "credentials_committed": false
+}

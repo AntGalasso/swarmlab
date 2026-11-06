@@ -1,12 +1,19 @@
 # swarmlab -- PRE-EXISTING SCAFFOLDING (declared for Apart Research compliance)
 
-Written **before** the Swarm Alignment Hackathon kickoff (Nov 6, 2026). It contains no experimental
-result. **This includes the `bazt/` package, its tests and `docs/BAZT_SPEC_v2.md` / `docs/ARCHITECTURE_BAZT_FOR_REPO.md`
-(branch `feat/bazt`, written Nov 4-5, 2026, before kickoff): every BAZT number in this repository to date comes from
+The original scaffolding was written **before** the Swarm Alignment Hackathon kickoff (Nov 6, 2026). Its original artifacts contain no live-model experimental result. **This includes the `bazt/` package, its tests and `docs/BAZT_SPEC_v2.md` / `docs/ARCHITECTURE_BAZT_FOR_REPO.md`
+(branch `feat/bazt`, written Nov 4-5, 2026, before kickoff): every pre-sprint BAZT number comes from
 `--mode mock` on tune seeds 9001-9012 and is a pipeline check, not a finding.** Organisers confirmed (Kamil, Apart) that pre-existing code is fine if marked as such in the
 README and in the report. Everything measured with it during the sprint is sprint work.
 
 Project: *When and Whom to Quarantine? Topology-aware risk control under alert-driven budget exhaustion in agent swarms.*
+
+## Current team integration
+
+The integration checkout includes `swarmlab` / `bazt`, the expanded `experiments.py` pipeline,
+and Vittoria's `bazt_lab`. Use Python 3.11, initialize the pinned G-Safeguard submodule, and
+run `uv sync --frozen` for the full project. See [docs/TEAM_INTEGRATION.md](docs/TEAM_INTEGRATION.md)
+for source provenance, validation and the H2/H3 experiment gates. The pipelines keep separate
+result semantics. CI is offline; inference is explicit and credentials are never committed.
 
 ## Compliance guardrail
 * Before kickoff the ONLY live API call allowed is the READY smoke test (`python llm_client.py`).
