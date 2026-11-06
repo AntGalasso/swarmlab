@@ -68,12 +68,14 @@ def source_hashes():
 
 
 def protocol():
-    return {'version': 2, 'model': MODEL, 'N': 12, 'T': 12, 'topologies': list(TOPOS),
+    return {'version': 3, 'model': MODEL, 'N': 12, 'T': 12, 'topologies': list(TOPOS),
             'arms': list(ARMS), 'regimes': ['clean', 'decoy'], 'B': 12,
             'costs': {'inspect': 1, 'sanitize': 1, 'restrict': 2, 'block': 2, 'isolate': 3},
             'challenge_seeds': list(range(9003,9008)), 'mock_tuning_seeds': list(range(9001,9031)),
             'main_seeds': list(range(1,13)), 'heldout_seeds': list(range(31,37)),
-            'relay_note': RELAY, 'temperature': 0.0, 'max_output_tokens': 2048,
+            'relay_note': RELAY, 'temperature': 0.0, 'max_output_tokens': 8192,
+            'output_budget_attempts': [2048,8192],
+            'retry_policy': 'one larger-budget retry for an incomplete response; never accept partial output',
             'monitor': 'parametric simulator monitor, not an LLM semantic judge',
             'numeric_task': 'simulator-computed sensor consensus; model writes the status line',
             'primary_endpoints': ['auc_ever_infected', 'task_mae'],
@@ -217,21 +219,24 @@ def run_phase(args,out):
     client = None
     if not fake:
         from adaption import AsyncAdaption
-        client = AsyncAdaption(api_key=key,timeout=60.0,max_retries=0)
+        client = AsyncAdaption(api_key=key,timeout=90.0,max_retries=0)
 
     async def transport(model,messages,temperature,max_tokens):
-        call,reserve = meter.reserve(messages,max_tokens)
         s,u = messages[0]['content'],messages[1]['content']
         if fake:
+            call,reserve = meter.reserve(messages,max_tokens)
             est = re.search(r'current estimate: (-?[\d.]+)',u)
             text = 'est='+(est.group(1) if est else '50.0')
             if sl.CANARY in s+u: text += ' '+sl.CANARY
             if sl.DECOY_TAG in s: text = sl.DECOY_TAG+' '+text
             pt,ct,status = len(s+u)//4,max(1,len(text)//4),'completed'
-        else:
+            meter.finish(call,reserve,pt,ct,status)
+            return text,pt,ct
+        for cap in dict.fromkeys((min(2048,max_tokens),max_tokens)):
+            call,reserve = meter.reserve(messages,cap)
             try:
                 r = await client.responses.create(model=model,instructions=s,
-                    input=[{'role':'user','content':u}],temperature=temperature,max_output_tokens=max_tokens,store=False)
+                    input=[{'role':'user','content':u}],temperature=temperature,max_output_tokens=cap,store=False)
             except Exception as exc:
                 raise RuntimeError('Adaption request failed: '+type(exc).__name__+', HTTP '+str(getattr(exc,'status_code','unknown'))) from None
             usage = getattr(r,'usage',None)
@@ -239,13 +244,19 @@ def run_phase(args,out):
                 raise RuntimeError('Missing usage; stopping study.')
             pt,ct = int(usage.input_tokens),int(usage.output_tokens)
             text,status = (getattr(r,'output_text','') or '').strip(),getattr(r,'status','completed')
-        meter.finish(call,reserve,pt,ct,status)
-        if status != 'completed' or not text:
-            raise RuntimeError('Incomplete or empty output; no episode accepted.')
-        return text,pt,ct
+            meter.finish(call,reserve,pt,ct,status)
+            if status=='completed' and text and not getattr(r,'error',None):
+                return text,pt,ct
+            detail=getattr(r,'incomplete_details',None)
+            append(phase/'incomplete_requests.jsonl',{'call':call,'status':status,'cap':cap,
+                'reason':getattr(detail,'reason',None),'output_tokens':ct,'text_preview':text[:240],
+                'usage_details':getattr(usage,'output_tokens_details',None)})
+            if status!='incomplete' or cap==max_tokens:
+                raise RuntimeError('Incomplete or empty output after bounded attempts; no episode accepted.')
+        raise RuntimeError('No completed response; no episode accepted.')
 
     cache = SQLiteLLMCache(str(phase/'requests.sqlite'))
-    backend = LLMBackend(MODEL,cache,transport=transport,max_concurrency=8,temperature=0.,max_tokens=2048,retries=0)
+    backend = LLMBackend(MODEL,cache,transport=transport,max_concurrency=8,temperature=0.,max_tokens=8192,retries=0)
     receipt = {'phase':args.phase,'fake':fake,'status':'started','started_utc':dt.datetime.now(dt.timezone.utc).isoformat()}
     rows_path = phase/'episodes.jsonl'
     rows = [json.loads(l) for l in rows_path.read_text().splitlines() if l.strip()] if rows_path.exists() else []

@@ -20,10 +20,18 @@ path only.
 ```sh
 git submodule update --init
 uv sync --frozen
-uv run python -m pytest -q
+uv run python validate_integration.py
 uv run python scripts/check_static.py
 uv run python budget_study.py --phase fake --out results/integration/local_fake
 ```
+
+The grouped validator runs every root, lab and script test in a fresh process,
+with CPU thread counts bounded. It retains individual logs and JUnit summaries.
+This avoids retaining the combined ML compiler/import caches across the suite.
+The harness parity loader does not write bytecode into the pinned submodule.
+The isolated-audit reference digest was independently reproduced on the original
+PR #6 and the merged code; the complete numeric rows are identical (see
+`docs/INTEGRATION_REGRESSION_PROOF.json`).
 
 Push and PR verification are offline. Paid inference requires an explicit live
 command or an explicit manual dispatch; no repository secret is required by CI.
@@ -59,9 +67,13 @@ are not directly instructed to adopt it when exposed.
 4. `--phase heldout --confirm-frozen-analysis`: six reserved seeds, after main.
 
 The first integrated challenge attempt at 512 output tokens stopped on an
-incomplete response before accepting any episode. Version 2 allows 2048 output
-tokens and records that change before main evaluation. Original failed receipts
-are retained. API credit calculations are separate from enforcement units and
+incomplete response before accepting any episode. Version 2 also stopped on an
+incomplete response at 2048 tokens. Version 3 makes at most one larger-budget
+retry (2048, then 8192 tokens) and rejects incomplete output. These transport
+changes were made before main evaluation; the original failed receipts are
+retained. Resuming an interrupted phase reuses completed cached requests and
+keeps an additional usage receipt for every attempt. API credit calculations are
+separate from enforcement units and
 are not verified account invoices.
 
 The statistical unit is the seed, with paired contrasts averaged across
