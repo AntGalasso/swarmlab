@@ -28,11 +28,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.12'
           cache: pip
@@ -43,7 +43,7 @@ jobs:
       - name: Verify complete pilot with a local fake transport
         run: python scripts/run_adaption_pilot.py --mode fake --out results/ricardo_ci/fake
       - name: Run requested live Adaption pilot
-        if: github.event_name == 'push' || inputs.live_pilot
+        if: github.event_name == 'workflow_dispatch' && inputs.live_pilot
         env:
           ADAPTION_API_KEY: ${{ secrets.ADAPTION_API_KEY }}
         run: |
@@ -59,7 +59,7 @@ jobs:
           python scripts/run_adaption_pilot.py --mode pilot --allow-live-llm --max-credits 1 --out results/ricardo_ci/live
       - name: Save verification and pilot results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: adaption-pilot-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
