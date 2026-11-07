@@ -15,6 +15,12 @@ run `uv sync --frozen` for the full project. See [docs/TEAM_INTEGRATION.md](docs
 for source provenance, validation and the H2/H3 experiment gates. The pipelines keep separate
 result semantics. CI is offline; inference is explicit and credentials are never committed.
 
+## Completed evaluation and current extension
+
+The frozen Gemma-26B campaign completed 240 main and 120 separately analyzed heldout episodes. H2 was unsupported and H3 was mixed; see [the verified status](docs/RICARDO_EXECUTION_STATUS.md) and [frozen results](results/ricardo/integrated_study_v6/analysis/). These are controlled simulator endpoints with live status messages, not general LLM safety measures.
+
+A separate original-budget Early H2 and accessible-model H4 extension is running on new seeds. No new result is claimed before completion. The old `results/experiments/paper_pack` outputs are [superseded pre-correction mock checks](results/experiments/paper_pack/STATUS.md).
+
 ## Compliance guardrail
 * Before kickoff the ONLY live API call allowed is the READY smoke test (`python llm_client.py`).
 * `--mode llm` needs `--allow-live-llm` AND is refused before the kickoff time (`SWARMLAB_KICKOFF_UTC`

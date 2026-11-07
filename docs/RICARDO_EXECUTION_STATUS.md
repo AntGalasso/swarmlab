@@ -74,6 +74,21 @@ inspection oracle. It does not establish general LLM safety, a learned auditor,
 or deployment-level robustness. No no-topology/no-provenance ablation or H4
 cross-model fidelity experiment is reported as completed.
 
+A separate prospective Early/K=3 and accessible-model H4 extension is now
+running on new seeds. Its source, analysis and configuration were frozen
+before inference; old v6 outcomes are not pooled with it. The primary model
+is Gemma-4-26B-A4B-IT and the matched second model is Qwen3.8-27B. This is
+not the original Qwen-2.5-7B/GPT-4o-mini contrast, which remains untested with
+the configured credentials. The no-pacing extension holds theta0 and kappa
+identical to full BAZT. See the dedicated execution and protocol:
+
+- https://github.com/ricardofitas/swarm-adaption-hackathon/actions/runs/42351694248
+- https://github.com/ricardofitas/swarm-adaption-hackathon/blob/ricardo/h2h4-20261107/docs/H2H4_EXTENSION_20261107.md
+
+The v6 "no-pacing" comparison above used separately tuned thresholds and is
+therefore a comparison of tuned configurations; it does not by itself isolate
+the causal effect of pacing.
+
 The private Overleaf manuscript was updated, compiled and visually checked.
 Its body is eight pages, followed by one reference page and a two-page appendix.
 Team authorship and affiliations remain pending. The project has not been
