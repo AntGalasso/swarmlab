@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 import threading
 
 
@@ -15,7 +16,7 @@ class LiveBackendAdapter:
 
     strict_judge_format = True
 
-    def __init__(self, backend, own_cache=True, judge_backend=None):
+    def __init__(self, backend, own_cache=True, judge_backend=None, request_timeout=None):
         self.backend = backend
         self.model = backend.model
         self.judge_backend = judge_backend
@@ -24,6 +25,11 @@ class LiveBackendAdapter:
         self._closed = False
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='swarmlab-live')
+        # The worker thread must never block a block forever: the client already bounds each attempt, and this
+        # is the outer bound on the whole retry ladder for one submitted request.
+        self.request_timeout = float(request_timeout or getattr(backend, 'request_timeout', 30.0))
+        self.retries = int(getattr(backend, 'retries', 2))
+        self.call_timeout = self.request_timeout * (self.retries + 1) + 15.0
 
     def _request(self, reqs, temperature):
         with self._lock:
@@ -34,15 +40,27 @@ class LiveBackendAdapter:
     def generate_sync(self, reqs):
         if self._closed:
             raise RuntimeError('Live backend is closed.')
-        return self._executor.submit(self._request, reqs, 0.0).result()
+        future = self._executor.submit(self._request, reqs, 0.0)
+        try:
+            return future.result(timeout=self.call_timeout)
+        except FutureTimeout as exc:
+            raise RuntimeError(
+                f'Live provider did not answer {len(reqs)} request(s) within {self.call_timeout:.0f}s '
+                f'({self.retries + 1} attempts x {self.request_timeout:.0f}s); refusing to hang the block.'
+            ) from exc
 
     async def complete(self, system, user, temperature=0.0):
         if self._closed:
             raise RuntimeError('Live backend is closed.')
         future = self._executor.submit(self._request, [(system, user)], temperature)
-        return (await asyncio.wrap_future(future))[0]
+        try:
+            return (await asyncio.wait_for(asyncio.wrap_future(future), timeout=self.call_timeout))[0]
+        except asyncio.TimeoutError as exc:
+            raise RuntimeError(
+                f'Live provider did not answer within {self.call_timeout:.0f}s; refusing to hang the block.'
+            ) from exc
 
-    async def first_token_yes_logprob(self, prompt):
+    async def first_token_yes_logprob(self, prompt):  # noqa: ARG002
         return None
 
     def _close_resources(self):

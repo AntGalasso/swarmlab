@@ -571,6 +571,10 @@ def _rank_agreement(rows: Sequence[dict], threshold: float, draws: int = 2000) -
     if len(common) < 3:
         return {"available": False, "reason": f"only {len(common)} shared arms"}
     tau, p = stats.kendalltau([ml[k] for k in common], [mm[k] for k in common])
+    if tau != tau:            # NaN: one side ranks every arm identically, so tau_b is undefined
+        return {"available": False, "tau_b": None, "n_arms": len(common),
+                "reason": "rank correlation undefined (constant arm ordering on one platform)",
+                "ranked_arms": common}
     seeds = sorted({int(r.get("seed", 0)) for r in llm_rows} & {int(r.get("seed", 0)) for r in mock_rows})
     boot = []
     if len(seeds) >= 2:
@@ -710,9 +714,10 @@ def print_confirmatory(rep: dict) -> None:
                   f"(margin +-{ws['tost_margin_pp']:.1f}) equivalent={ws['equivalent']}")
     ra = rep["rank_agreement"]
     if ra.get("available"):
-        ci = ra["ci95"]
-        print(f"LLM-vs-mock Kendall tau_b: {ra['tau_b']:.3f} "
-              f"CI[{ci[0]:.3f},{ci[1]:.3f}] (threshold {ra['threshold']:.2f}) -> {ra['supported']}")
+        ci = ra.get("ci95") or [None, None]
+        ci_txt = "CI[n/a]" if ci[0] is None or ci[1] is None else f"CI[{ci[0]:.3f},{ci[1]:.3f}]"
+        print(f"LLM-vs-mock Kendall tau_b: {ra['tau_b']:.3f} {ci_txt} "
+              f"(threshold {ra['threshold']:.2f}) -> {ra['supported']}")
     else:
         print("rank agreement: not available --", ra.get("reason"))
     d = rep["decision"]

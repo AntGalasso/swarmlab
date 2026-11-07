@@ -1,7 +1,9 @@
 {
   "config": {
+    "_adaptive_note": "Every family runs in both forms on the same seeds and the same binding (0.10, 0.10) cap: `<family>` (static payload, full rate) and `<family>_adaptive` (monitor-invisible compressed carrier, reduced bias, broadcast every 2nd step). Table 6's paired contrast and diff-in-diff need both.",
     "_meta": {
       "branch": "feat/bazt-experiments",
+      "derived_from": "configs/sprint_preregistered.json",
       "frozen_at_utc": "2026-11-06T00:00:00+00:00",
       "guardrails": [
         "zero live LLM calls before SWARMLAB_KICKOFF_UTC",
@@ -9,12 +11,18 @@
         "--split heldout requires --confirm-frozen-analysis",
         "all artifacts strictly under results/experiments/"
       ],
-      "name": "swarmlab sprint pre-registration (BAZT experiments)",
-      "note": "Every value below is fixed BEFORE any main/heldout episode is run. experiments.py fails fast if a required key is missing. Mock numbers are pipeline checks, not findings."
+      "name": "swarmlab tier-1 LIVE SLICE (2 seeds x 3 conversations)",
+      "note": "Every value below is fixed BEFORE any main/heldout episode is run. experiments.py fails fast if a required key is missing. Mock numbers are pipeline checks, not findings.",
+      "slice_note": "High-signal live slice. Reduced factors vs full tier-1: seeds 1-2 (not 12) and 3 conversations (not 8). Everything else is identical: scenarios clean+infection, topologies barabasi_albert+watts_strogatz, arms arm_A/arm_C/bazt, and both the uncapped and the binding (0.10, 0.10) budget. 'pi' and 'ma'/'ta'/'aitm' stay in the mock suite because they are monitor-invisible by construction and need no live judge."
     },
+    "_scale_budgets_note": "E2 ablations are only identifiable under a BINDING cap: an uncapped run has z = spent/inf = 0, so pacing and topology-aware allocation cannot change any decision. (0.10, 0.10) is the primary budget; null/null is kept as the reference column only.",
     "adaptive_arms": [
       "arm_C",
       "bazt"
+    ],
+    "adaptive_budget": [
+      0.1,
+      0.1
     ],
     "adaptive_families": [
       "pi",
@@ -22,6 +30,10 @@
       "ma",
       "infection",
       "aitm"
+    ],
+    "adaptive_variants": [
+      "static",
+      "adaptive"
     ],
     "alpha_clean_fpr": 0.02,
     "calibration_seeds": [
@@ -67,8 +79,19 @@
     "llm": {
       "N": 12,
       "judge_fallback": "structured_json_0_100",
+      "pilot_budget": [
+        0.1,
+        0.1
+      ],
+      "pilot_capped_arms": [
+        "arm_C",
+        "bazt"
+      ],
       "pilot_conversations": 4,
       "pilot_seeds": 2,
+      "pilot_uncapped_arms": [
+        "arm_A"
+      ],
       "rounds_per_conversation": 3,
       "temperature": 0.0,
       "tier1_capped_arms": [
@@ -77,32 +100,22 @@
       ],
       "tier1_capped_budgets": [
         [
-          0.02,
-          0.02
-        ],
-        [
           0.1,
           0.1
-        ],
-        [
-          0.5,
-          0.5
         ]
       ],
-      "tier1_conversations": 8,
+      "tier1_conversations": 3,
       "tier1_scenarios": [
         "clean",
-        "pi",
         "infection"
       ],
-      "tier1_seeds": 12,
+      "tier1_seeds": 2,
       "tier1_topologies": [
         "barabasi_albert",
         "watts_strogatz"
       ],
       "tier1_uncapped_arms": [
         "arm_A",
-        "arm_B",
         "arm_C",
         "bazt"
       ]
@@ -126,6 +139,16 @@
     "scale_N": [
       12,
       100
+    ],
+    "scale_budgets": [
+      [
+        0.1,
+        0.1
+      ],
+      [
+        null,
+        null
+      ]
     ],
     "scale_topologies": [
       "barabasi_albert",
@@ -163,11 +186,11 @@
     ],
     "trust_history_window": 12
   },
-  "config_path": "configs/sprint_preregistered.json",
-  "config_sha256": "c166660c86b9392387cca6bc41be88a11dcdde10f030648f53d4f56861b8340b",
-  "platform": "mock",
-  "resume": false,
+  "config_path": "configs/tier1_slice.json",
+  "config_sha256": "a155a62ce5b343413515ffc67921ade6acb1929ad66607bf5180f6ba139957e7",
+  "platform": "llm",
+  "resume": true,
   "smoke": false,
-  "split": "tune",
-  "stage": "calibrate"
+  "split": "main",
+  "stage": "llm-tier1"
 }

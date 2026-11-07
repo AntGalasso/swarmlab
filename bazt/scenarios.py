@@ -184,7 +184,16 @@ def _rate_limiter(every: int) -> Callable[[str, int, int], str]:
 
 
 # ==================================================================================== construction
+ADAPTIVE_SUFFIX = "_adaptive"
+
+
 def _spec(name: str, config: dict, seed: int, n: int, adj) -> Scenario:
+    if name.endswith(ADAPTIVE_SUFFIX):        # E3: the family's best-response twin, same mechanics
+        base = _spec(name[:-len(ADAPTIVE_SUFFIX)], config, seed, n, adj)
+        return replace(base, name=name, token=COMPRESSED_TOKEN, monitor_visible=False, send_every=2,
+                       bias=float(base.bias) * 0.75,
+                       note=(f"adaptive best-response of {base.name}: monitor-invisible compressed carrier, "
+                             f"reduced bias and broadcasts every 2nd step"))
     n_ins = int(config.get("n_insiders", 2))
     if name == "clean":
         return Scenario("clean", attack=False, token="", monitor_visible=False, decoys=False,
@@ -256,7 +265,11 @@ def build_scenario(name: str, seed: int, config: dict, n: int = 12, topology: st
 
 
 def decoys_for(name: str, world: sl.World, cfg: sl.Config) -> frozenset:
-    """Decoy bursts belong to the contagious/visible scenarios only; `clean`/`pi`/`adaptive` have none."""
-    if name in ("clean", "pi", "adaptive"):
+    """Decoy bursts belong to the contagious/visible scenarios only; `clean`/`pi`/`adaptive` have none.
+
+    An `<family>_adaptive` variant keeps the decoy regime of its base family.
+    """
+    base = name[:-len(ADAPTIVE_SUFFIX)] if name.endswith(ADAPTIVE_SUFFIX) else name
+    if base in ("clean", "pi", "adaptive"):
         return frozenset()
     return sl.pick_decoys(world, cfg.decoys_in_decoy_regime)

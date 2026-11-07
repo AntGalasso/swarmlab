@@ -109,7 +109,8 @@ class ConventionalGateway:
 
     def __init__(self, arm: str, zcfg: ZtaConfig, bcfg: BaztConfig, sl_cfg: sl.Config, topology: str,
                  seed: int, base_adj: Sequence[Sequence[int]], recv: Sequence[Sequence[int]],
-                 seed_agents: FrozenSet[int] = frozenset(), matched_steps: Optional[Sequence[int]] = None):
+                 seed_agents: FrozenSet[int] = frozenset(), matched_steps: Optional[Sequence[int]] = None,
+                 total_deliveries: Optional[int] = None):
         self.arm, self.zcfg, self.bcfg, self.sl_cfg = arm, zcfg, bcfg, sl_cfg
         self.n, self.T = sl_cfg.N, sl_cfg.T
         self.recv = [list(r) for r in recv]
@@ -128,7 +129,10 @@ class ConventionalGateway:
         self._matched_steps = frozenset(int(s) for s in matched_steps) if matched_steps is not None else None
         e_dir = sum(len(r) for r in self.recv)
         self.e_dir = e_dir
-        self.total_deliveries = (self.T - 1) * e_dir
+        # A Tier-1 block of `conversations` tasks shares ONE ledger, so the denominator must be the block's
+        # deliveries (callers pass it explicitly); a single mock episode keeps the per-episode denominator.
+        self.total_deliveries = int(total_deliveries) if total_deliveries is not None \
+            else (self.T - 1) * e_dir
         self.ledger = BudgetLedger(bcfg, total_deliveries=self.total_deliveries)
         self.audit = AuditLog()
         self.fallback_active = False
@@ -606,11 +610,12 @@ _CLASSES = {
 def make_conventional_gateway(arm: str, zcfg: ZtaConfig, bcfg: BaztConfig, sl_cfg: sl.Config, topology: str,
                               seed: int, base_adj: Sequence[Sequence[int]], recv: Sequence[Sequence[int]],
                               seed_agents: FrozenSet[int] = frozenset(),
-                              matched_steps: Optional[Sequence[int]] = None) -> ConventionalGateway:
+                              matched_steps: Optional[Sequence[int]] = None,
+                              total_deliveries: Optional[int] = None) -> ConventionalGateway:
     if arm not in _CLASSES:
         raise ValueError(f"unknown conventional arm {arm!r}; choose from {sorted(_CLASSES)}")
     return _CLASSES[arm](arm, zcfg, bcfg, sl_cfg, topology, seed, base_adj, recv, seed_agents,
-                         matched_steps=matched_steps)
+                         matched_steps=matched_steps, total_deliveries=total_deliveries)
 
 
 def conventional_bazt_config(zcfg: ZtaConfig, audit_pct: Optional[float],

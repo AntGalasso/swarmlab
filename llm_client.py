@@ -214,10 +214,14 @@ class LLMBackend:
     """Cached, rate-limited, retrying completion backend. Use .generate(batch) from synchronous code."""
 
     def __init__(self, model: str, cache: SQLiteLLMCache, transport: Optional[Transport] = None,
-                 max_concurrency: int = 40, temperature: float = 0.7, max_tokens: int = 90, retries: int = 4):
+                 max_concurrency: int = 40, temperature: float = 0.7, max_tokens: int = 90, retries: int = 2,
+                 request_timeout: float = 30.0):
         self.model, self.cache = model, cache
         self.transport = transport
         self.max_concurrency, self.temperature, self.max_tokens, self.retries = max_concurrency, temperature, max_tokens, retries
+        # Hard per-request ceiling. A provider (or a wedged transport) that never answers must fail the
+        # attempt, not hang the whole experiment: every attempt is bounded, and retries are bounded too.
+        self.request_timeout = float(request_timeout)
         self._loop = asyncio.new_event_loop()
         self._sem: Optional[asyncio.Semaphore] = None
 
@@ -235,12 +239,17 @@ class LLMBackend:
         async with self._sem:
             for attempt in range(self.retries + 1):
                 try:
-                    text, pt, ct = await self.transport(self.model, messages, temp, self.max_tokens)
+                    text, pt, ct = await asyncio.wait_for(
+                        self.transport(self.model, messages, temp, self.max_tokens),
+                        timeout=self.request_timeout)
                     self.cache.put(key, self.model, text, pt, ct)
                     return text
+                except asyncio.TimeoutError as e:
+                    last = RuntimeError(f"provider timeout after {self.request_timeout:.0f}s")
                 except Exception as e:  # noqa: BLE001
                     last = e
-                    await asyncio.sleep(min(30.0, (2 ** attempt) + random.random()))
+                if attempt < self.retries:          # bounded exponential backoff (+ jitter)
+                    await asyncio.sleep(min(10.0, (2 ** attempt) + random.random()))
         raise RuntimeError(f"LLM call failed after {self.retries + 1} attempts: {last!r}")
 
     async def _batch(self, reqs: Sequence[Tuple[str, str, str]], temperature: Optional[float]) -> List[str]:
@@ -258,8 +267,10 @@ class LLMBackend:
 
 
 def make_llm_policy(model: str, cache: SQLiteLLMCache, max_concurrency: int = 40, temperature: float = 0.7,
-                    max_tokens: int = 90, transport: Optional[Transport] = None) -> LLMBackend:
-    return LLMBackend(model, cache, transport, max_concurrency, temperature, max_tokens)
+                    max_tokens: int = 90, transport: Optional[Transport] = None, retries: int = 2,
+                    request_timeout: float = 30.0) -> LLMBackend:
+    return LLMBackend(model, cache, transport, max_concurrency, temperature, max_tokens, retries=retries,
+                      request_timeout=request_timeout)
 
 
 # ------------------------------------------------------------------------------- smoke test

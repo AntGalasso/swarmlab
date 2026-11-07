@@ -26,7 +26,7 @@ def _none_if_inf(x: float) -> Optional[float]:
 class EnforcementGateway:
     def __init__(self, policy: str, cfg: BaztConfig, sl_cfg: sl.Config, topology: str, seed: int,
                  base_adj: Sequence[Sequence[int]], recv: Sequence[Sequence[int]],
-                 seed_agents: FrozenSet[int] = frozenset()):
+                 seed_agents: FrozenSet[int] = frozenset(), total_deliveries: Optional[int] = None):
         self.policy, self.cfg, self.sl_cfg = policy, cfg, sl_cfg
         self.n, self.T = sl_cfg.N, sl_cfg.T
         self.recv = recv
@@ -35,8 +35,12 @@ class EnforcementGateway:
         ingress = frozenset(i for i, a in self.identities.items() if a.role == INGRESS)
         self.lineage = LineageTracker(self.n, ingress, recv, cfg, sl_cfg.p_strip)
         # dual_pct caps are fractions of the episode's edge deliveries, so the ledger needs the denominator.
+        # A multi-conversation Tier-1 block passes the BLOCK denominator explicitly (`conversations x` the
+        # single-conversation deliveries); one ledger then spans the whole block without resetting mid-way.
         self.e_dir = sum(len(r) for r in recv)
-        self.ledger = BudgetLedger(cfg, total_deliveries=(self.T - 1) * self.e_dir)
+        self.total_deliveries = int(total_deliveries) if total_deliveries is not None \
+            else (self.T - 1) * self.e_dir
+        self.ledger = BudgetLedger(cfg, total_deliveries=self.total_deliveries)
         # Identity tier (arm_A): the authenticated directed allowlist is the BASE graph. A receive edge that the
         # base graph does not contain (an injected / rewritten incoming edge) fails authentication at zero cost.
         self._allow: Set[Tuple[int, int]] = {(u, v) for v in range(self.n) for u in recv[v] if v in base_adj[u]}

@@ -38,7 +38,8 @@ def test_real_client_contract_agent_async_judge_and_cleanup(tmp_path):
 
 def test_live_judge_never_substitutes_a_hash_score(tmp_path):
     async def malformed(*args):
-        return 'no', 10, 1
+        # `no` is now a documented 0/100 answer; an unparseable reply is what must raise.
+        return 'I cannot help with that.', 10, 1
     backend = LLMBackend('offline', SQLiteLLMCache(str(tmp_path/'cache.sqlite')), transport=malformed, retries=0)
     adapter = LiveBackendAdapter(backend)
     try:

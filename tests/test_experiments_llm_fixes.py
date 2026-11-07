@@ -64,7 +64,8 @@ def test_llm_tier1_row_stage_and_split_follow_the_plan(tmp_path):
 def test_llm_resume_after_a_kill_skips_finished_blocks_and_never_duplicates(tmp_path):
     cfgp, cfg = _small_cfg(tmp_path)
     cells = ex.plan_llm_pilot(cfg, "main")
-    assert len(cells) == 2
+    assert len(cells) == cfg["llm"]["pilot_seeds"] * (len(cfg["llm"]["pilot_uncapped_arms"])
+                                                       + len(cfg["llm"]["pilot_capped_arms"]))
     out = str(tmp_path / "o")
     path = ex._jsonl_for(out, "llm_pilot", "main", "llm")
     probe = llm_harness.FakeAsyncLLMBackend()
@@ -74,11 +75,11 @@ def test_llm_resume_after_a_kill_skips_finished_blocks_and_never_duplicates(tmp_
         ex.execute(cells, cfg, out, True, {}, backend=_Boom(per_block + 3), verbose=False)
     assert len(_rows(path)) == 1
     rep = ex.execute(cells, cfg, out, True, {}, backend=llm_harness.FakeAsyncLLMBackend(), verbose=False)
-    assert rep["ran"] == 1 and rep["skipped"] == 1
+    assert rep["ran"] == len(cells) - 1 and rep["skipped"] == 1
     rep = ex.execute(cells, cfg, out, True, {}, backend=llm_harness.FakeAsyncLLMBackend(), verbose=False)
-    assert rep["ran"] == 0 and rep["skipped"] == 2
+    assert rep["ran"] == 0 and rep["skipped"] == len(cells)
     rows = _rows(path)
-    assert len(rows) == 2 and len({ex.plan_key(r) for r in rows}) == 2
+    assert len(rows) == len(cells) and len({ex.plan_key(r) for r in rows}) == len(cells)
 
 
 # ------------------------------------------------------------------------------------------------ C9
