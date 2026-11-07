@@ -1,0 +1,82 @@
+{
+  "counts": {
+    "BlindGuard": {
+      "actual": 321,
+      "alerts": 1200,
+      "debates": 400,
+      "disagreement": 7,
+      "false_credit": 6,
+      "missed_credit": 1,
+      "perturbable": 72,
+      "published": 326
+    },
+    "CASPIAN": {
+      "actual": 320,
+      "alerts": 1200,
+      "debates": 400,
+      "disagreement": 1,
+      "false_credit": 1,
+      "missed_credit": 0,
+      "perturbable": 9,
+      "published": 321
+    },
+    "DOMINANT": {
+      "actual": 301,
+      "alerts": 1200,
+      "debates": 400,
+      "disagreement": 15,
+      "false_credit": 11,
+      "missed_credit": 4,
+      "perturbable": 76,
+      "published": 308
+    },
+    "PREM": {
+      "actual": 297,
+      "alerts": 1200,
+      "debates": 400,
+      "disagreement": 23,
+      "false_credit": 23,
+      "missed_credit": 0,
+      "perturbable": 74,
+      "published": 320
+    },
+    "TAM": {
+      "actual": 328,
+      "alerts": 1200,
+      "debates": 400,
+      "disagreement": 7,
+      "false_credit": 3,
+      "missed_credit": 4,
+      "perturbable": 148,
+      "published": 327
+    },
+    "XG-Guard": {
+      "actual": 328,
+      "alerts": 1200,
+      "debates": 400,
+      "disagreement": 4,
+      "false_credit": 2,
+      "missed_credit": 2,
+      "perturbable": 16,
+      "published": 328
+    }
+  },
+  "development": "MMLU",
+  "selected": {
+    "actual": {
+      "choice": "TAM",
+      "correct_of_400": 328,
+      "ties": [
+        "TAM",
+        "XG-Guard"
+      ]
+    },
+    "published": {
+      "choice": "XG-Guard",
+      "correct_of_400": 328,
+      "ties": [
+        "XG-Guard"
+      ]
+    }
+  }
+}

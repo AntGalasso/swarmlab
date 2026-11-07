@@ -1,0 +1,2 @@
+# Only needed for --from-source and its frozen bootstrap intervals.
+numpy==2.3.5

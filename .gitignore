@@ -14,3 +14,4 @@ wandb/
 hf_cache/
 # profiler output written at the repository root
 /prof.out
+.venv-gammaf/

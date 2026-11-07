@@ -1,0 +1,1137 @@
+{
+  "cells": {
+    "CSQA": {
+      "no_defense_baseline": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 11,
+          "padded_third_rounds_with_100_ADR": 10,
+          "executed_rounds_all": 1180,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 2.5,
+          "last_executed_ADR_percent": 0.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 3,
+          "padded_third_rounds_with_100_ADR": 3,
+          "executed_rounds_all": 295,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 3.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 3,
+          "padded_third_rounds_with_100_ADR": 2,
+          "executed_rounds_all": 295,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 2.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 3,
+          "padded_third_rounds_with_100_ADR": 3,
+          "executed_rounds_all": 294,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 3.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 2,
+          "padded_third_rounds_with_100_ADR": 2,
+          "executed_rounds_all": 296,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 2.0,
+          "last_executed_ADR_percent": 0.0
+        }
+      }
+    },
+    "GSM8K": {
+      "no_defense_baseline": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 1,
+          "padded_third_rounds_with_100_ADR": 1,
+          "executed_rounds_all": 1199,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.25,
+          "last_executed_ADR_percent": 0.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 1,
+          "padded_third_rounds_with_100_ADR": 1,
+          "executed_rounds_all": 299,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 1.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        }
+      }
+    },
+    "MA": {
+      "no_defense_baseline": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 1200,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        }
+      }
+    },
+    "MMLU": {
+      "BlindGuard": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 145,
+          "padded_third_rounds_with_100_ADR": 132,
+          "executed_rounds_all": 939,
+          "positive_flags_all_executed_rounds": 2817,
+          "released_round3_ADR_percent": 65.333525,
+          "last_executed_ADR_percent": 63.333333
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 37,
+          "padded_third_rounds_with_100_ADR": 36,
+          "executed_rounds_all": 237,
+          "positive_flags_all_executed_rounds": 711,
+          "released_round3_ADR_percent": 67.3332,
+          "last_executed_ADR_percent": 63.666667
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 39,
+          "padded_third_rounds_with_100_ADR": 35,
+          "executed_rounds_all": 229,
+          "positive_flags_all_executed_rounds": 687,
+          "released_round3_ADR_percent": 64.0002,
+          "last_executed_ADR_percent": 63.333333
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 34,
+          "padded_third_rounds_with_100_ADR": 31,
+          "executed_rounds_all": 237,
+          "positive_flags_all_executed_rounds": 711,
+          "released_round3_ADR_percent": 64.3337,
+          "last_executed_ADR_percent": 61.333333
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 35,
+          "padded_third_rounds_with_100_ADR": 30,
+          "executed_rounds_all": 236,
+          "positive_flags_all_executed_rounds": 708,
+          "released_round3_ADR_percent": 65.667,
+          "last_executed_ADR_percent": 65.0
+        }
+      },
+      "CASPIAN": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 348,
+          "padded_third_rounds_with_100_ADR": 299,
+          "executed_rounds_all": 531,
+          "positive_flags_all_executed_rounds": 1593,
+          "released_round3_ADR_percent": 81.58345,
+          "last_executed_ADR_percent": 75.25
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 86,
+          "padded_third_rounds_with_100_ADR": 73,
+          "executed_rounds_all": 135,
+          "positive_flags_all_executed_rounds": 405,
+          "released_round3_ADR_percent": 79.6668,
+          "last_executed_ADR_percent": 75.333333
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 91,
+          "padded_third_rounds_with_100_ADR": 77,
+          "executed_rounds_all": 127,
+          "positive_flags_all_executed_rounds": 381,
+          "released_round3_ADR_percent": 82.6668,
+          "last_executed_ADR_percent": 77.333333
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 87,
+          "padded_third_rounds_with_100_ADR": 76,
+          "executed_rounds_all": 131,
+          "positive_flags_all_executed_rounds": 393,
+          "released_round3_ADR_percent": 81.6668,
+          "last_executed_ADR_percent": 72.333333
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 84,
+          "padded_third_rounds_with_100_ADR": 73,
+          "executed_rounds_all": 138,
+          "positive_flags_all_executed_rounds": 414,
+          "released_round3_ADR_percent": 82.3334,
+          "last_executed_ADR_percent": 76.0
+        }
+      },
+      "DOMINANT": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 125,
+          "padded_third_rounds_with_100_ADR": 109,
+          "executed_rounds_all": 1017,
+          "positive_flags_all_executed_rounds": 3051,
+          "released_round3_ADR_percent": 73.750675,
+          "last_executed_ADR_percent": 68.25
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 35,
+          "padded_third_rounds_with_100_ADR": 29,
+          "executed_rounds_all": 248,
+          "positive_flags_all_executed_rounds": 744,
+          "released_round3_ADR_percent": 82.3339,
+          "last_executed_ADR_percent": 78.0
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 20,
+          "padded_third_rounds_with_100_ADR": 18,
+          "executed_rounds_all": 267,
+          "positive_flags_all_executed_rounds": 801,
+          "released_round3_ADR_percent": 58.3338,
+          "last_executed_ADR_percent": 49.333333
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 24,
+          "padded_third_rounds_with_100_ADR": 21,
+          "executed_rounds_all": 260,
+          "positive_flags_all_executed_rounds": 780,
+          "released_round3_ADR_percent": 70.6677,
+          "last_executed_ADR_percent": 65.666667
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 46,
+          "padded_third_rounds_with_100_ADR": 41,
+          "executed_rounds_all": 242,
+          "positive_flags_all_executed_rounds": 726,
+          "released_round3_ADR_percent": 83.6673,
+          "last_executed_ADR_percent": 80.0
+        }
+      },
+      "PREM": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 245,
+          "padded_third_rounds_with_100_ADR": 212,
+          "executed_rounds_all": 749,
+          "positive_flags_all_executed_rounds": 2247,
+          "released_round3_ADR_percent": 65.0832,
+          "last_executed_ADR_percent": 71.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 29,
+          "padded_third_rounds_with_100_ADR": 26,
+          "executed_rounds_all": 250,
+          "positive_flags_all_executed_rounds": 750,
+          "released_round3_ADR_percent": 38.6663,
+          "last_executed_ADR_percent": 36.666667
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 92,
+          "padded_third_rounds_with_100_ADR": 78,
+          "executed_rounds_all": 133,
+          "positive_flags_all_executed_rounds": 399,
+          "released_round3_ADR_percent": 85.0,
+          "last_executed_ADR_percent": 99.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 78,
+          "padded_third_rounds_with_100_ADR": 68,
+          "executed_rounds_all": 154,
+          "positive_flags_all_executed_rounds": 462,
+          "released_round3_ADR_percent": 85.3334,
+          "last_executed_ADR_percent": 94.333333
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 46,
+          "padded_third_rounds_with_100_ADR": 40,
+          "executed_rounds_all": 212,
+          "positive_flags_all_executed_rounds": 636,
+          "released_round3_ADR_percent": 51.3331,
+          "last_executed_ADR_percent": 54.0
+        }
+      },
+      "TAM": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 140,
+          "padded_third_rounds_with_100_ADR": 126,
+          "executed_rounds_all": 937,
+          "positive_flags_all_executed_rounds": 2811,
+          "released_round3_ADR_percent": 44.0828,
+          "last_executed_ADR_percent": 40.416667
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 23,
+          "padded_third_rounds_with_100_ADR": 21,
+          "executed_rounds_all": 260,
+          "positive_flags_all_executed_rounds": 780,
+          "released_round3_ADR_percent": 39.6657,
+          "last_executed_ADR_percent": 31.333333
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 69,
+          "padded_third_rounds_with_100_ADR": 62,
+          "executed_rounds_all": 168,
+          "positive_flags_all_executed_rounds": 504,
+          "released_round3_ADR_percent": 62.0,
+          "last_executed_ADR_percent": 64.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 30,
+          "padded_third_rounds_with_100_ADR": 27,
+          "executed_rounds_all": 242,
+          "positive_flags_all_executed_rounds": 726,
+          "released_round3_ADR_percent": 36.3329,
+          "last_executed_ADR_percent": 32.333333
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 18,
+          "padded_third_rounds_with_100_ADR": 16,
+          "executed_rounds_all": 267,
+          "positive_flags_all_executed_rounds": 801,
+          "released_round3_ADR_percent": 38.3326,
+          "last_executed_ADR_percent": 34.0
+        }
+      },
+      "XG-Guard": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 336,
+          "padded_third_rounds_with_100_ADR": 289,
+          "executed_rounds_all": 574,
+          "positive_flags_all_executed_rounds": 1722,
+          "released_round3_ADR_percent": 87.6667,
+          "last_executed_ADR_percent": 99.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 85,
+          "padded_third_rounds_with_100_ADR": 72,
+          "executed_rounds_all": 142,
+          "positive_flags_all_executed_rounds": 426,
+          "released_round3_ADR_percent": 86.0,
+          "last_executed_ADR_percent": 98.333333
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 87,
+          "padded_third_rounds_with_100_ADR": 74,
+          "executed_rounds_all": 138,
+          "positive_flags_all_executed_rounds": 414,
+          "released_round3_ADR_percent": 86.3334,
+          "last_executed_ADR_percent": 99.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 84,
+          "padded_third_rounds_with_100_ADR": 73,
+          "executed_rounds_all": 141,
+          "positive_flags_all_executed_rounds": 423,
+          "released_round3_ADR_percent": 88.6667,
+          "last_executed_ADR_percent": 99.333333
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 80,
+          "padded_third_rounds_with_100_ADR": 70,
+          "executed_rounds_all": 153,
+          "positive_flags_all_executed_rounds": 459,
+          "released_round3_ADR_percent": 89.6667,
+          "last_executed_ADR_percent": 99.333333
+        }
+      },
+      "no_defense_baseline": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 35,
+          "padded_third_rounds_with_100_ADR": 32,
+          "executed_rounds_all": 1137,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 8.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 8,
+          "padded_third_rounds_with_100_ADR": 7,
+          "executed_rounds_all": 285,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 7.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 10,
+          "padded_third_rounds_with_100_ADR": 10,
+          "executed_rounds_all": 282,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 10.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 12,
+          "padded_third_rounds_with_100_ADR": 11,
+          "executed_rounds_all": 279,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 11.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 5,
+          "padded_third_rounds_with_100_ADR": 4,
+          "executed_rounds_all": 291,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 4.0,
+          "last_executed_ADR_percent": 0.0
+        }
+      }
+    },
+    "MMLUPRO": {
+      "no_defense_baseline": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 21,
+          "padded_third_rounds_with_100_ADR": 19,
+          "executed_rounds_all": 1163,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 4.75,
+          "last_executed_ADR_percent": 0.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 4,
+          "padded_third_rounds_with_100_ADR": 4,
+          "executed_rounds_all": 293,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 4.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 8,
+          "padded_third_rounds_with_100_ADR": 7,
+          "executed_rounds_all": 287,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 7.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 5,
+          "padded_third_rounds_with_100_ADR": 4,
+          "executed_rounds_all": 291,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 4.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 4,
+          "padded_third_rounds_with_100_ADR": 4,
+          "executed_rounds_all": 292,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 4.0,
+          "last_executed_ADR_percent": 0.0
+        }
+      }
+    },
+    "TA": {
+      "no_defense_baseline": {
+        "all": {
+          "debates": 400,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 1200,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "chain": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "random": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "star": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        },
+        "tree": {
+          "debates": 100,
+          "padded_third_rounds": 0,
+          "padded_third_rounds_with_100_ADR": 0,
+          "executed_rounds_all": 300,
+          "positive_flags_all_executed_rounds": 0,
+          "released_round3_ADR_percent": 0.0,
+          "last_executed_ADR_percent": 0.0
+        }
+      }
+    }
+  },
+  "mmlu_detector_pairs": [
+    {
+      "first": "BlindGuard",
+      "second": "CASPIAN",
+      "released_diff": {
+        "mean_pp": -16.249925,
+        "pointwise_95_percentile_interval_pp": [
+          -21.918996,
+          -10.3331
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -25.504277,
+          -6.995573
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -11.916667,
+        "pointwise_95_percentile_interval_pp": [
+          -19.25,
+          -4.5
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -21.171019,
+          -2.662315
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": 4.333258,
+        "pointwise_95_percentile_interval_pp": [
+          -2.33331,
+          10.750001
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -4.921094,
+          13.58761
+        ]
+      }
+    },
+    {
+      "first": "BlindGuard",
+      "second": "DOMINANT",
+      "released_diff": {
+        "mean_pp": -8.41715,
+        "pointwise_95_percentile_interval_pp": [
+          -13.583529,
+          -3.250374
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -17.671502,
+          0.837202
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -4.916667,
+        "pointwise_95_percentile_interval_pp": [
+          -10.416667,
+          0.75
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -14.171019,
+          4.337685
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": 3.500483,
+        "pointwise_95_percentile_interval_pp": [
+          0.500449,
+          6.583761
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -5.753869,
+          12.754835
+        ]
+      }
+    },
+    {
+      "first": "BlindGuard",
+      "second": "PREM",
+      "released_diff": {
+        "mean_pp": 0.250325,
+        "pointwise_95_percentile_interval_pp": [
+          -4.749704,
+          5.083382
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -9.004027,
+          9.504677
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -7.666667,
+        "pointwise_95_percentile_interval_pp": [
+          -12.333333,
+          -3.25
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -16.921019,
+          1.587685
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -7.916992,
+        "pointwise_95_percentile_interval_pp": [
+          -11.333567,
+          -4.91694
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -17.171344,
+          1.33736
+        ]
+      }
+    },
+    {
+      "first": "BlindGuard",
+      "second": "TAM",
+      "released_diff": {
+        "mean_pp": 21.250725,
+        "pointwise_95_percentile_interval_pp": [
+          16.417349,
+          26.000752
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          11.996373,
+          30.505077
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": 22.916667,
+        "pointwise_95_percentile_interval_pp": [
+          18.0,
+          27.75
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          13.662315,
+          32.171019
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": 1.665942,
+        "pointwise_95_percentile_interval_pp": [
+          -0.834001,
+          4.001694
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -7.58841,
+          10.920294
+        ]
+      }
+    },
+    {
+      "first": "BlindGuard",
+      "second": "XG-Guard",
+      "released_diff": {
+        "mean_pp": -22.333175,
+        "pointwise_95_percentile_interval_pp": [
+          -27.666528,
+          -16.916424
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -31.587527,
+          -13.078823
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -35.666667,
+        "pointwise_95_percentile_interval_pp": [
+          -39.5,
+          -31.916667
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -44.921019,
+          -26.412315
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -13.333492,
+        "pointwise_95_percentile_interval_pp": [
+          -18.083617,
+          -9.166982
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -22.587844,
+          -4.07914
+        ]
+      }
+    },
+    {
+      "first": "CASPIAN",
+      "second": "DOMINANT",
+      "released_diff": {
+        "mean_pp": 7.832775,
+        "pointwise_95_percentile_interval_pp": [
+          1.499424,
+          13.751749
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -1.421577,
+          17.087127
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": 7.0,
+        "pointwise_95_percentile_interval_pp": [
+          0.916667,
+          12.833333
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -2.254352,
+          16.254352
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -0.832775,
+        "pointwise_95_percentile_interval_pp": [
+          -6.666175,
+          5.250575
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -10.087127,
+          8.421577
+        ]
+      }
+    },
+    {
+      "first": "CASPIAN",
+      "second": "PREM",
+      "released_diff": {
+        "mean_pp": 16.50025,
+        "pointwise_95_percentile_interval_pp": [
+          11.416949,
+          21.250251
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          7.245898,
+          25.754602
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": 4.25,
+        "pointwise_95_percentile_interval_pp": [
+          -3.252083,
+          11.5
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -5.004352,
+          13.504352
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -12.25025,
+        "pointwise_95_percentile_interval_pp": [
+          -18.750142,
+          -6.500199
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -21.504602,
+          -2.995898
+        ]
+      }
+    },
+    {
+      "first": "CASPIAN",
+      "second": "TAM",
+      "released_diff": {
+        "mean_pp": 37.50065,
+        "pointwise_95_percentile_interval_pp": [
+          31.331649,
+          43.584101
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          28.246298,
+          46.755002
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": 34.833333,
+        "pointwise_95_percentile_interval_pp": [
+          27.0,
+          42.083333
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          25.578981,
+          44.087685
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -2.667317,
+        "pointwise_95_percentile_interval_pp": [
+          -8.500601,
+          2.999402
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -11.921669,
+          6.587035
+        ]
+      }
+    },
+    {
+      "first": "CASPIAN",
+      "second": "XG-Guard",
+      "released_diff": {
+        "mean_pp": -6.08325,
+        "pointwise_95_percentile_interval_pp": [
+          -10.749926,
+          -1.749899
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -15.337602,
+          3.171102
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -23.75,
+        "pointwise_95_percentile_interval_pp": [
+          -30.25,
+          -17.5
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -33.004352,
+          -14.495648
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -17.66675,
+        "pointwise_95_percentile_interval_pp": [
+          -24.250101,
+          -11.583466
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -26.921102,
+          -8.412398
+        ]
+      }
+    },
+    {
+      "first": "DOMINANT",
+      "second": "PREM",
+      "released_diff": {
+        "mean_pp": 8.667475,
+        "pointwise_95_percentile_interval_pp": [
+          3.334198,
+          14.00063
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -0.586877,
+          17.921827
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -2.75,
+        "pointwise_95_percentile_interval_pp": [
+          -8.666667,
+          2.916667
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -12.004352,
+          6.504352
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -11.417475,
+        "pointwise_95_percentile_interval_pp": [
+          -16.086473,
+          -7.165261
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -20.671827,
+          -2.163123
+        ]
+      }
+    },
+    {
+      "first": "DOMINANT",
+      "second": "TAM",
+      "released_diff": {
+        "mean_pp": 29.667875,
+        "pointwise_95_percentile_interval_pp": [
+          24.000949,
+          35.334675
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          20.413523,
+          38.922227
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": 27.833333,
+        "pointwise_95_percentile_interval_pp": [
+          21.333333,
+          34.25
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          18.578981,
+          37.087685
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -1.834542,
+        "pointwise_95_percentile_interval_pp": [
+          -4.751009,
+          0.83226
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -11.088894,
+          7.41981
+        ]
+      }
+    },
+    {
+      "first": "DOMINANT",
+      "second": "XG-Guard",
+      "released_diff": {
+        "mean_pp": -13.916025,
+        "pointwise_95_percentile_interval_pp": [
+          -19.168227,
+          -8.249224
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -23.170377,
+          -4.661673
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -30.75,
+        "pointwise_95_percentile_interval_pp": [
+          -34.75,
+          -26.916667
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -40.004352,
+          -21.495648
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -16.833975,
+        "pointwise_95_percentile_interval_pp": [
+          -22.500567,
+          -11.500691
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -26.088327,
+          -7.579623
+        ]
+      }
+    },
+    {
+      "first": "PREM",
+      "second": "TAM",
+      "released_diff": {
+        "mean_pp": 21.0004,
+        "pointwise_95_percentile_interval_pp": [
+          16.000499,
+          26.1671
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          11.746048,
+          30.254752
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": 30.583333,
+        "pointwise_95_percentile_interval_pp": [
+          26.166667,
+          35.166667
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          21.328981,
+          39.837685
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": 9.582933,
+        "pointwise_95_percentile_interval_pp": [
+          6.249508,
+          13.332925
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          0.328581,
+          18.837285
+        ]
+      }
+    },
+    {
+      "first": "PREM",
+      "second": "XG-Guard",
+      "released_diff": {
+        "mean_pp": -22.5835,
+        "pointwise_95_percentile_interval_pp": [
+          -26.916826,
+          -18.166799
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -31.837852,
+          -13.329148
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -28.0,
+        "pointwise_95_percentile_interval_pp": [
+          -31.416667,
+          -24.5
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -37.254352,
+          -18.745648
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -5.4165,
+        "pointwise_95_percentile_interval_pp": [
+          -8.083167,
+          -3.0832
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -14.670852,
+          3.837852
+        ]
+      }
+    },
+    {
+      "first": "TAM",
+      "second": "XG-Guard",
+      "released_diff": {
+        "mean_pp": -43.5839,
+        "pointwise_95_percentile_interval_pp": [
+          -49.5838,
+          -37.333775
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -52.838252,
+          -34.329548
+        ]
+      },
+      "last_executed_diff": {
+        "mean_pp": -58.583333,
+        "pointwise_95_percentile_interval_pp": [
+          -62.5,
+          -54.583333
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -67.837685,
+          -49.328981
+        ]
+      },
+      "change_in_contrast": {
+        "mean_pp": -14.999433,
+        "pointwise_95_percentile_interval_pp": [
+          -20.082709,
+          -10.582649
+        ],
+        "simultaneous_95_max_deviation_interval_pp": [
+          -24.253785,
+          -5.745081
+        ]
+      }
+    }
+  ]
+}

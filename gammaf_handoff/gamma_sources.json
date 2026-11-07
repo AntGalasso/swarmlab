@@ -1,0 +1,151 @@
+{
+  "repo": "pmateo-uc3m/GAMMAF",
+  "commit": "53be3249ebfa631d8e960c9fb1c931d526654697",
+  "files": {
+    "CSQA/BlindGuard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/BlindGuard.json",
+      "bytes": 4105215,
+      "blob": "d58e8d938c4167426cdbe35fbe660b151653ffc2"
+    },
+    "CSQA/CASPIAN": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/CASPIAN.json",
+      "bytes": 3776418,
+      "blob": "b8f8686ad0e04cf3da9439f1a98391b631d3463a"
+    },
+    "CSQA/DOMINANT": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/DOMINANT.json",
+      "bytes": 4154133,
+      "blob": "98e7dbd95fe5dc67f9741c9bc5f10a53a5e30843"
+    },
+    "CSQA/PREM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/PREM.json",
+      "bytes": 3934149,
+      "blob": "7b6389538f4518c71a3d27df6333cc6be41869cf"
+    },
+    "CSQA/TAM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/TAM.json",
+      "bytes": 4042416,
+      "blob": "936392a8c91e0c18c8cded4591f45c83702b4b21"
+    },
+    "CSQA/XG-Guard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/XG-Guard.json",
+      "bytes": 3783952,
+      "blob": "c83bc04e7d71908bbc6043ae1bb99bcffca77070"
+    },
+    "CSQA/no_defense_baseline": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/no_defense_baseline.json",
+      "bytes": 3851886,
+      "blob": "d3eb60d796db541c64e7d13a9e7a8e465d70ccf2"
+    },
+    "GSM8K/BlindGuard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/BlindGuard.json",
+      "bytes": 4211661,
+      "blob": "53eee83049e09aff140b0a8379f6a95fd5ce67b0"
+    },
+    "GSM8K/CASPIAN": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/CASPIAN.json",
+      "bytes": 3696754,
+      "blob": "11db32b5ce6dc0c94cf0599fb03b70b53595d954"
+    },
+    "GSM8K/DOMINANT": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/DOMINANT.json",
+      "bytes": 4225577,
+      "blob": "2ea792c1d7be2d8bd6fbeffffb20cb5831a3ddfe"
+    },
+    "GSM8K/PREM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/PREM.json",
+      "bytes": 4247871,
+      "blob": "8aa7f0a59b80be81c6ed31cd67de09fa0f7b5269"
+    },
+    "GSM8K/TAM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/TAM.json",
+      "bytes": 4119146,
+      "blob": "a29775165a91b1cd0f40e3224b073dfa3ec5e640"
+    },
+    "GSM8K/XG-Guard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/XG-Guard.json",
+      "bytes": 4033360,
+      "blob": "1c9cce449ac8535542233280b015e1c29f2372c5"
+    },
+    "GSM8K/no_defense_baseline": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/no_defense_baseline.json",
+      "bytes": 3880943,
+      "blob": "69c6a95027fcd3cc2fce9eea5d17fb182606e94e"
+    },
+    "MMLU/BlindGuard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/BlindGuard.json",
+      "bytes": 4053361,
+      "blob": "12138bd80e0f7142bdc7e88e5ca520cae82728b0"
+    },
+    "MMLU/CASPIAN": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/CASPIAN.json",
+      "bytes": 3740086,
+      "blob": "685c3d6a6031ae4320be7feaa081a760e455924c"
+    },
+    "MMLU/DOMINANT": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/DOMINANT.json",
+      "bytes": 4097848,
+      "blob": "9918dcfd92bf715c0f09b375e223f92bfac1e67b"
+    },
+    "MMLU/PREM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/PREM.json",
+      "bytes": 3906428,
+      "blob": "c54b98870bbc690c3a4d03f35e3dd0283ce7d25f"
+    },
+    "MMLU/TAM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/TAM.json",
+      "bytes": 3997551,
+      "blob": "0376b80f7fc8ccdb8cba1b10ea9bcb87937e43b2"
+    },
+    "MMLU/XG-Guard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/XG-Guard.json",
+      "bytes": 3770857,
+      "blob": "2c7ad2adb9c955501b604828ca0ade93f7f766d5"
+    },
+    "MMLU/no_defense_baseline": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/no_defense_baseline.json",
+      "bytes": 3830705,
+      "blob": "b32d2b87b25b6ab7c6cb2d63c831478bd4c3a840"
+    },
+    "MMLUPRO/BlindGuard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/BlindGuard.json",
+      "bytes": 4102051,
+      "blob": "18d029246e497ae2d005b0a6a2e075ce603240e3"
+    },
+    "MMLUPRO/CASPIAN": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/CASPIAN.json",
+      "bytes": 3824465,
+      "blob": "8c7d367b7309dc0c766acf56d14533c3e40168ad"
+    },
+    "MMLUPRO/DOMINANT": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/DOMINANT.json",
+      "bytes": 4154445,
+      "blob": "b942c2e400b60a224c28ea43662702b7a6b66546"
+    },
+    "MMLUPRO/PREM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/PREM.json",
+      "bytes": 3960379,
+      "blob": "8107641af00ccb05db00577adb8c649ffcd889c2"
+    },
+    "MMLUPRO/TAM": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/TAM.json",
+      "bytes": 4050320,
+      "blob": "0d172460710212eb1d9945411397b1396845d1d1"
+    },
+    "MMLUPRO/XG-Guard": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/XG-Guard.json",
+      "bytes": 3838847,
+      "blob": "3182113c7b0bffbe921b3c1d9b0da32b82b50ced"
+    },
+    "MMLUPRO/no_defense_baseline": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/no_defense_baseline.json",
+      "bytes": 3841328,
+      "blob": "489a7d31a82f47b9b9a09f27033591af8a0be5fa"
+    },
+    "summary": {
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1.json",
+      "bytes": 558664,
+      "blob": "ecf2f4538797cb1b3a64f9e530e069003a97b2d5"
+    }
+  }
+}

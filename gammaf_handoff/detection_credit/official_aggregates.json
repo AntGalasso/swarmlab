@@ -1,0 +1,290 @@
+[
+  {
+    "dataset": "CSQA",
+    "method": "no_defense_baseline",
+    "topology": "chain",
+    "round3_adr": 3.0
+  },
+  {
+    "dataset": "CSQA",
+    "method": "no_defense_baseline",
+    "topology": "random",
+    "round3_adr": 2.0
+  },
+  {
+    "dataset": "CSQA",
+    "method": "no_defense_baseline",
+    "topology": "star",
+    "round3_adr": 3.0
+  },
+  {
+    "dataset": "CSQA",
+    "method": "no_defense_baseline",
+    "topology": "tree",
+    "round3_adr": 2.0
+  },
+  {
+    "dataset": "GSM8K",
+    "method": "no_defense_baseline",
+    "topology": "chain",
+    "round3_adr": 1.0
+  },
+  {
+    "dataset": "GSM8K",
+    "method": "no_defense_baseline",
+    "topology": "random",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "GSM8K",
+    "method": "no_defense_baseline",
+    "topology": "star",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "GSM8K",
+    "method": "no_defense_baseline",
+    "topology": "tree",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "MA",
+    "method": "no_defense_baseline",
+    "topology": "chain",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "MA",
+    "method": "no_defense_baseline",
+    "topology": "random",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "MA",
+    "method": "no_defense_baseline",
+    "topology": "star",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "MA",
+    "method": "no_defense_baseline",
+    "topology": "tree",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "MMLU",
+    "method": "BlindGuard",
+    "topology": "chain",
+    "round3_adr": 67.33319999999999
+  },
+  {
+    "dataset": "MMLU",
+    "method": "BlindGuard",
+    "topology": "random",
+    "round3_adr": 64.00019999999999
+  },
+  {
+    "dataset": "MMLU",
+    "method": "BlindGuard",
+    "topology": "star",
+    "round3_adr": 64.33370000000001
+  },
+  {
+    "dataset": "MMLU",
+    "method": "BlindGuard",
+    "topology": "tree",
+    "round3_adr": 65.667
+  },
+  {
+    "dataset": "MMLU",
+    "method": "CASPIAN",
+    "topology": "chain",
+    "round3_adr": 79.66680000000001
+  },
+  {
+    "dataset": "MMLU",
+    "method": "CASPIAN",
+    "topology": "random",
+    "round3_adr": 82.66680000000001
+  },
+  {
+    "dataset": "MMLU",
+    "method": "CASPIAN",
+    "topology": "star",
+    "round3_adr": 81.66680000000001
+  },
+  {
+    "dataset": "MMLU",
+    "method": "CASPIAN",
+    "topology": "tree",
+    "round3_adr": 82.3334
+  },
+  {
+    "dataset": "MMLU",
+    "method": "DOMINANT",
+    "topology": "chain",
+    "round3_adr": 82.33390000000001
+  },
+  {
+    "dataset": "MMLU",
+    "method": "DOMINANT",
+    "topology": "random",
+    "round3_adr": 58.333800000000004
+  },
+  {
+    "dataset": "MMLU",
+    "method": "DOMINANT",
+    "topology": "star",
+    "round3_adr": 70.66770000000001
+  },
+  {
+    "dataset": "MMLU",
+    "method": "DOMINANT",
+    "topology": "tree",
+    "round3_adr": 83.66730000000001
+  },
+  {
+    "dataset": "MMLU",
+    "method": "PREM",
+    "topology": "chain",
+    "round3_adr": 38.6663
+  },
+  {
+    "dataset": "MMLU",
+    "method": "PREM",
+    "topology": "random",
+    "round3_adr": 85.0
+  },
+  {
+    "dataset": "MMLU",
+    "method": "PREM",
+    "topology": "star",
+    "round3_adr": 85.3334
+  },
+  {
+    "dataset": "MMLU",
+    "method": "PREM",
+    "topology": "tree",
+    "round3_adr": 51.333099999999995
+  },
+  {
+    "dataset": "MMLU",
+    "method": "TAM",
+    "topology": "chain",
+    "round3_adr": 39.665699999999994
+  },
+  {
+    "dataset": "MMLU",
+    "method": "TAM",
+    "topology": "random",
+    "round3_adr": 62.0
+  },
+  {
+    "dataset": "MMLU",
+    "method": "TAM",
+    "topology": "star",
+    "round3_adr": 36.3329
+  },
+  {
+    "dataset": "MMLU",
+    "method": "TAM",
+    "topology": "tree",
+    "round3_adr": 38.3326
+  },
+  {
+    "dataset": "MMLU",
+    "method": "XG-Guard",
+    "topology": "chain",
+    "round3_adr": 86.0
+  },
+  {
+    "dataset": "MMLU",
+    "method": "XG-Guard",
+    "topology": "random",
+    "round3_adr": 86.3334
+  },
+  {
+    "dataset": "MMLU",
+    "method": "XG-Guard",
+    "topology": "star",
+    "round3_adr": 88.6667
+  },
+  {
+    "dataset": "MMLU",
+    "method": "XG-Guard",
+    "topology": "tree",
+    "round3_adr": 89.6667
+  },
+  {
+    "dataset": "MMLU",
+    "method": "no_defense_baseline",
+    "topology": "chain",
+    "round3_adr": 7.0
+  },
+  {
+    "dataset": "MMLU",
+    "method": "no_defense_baseline",
+    "topology": "random",
+    "round3_adr": 10.0
+  },
+  {
+    "dataset": "MMLU",
+    "method": "no_defense_baseline",
+    "topology": "star",
+    "round3_adr": 11.0
+  },
+  {
+    "dataset": "MMLU",
+    "method": "no_defense_baseline",
+    "topology": "tree",
+    "round3_adr": 4.0
+  },
+  {
+    "dataset": "MMLUPRO",
+    "method": "no_defense_baseline",
+    "topology": "chain",
+    "round3_adr": 4.0
+  },
+  {
+    "dataset": "MMLUPRO",
+    "method": "no_defense_baseline",
+    "topology": "random",
+    "round3_adr": 7.0
+  },
+  {
+    "dataset": "MMLUPRO",
+    "method": "no_defense_baseline",
+    "topology": "star",
+    "round3_adr": 4.0
+  },
+  {
+    "dataset": "MMLUPRO",
+    "method": "no_defense_baseline",
+    "topology": "tree",
+    "round3_adr": 4.0
+  },
+  {
+    "dataset": "TA",
+    "method": "no_defense_baseline",
+    "topology": "chain",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "TA",
+    "method": "no_defense_baseline",
+    "topology": "random",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "TA",
+    "method": "no_defense_baseline",
+    "topology": "star",
+    "round3_adr": 0.0
+  },
+  {
+    "dataset": "TA",
+    "method": "no_defense_baseline",
+    "topology": "tree",
+    "round3_adr": 0.0
+  }
+]
