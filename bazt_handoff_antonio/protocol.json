@@ -1,0 +1,71 @@
+{
+  "name": "antonio_one_target_scalability_diagnostic_20261107",
+  "source_commit": "a88f146675134133b85ae7eaf16d38048096c7c6",
+  "team_pr_base": "32e92f45baa05e3c04cf8eb8eabd99b85aacaca7",
+  "frozen_scope_source_sha256": "cb27316ab4a33def2e9186ba71da78707afb92514a56260dfe0649cb74bfada5",
+  "settings_sha256": "6d75ac1a36e3e99e7cd1dc5fd0699544ced96e4086979b2d8765d002699a9bb7",
+  "owner": "Antonio",
+  "evaluation_reserved_for_owner": true,
+  "our_parallel_run": "42386290416 is clean calibration only; this package does not launch anything remotely",
+  "platform": "mock",
+  "blocks": [
+    "mock_calibration",
+    "mock_epidemiology"
+  ],
+  "expected_evaluation_units": 6480,
+  "independent_evaluation_seeds": [
+    1,
+    30
+  ],
+  "clean_calibration_seeds": [
+    9001,
+    9150
+  ],
+  "heldout_unused": [
+    31,
+    60
+  ],
+  "agents": [
+    12,
+    100
+  ],
+  "topologies": [
+    "barabasi_albert",
+    "star_hub",
+    "small_world"
+  ],
+  "attack_families": [
+    "insider_pi",
+    "insider_ta",
+    "insider_ma",
+    "infection",
+    "aitm"
+  ],
+  "evaluation_arms": [
+    "C",
+    "BAZT",
+    "BAZT_upstream"
+  ],
+  "cells_percent": [
+    [
+      10,
+      10
+    ],
+    [
+      "uncapped",
+      "uncapped"
+    ]
+  ],
+  "every_sink": false,
+  "pair_unit": "seed",
+  "interpretation": "one keyed protected sink per seed at BOTH N12 and N100; separate exploratory scalability diagnostic, not the full frontier or a confirmatory H-topology result",
+  "calibration_mode": "closed_loop",
+  "calibration_max_passes": 40,
+  "alpha": 0.02,
+  "empirical_alpha_upper_cap": 0.022,
+  "below_band_flags": "retained and reported; never described as exact FPR matching",
+  "no_llm_calls": true,
+  "no_api_credentials_required": true,
+  "results_isolation_required": true,
+  "active_team_source_untouched": true
+}
