@@ -1,0 +1,2142 @@
+{
+  "observability_extension/DECISIONS.json": {
+    "bytes": 1204,
+    "sha256": "0e6fba85e25537a43352c077ff762f49f5179d6f731cf5be6deaa75cbf200b14"
+  },
+  "observability_extension/PROTOCOL.md": {
+    "bytes": 2922,
+    "sha256": "7bfa9e2a36bdf626cb8fdea7e23b39d506c6a2f54647e69e1a96f14638bc2ff5"
+  },
+  "observability_extension/README.md": {
+    "bytes": 1243,
+    "sha256": "52096f245e7ba46d6cc5d3215bed565dae1b6d480fd7506ec3ccfe86fc2a8ed7"
+  },
+  "observability_extension/analysis.log": {
+    "bytes": 4155,
+    "sha256": "f9f7bf071a6b9aac82583b0e56f424ac589e776345b9cd9e52546ae2e517b2f7"
+  },
+  "observability_extension/analyze_extension.py": {
+    "bytes": 6194,
+    "sha256": "d287e402c876e7caf8a5c4bf4f963c6b398b703c0dd2597c7fc165fc962d7353"
+  },
+  "observability_extension/calibration_native_mock.log": {
+    "bytes": 207,
+    "sha256": "f0d04a1a974f26fea73a9b4321903d8a2ae2ed3d380c27b0a78d9a3fc557ae3b"
+  },
+  "observability_extension/calibration_paid_only.log": {
+    "bytes": 205,
+    "sha256": "71ae4b1abf38f7e65cfaab16901e0db897fd0be494129d0be0815ba927380a38"
+  },
+  "observability_extension/evaluation_native_mock.log": {
+    "bytes": 201,
+    "sha256": "c0efac2629de503368dbd769e108d25e9c97010655dd9bbcd620297a0e39f9ca"
+  },
+  "observability_extension/evaluation_paid_only.log": {
+    "bytes": 199,
+    "sha256": "7f5edd30b0e4e7c184391521630cf68036d88b1274a54267298f2807af7c8055"
+  },
+  "observability_extension/extension.toml": {
+    "bytes": 9861,
+    "sha256": "f2614afe48f2b1f6d30acb3307a986bd7b9df76bfabd728d0dbffcbd01397127"
+  },
+  "observability_extension/results_20261107/analysis/extension_analysis.json": {
+    "bytes": 180226,
+    "sha256": "9b604814bb73cb1c0ba626b6b3f35f97e8a239a4b46fa671e04d8e5b6344669c"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/CALIBRATION_GATE.json": {
+    "bytes": 4369,
+    "sha256": "72877af367207d1a26fd73b37c5c0037cf2bb8238188ee6a598d12e79eebcee6"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/EXTENSION_FREEZE.json": {
+    "bytes": 1075,
+    "sha256": "2d01fccdf2233dfc4d981891909ea504328855753770e3ffe9ab71216a3e96f6"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/OBSERVABILITY_INTERFACE.json": {
+    "bytes": 24836,
+    "sha256": "e5616e31e724e773544cfa7206db4c7da582be80d02a4228bb61e6e12700335f"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/.launch.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/manifest-2026-11-07T180010105712+0000.json": {
+    "bytes": 17134,
+    "sha256": "6430a9ff016ccb4b89d5085d357e6d9665093efb4163c18203dd2295dae213a4"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/settings.json": {
+    "bytes": 3698,
+    "sha256": "b791b63cdf4f26f220167ee6846f33d4f3174c55744a570ae95fabb0cc9247a0"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-B-4741587986161606708.pt": {
+    "bytes": 1633,
+    "sha256": "b9b9ea9ef021b54a467199c7339e455eca55b0db539eb93dfb91bba4dbf5a593"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-B-8464210208435748173.pt": {
+    "bytes": 1633,
+    "sha256": "ab1e9688bc37a77244b235164fe567b2e1d29fe54ab50f40e2694e143c1a7083"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT-2994485579549403799.pt": {
+    "bytes": 1971,
+    "sha256": "2ca81d9193b657614d5c47db5b98341531480a3a6c58cbeb1ecaab9043a3b227"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT-6071589453093552336.pt": {
+    "bytes": 2163,
+    "sha256": "82b52bb431ba5bc85c2da719aff8b7d9b92325a20d192a188058310350a0ff21"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT_upstream-1524992037964494485.pt": {
+    "bytes": 2025,
+    "sha256": "4ee46e2ee30119e470b852b58438e95eb8c89b8af4cbc6c32c351b8ae639727d"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT_upstream-3126251830844163950.pt": {
+    "bytes": 1961,
+    "sha256": "8f34592a5576d47a2e1c8c3ecdaa72b64495696854eaf3dc694ea59f6be343e4"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-C-2083448240055449907.pt": {
+    "bytes": 1633,
+    "sha256": "9149209d67704c1a8d56b50458f58df1319789a6463c65374c3b171b45bbb5fe"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/state/calibration2-C-8702320131945296649.pt": {
+    "bytes": 1825,
+    "sha256": "cf97ddb153b22eee5a535462993b5a1dbe7f7230e8bcd1b53cdca7b23c0b695e"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/thresholds.json": {
+    "bytes": 6951,
+    "sha256": "7f54da6f39137100b129337aba5912b9159b7374d4ebe40b11b82ae4b9665102"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-0b09282ccb34b3e4.done": {
+    "bytes": 2882,
+    "sha256": "bae95dfdd6369363d04fbe1859c0c00d365566231c61889430d577ebcdc6c0a9"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-0b09282ccb34b3e4.jsonl": {
+    "bytes": 341417,
+    "sha256": "c5d3672f042cdf402e1cbd80ab99758b1d5ea8f3e45bbcc5ab87f01f73919cce"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-143ef2b1e05a8379.done": {
+    "bytes": 475,
+    "sha256": "556463f08d6c0ecfa963d0561be13b419f36dde8106f6a71eed29cc4889f12b2"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-143ef2b1e05a8379.jsonl": {
+    "bytes": 56476,
+    "sha256": "e670f15364f6f557eb6d248f84e585b5c85503b6006b6b455492b9ff47d35266"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-23c196b9d3078dd6.done": {
+    "bytes": 3275,
+    "sha256": "a2c44741f6051c340dcc66ae8168c1de1f69b312ce7622c1d55ffe581cd5643e"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-23c196b9d3078dd6.jsonl": {
+    "bytes": 342203,
+    "sha256": "ea94db3f3dab0a9c93fb92cb3d85f55c833758d92d90f303f4b7f21c73507b4a"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-443f6ad1cf30f04b.done": {
+    "bytes": 418,
+    "sha256": "0316bb54aa968bff94dd81edcaa46f56a444c329ab1f79c666cbc7b4f66bd20c"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-443f6ad1cf30f04b.jsonl": {
+    "bytes": 56362,
+    "sha256": "7e6238f4ad586272b7f30d32fa9c0846941eb271d349bc053225615b239059da"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-45d8942a17fba4b7.done": {
+    "bytes": 3750,
+    "sha256": "00252f584dfe307dbb5503c1b1d7536f911f7e4e084e93b429ddbbd351a8a7d5"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-45d8942a17fba4b7.jsonl": {
+    "bytes": 338669,
+    "sha256": "ecc131f8a964643bed034a33f196c26ba4ee92b279790bd1add257fd19b009cf"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-55452366af892f4e.done": {
+    "bytes": 3300,
+    "sha256": "1574130705d6a5d179a8ec04cacb143df6fb3673605a71343548c1d206493d19"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-55452366af892f4e.jsonl": {
+    "bytes": 337769,
+    "sha256": "6c6109183f11a70677fe4f2fce7ea2c09f7fe42056137f7fd2cf48e9724fb584"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-879c72fe29b3cd1f.done": {
+    "bytes": 3300,
+    "sha256": "7f91d72ab3f864681a203a6a9bc5a47c9a165cded019c6df8073259548de106f"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-879c72fe29b3cd1f.jsonl": {
+    "bytes": 337769,
+    "sha256": "d8ede5039d83d6f363d0e827dc57324d2f7749f64a63c891b95dacffa32fe89a"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-9949ad4fbc927526.done": {
+    "bytes": 4454,
+    "sha256": "b77e5f588dd0ae13ef7a231b08c9041523c3f76e8937a9f5a793170764f2b089"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-9949ad4fbc927526.jsonl": {
+    "bytes": 344561,
+    "sha256": "857900afa48ada54df644ed3362dd61f684da1d9c0a749a0749b120f725679b3"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-baaf46b472e9036e.done": {
+    "bytes": 646,
+    "sha256": "dfaf7620330232800232a9572b2771675dc90c7d70455e34c347742b2d37cf0f"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-baaf46b472e9036e.jsonl": {
+    "bytes": 56818,
+    "sha256": "893768d8780635ffe2e2311c61c704039ff9883aa9eaae8d68de5cf1c086dc12"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-c9dd17d68a67cebf.done": {
+    "bytes": 418,
+    "sha256": "c233e1a7b0533f42c33c2703c81e4c7a48ff146450c83ba9f7604aa1de15f88a"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-c9dd17d68a67cebf.jsonl": {
+    "bytes": 56362,
+    "sha256": "6bdce1d7a854ab539128718266fc66f8b06047718b2c1279d6b5b459c36424ef"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-d40b9ec13e84a08f.done": {
+    "bytes": 5100,
+    "sha256": "e698065577debcfa9a9260895c1154280edacf8e43e00ce1ae6ae26d54181a1f"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-d40b9ec13e84a08f.jsonl": {
+    "bytes": 341369,
+    "sha256": "3031353b71b1d3bc99d9d8fb402880a63803a78d3f3c34819a47527450d889b3"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-d62909828ecf81d6.done": {
+    "bytes": 2882,
+    "sha256": "de676cccd0ed3d509291a10280384c8a96a9a79eed1a8343ccaddcc0e74ef96f"
+  },
+  "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration/units/batch-d62909828ecf81d6.jsonl": {
+    "bytes": 341417,
+    "sha256": "3bd34bf56c4ca149352ed77fd7b70970b0e7f95afc544396a3b9ad71187c3b63"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/CALIBRATION_GATE.json": {
+    "bytes": 4302,
+    "sha256": "492086675dfab440a59d3ff05c7a45154a8712d30c99ed1a14b402d00b2c9d1a"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/EXTENSION_FREEZE.json": {
+    "bytes": 1075,
+    "sha256": "2d01fccdf2233dfc4d981891909ea504328855753770e3ffe9ab71216a3e96f6"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/OBSERVABILITY_INTERFACE.json": {
+    "bytes": 24825,
+    "sha256": "1b775eee2f0477d46a7d4d4dc179eb2c51b58c4bac651f7bc8f1023609ee123e"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/.launch.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/manifest-2026-11-07T180010008835+0000.json": {
+    "bytes": 17153,
+    "sha256": "f0bb55a3654db5be4a09e2b3bd36113d97670c0c817630ad36a7f6120c290c41"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/settings.json": {
+    "bytes": 3698,
+    "sha256": "b791b63cdf4f26f220167ee6846f33d4f3174c55744a570ae95fabb0cc9247a0"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-B-4741587986161606708.pt": {
+    "bytes": 1633,
+    "sha256": "b9b9ea9ef021b54a467199c7339e455eca55b0db539eb93dfb91bba4dbf5a593"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-B-8464210208435748173.pt": {
+    "bytes": 1633,
+    "sha256": "ab1e9688bc37a77244b235164fe567b2e1d29fe54ab50f40e2694e143c1a7083"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT-2994485579549403799.pt": {
+    "bytes": 2035,
+    "sha256": "e310cf816b47b2da49a8b90fff152bb4c1347c54ed57c353cd2a0156e88a6933"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT-6071589453093552336.pt": {
+    "bytes": 1971,
+    "sha256": "e484ac566471371fd1065ed8889e097f5cff7fa6749f4dfc488f7139b3aadc70"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT_upstream-1524992037964494485.pt": {
+    "bytes": 2025,
+    "sha256": "47a9d555a457f17d51777091be1197d949c99246f4e340f740349ea894209910"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-BAZT_upstream-3126251830844163950.pt": {
+    "bytes": 1961,
+    "sha256": "250f5885d799cefdb9e50e9ce53f315054551fdf2d36d88100976c00c69f88cf"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-C-2083448240055449907.pt": {
+    "bytes": 1633,
+    "sha256": "9149209d67704c1a8d56b50458f58df1319789a6463c65374c3b171b45bbb5fe"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/state/calibration2-C-8702320131945296649.pt": {
+    "bytes": 1825,
+    "sha256": "cf97ddb153b22eee5a535462993b5a1dbe7f7230e8bcd1b53cdca7b23c0b695e"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/thresholds.json": {
+    "bytes": 6886,
+    "sha256": "29f9717e8cfbb80b69956f7f8712f2569b51b9dc16bf6869cac7557e5ce94397"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-0b09282ccb34b3e4.done": {
+    "bytes": 2882,
+    "sha256": "bae95dfdd6369363d04fbe1859c0c00d365566231c61889430d577ebcdc6c0a9"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-0b09282ccb34b3e4.jsonl": {
+    "bytes": 340631,
+    "sha256": "9a420863e33e5c1b24387abf8737fd07abc4022ad3d57f6699cd18c0bf60adf0"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-143ef2b1e05a8379.done": {
+    "bytes": 475,
+    "sha256": "556463f08d6c0ecfa963d0561be13b419f36dde8106f6a71eed29cc4889f12b2"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-143ef2b1e05a8379.jsonl": {
+    "bytes": 56324,
+    "sha256": "c5c36ac2ef51f4498a8d3668e82b59908fb82e52c2ddc409d178ae4300ff9bac"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-23c196b9d3078dd6.done": {
+    "bytes": 3275,
+    "sha256": "a2c44741f6051c340dcc66ae8168c1de1f69b312ce7622c1d55ffe581cd5643e"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-23c196b9d3078dd6.jsonl": {
+    "bytes": 341417,
+    "sha256": "7c9be5b6623a335d9afcc881d60aba25360f356f7899aaa47261dc88bd7fd020"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-443f6ad1cf30f04b.done": {
+    "bytes": 418,
+    "sha256": "0316bb54aa968bff94dd81edcaa46f56a444c329ab1f79c666cbc7b4f66bd20c"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-443f6ad1cf30f04b.jsonl": {
+    "bytes": 56210,
+    "sha256": "d0d7fe5204d68deb74265d7475b32982f3f39af3a253b8db02ca5438bfd26448"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-45d8942a17fba4b7.done": {
+    "bytes": 3750,
+    "sha256": "00252f584dfe307dbb5503c1b1d7536f911f7e4e084e93b429ddbbd351a8a7d5"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-45d8942a17fba4b7.jsonl": {
+    "bytes": 338069,
+    "sha256": "2bcd3512cae987659f6c8a2e96ecebf72083018931fbd6e914499db73ca8d8d6"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-55452366af892f4e.done": {
+    "bytes": 3300,
+    "sha256": "1574130705d6a5d179a8ec04cacb143df6fb3673605a71343548c1d206493d19"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-55452366af892f4e.jsonl": {
+    "bytes": 337169,
+    "sha256": "6370742fb0aa525fecbd9522fe21e950b9e69c94ce8dc25c9fbb59bd01fc2ff4"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-879c72fe29b3cd1f.done": {
+    "bytes": 3300,
+    "sha256": "7f91d72ab3f864681a203a6a9bc5a47c9a165cded019c6df8073259548de106f"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-879c72fe29b3cd1f.jsonl": {
+    "bytes": 337169,
+    "sha256": "4ef35fff43bed2d3a339d6f6b4d14b4a46a0c19a03325d8512d737907512f9f9"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-9949ad4fbc927526.done": {
+    "bytes": 4454,
+    "sha256": "b77e5f588dd0ae13ef7a231b08c9041523c3f76e8937a9f5a793170764f2b089"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-9949ad4fbc927526.jsonl": {
+    "bytes": 343775,
+    "sha256": "b5244ac62a77a5f76fb541ee39ce646220dc0db2bbc0c87bee232598674abc63"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-baaf46b472e9036e.done": {
+    "bytes": 646,
+    "sha256": "dfaf7620330232800232a9572b2771675dc90c7d70455e34c347742b2d37cf0f"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-baaf46b472e9036e.jsonl": {
+    "bytes": 56666,
+    "sha256": "da29b7a9fd401e3e523e3ff39c9fc481102ff2a7c56306b935f9ac3d94101802"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-c9dd17d68a67cebf.done": {
+    "bytes": 418,
+    "sha256": "c233e1a7b0533f42c33c2703c81e4c7a48ff146450c83ba9f7604aa1de15f88a"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-c9dd17d68a67cebf.jsonl": {
+    "bytes": 56210,
+    "sha256": "35abe91a063a8efccec4a94eb4794ccfa8150a8e64155f1b431bb864701c4b55"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-d40b9ec13e84a08f.done": {
+    "bytes": 5100,
+    "sha256": "e698065577debcfa9a9260895c1154280edacf8e43e00ce1ae6ae26d54181a1f"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-d40b9ec13e84a08f.jsonl": {
+    "bytes": 340769,
+    "sha256": "34105e99c393b24c7eea96cd39a9c2c05cfbb22204f2037c571d4463883cc1c4"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-d62909828ecf81d6.done": {
+    "bytes": 2882,
+    "sha256": "de676cccd0ed3d509291a10280384c8a96a9a79eed1a8343ccaddcc0e74ef96f"
+  },
+  "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration/units/batch-d62909828ecf81d6.jsonl": {
+    "bytes": 340631,
+    "sha256": "b5990a0b5eb9d057e37ecd644f094c9447eba0edb25664477074d094e372f475"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/EXTENSION_FREEZE.json": {
+    "bytes": 1074,
+    "sha256": "6f6fb21dbea890e96f305d422b25f7a482bee5a77ca8bc1bc4b59b62f7a34407"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/OBSERVABILITY_INTERFACE.json": {
+    "bytes": 24836,
+    "sha256": "e5616e31e724e773544cfa7206db4c7da582be80d02a4228bb61e6e12700335f"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_calibration/thresholds.json": {
+    "bytes": 6951,
+    "sha256": "7f54da6f39137100b129337aba5912b9159b7374d4ebe40b11b82ae4b9665102"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/.launch.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/manifest-2026-11-07T180125851616+0000.json": {
+    "bytes": 14545,
+    "sha256": "c79d01b78b474ce6d01868b16919ca016cc1dcedf4328039ab82f7cbc8911d1c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/settings.json": {
+    "bytes": 3698,
+    "sha256": "b791b63cdf4f26f220167ee6846f33d4f3174c55744a570ae95fabb0cc9247a0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-027f233ad29fd2b5.done": {
+    "bytes": 2024,
+    "sha256": "fbbebfd34cfe2cffdc1151f7249372329c188be3361370d6a7487cf34fecf29d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-027f233ad29fd2b5.jsonl": {
+    "bytes": 254021,
+    "sha256": "7cc5376f4f00eed285f7a2ea1989b381350e00f6cc1c17480dabbfd966423926"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-06a014b3631a9193.done": {
+    "bytes": 3128,
+    "sha256": "7cb142a3a73ad45948025cea4a6c3f5ed8b09db117745584df5a99dca825c0a0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-06a014b3631a9193.jsonl": {
+    "bytes": 267468,
+    "sha256": "95f3f3ded813b596392b8489d5a8704238b99e7ac021f5980eb6486b3847d16b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-06fcf6d4064d36b4.done": {
+    "bytes": 5632,
+    "sha256": "f69be93744c044e95c0de237d734b358a89a8e890ad44781f6346407bed43e5c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-06fcf6d4064d36b4.jsonl": {
+    "bytes": 631126,
+    "sha256": "2df3bdf8d0785f9eb44e9a34c655c4356fede7f7751d67cb6e9ec9a9fa88b1aa"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-070b830dd007d31f.done": {
+    "bytes": 528,
+    "sha256": "12a426ff09478b59cee02e505de90394f7a246639acc8f0add04b891ff9fdbc8"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-070b830dd007d31f.jsonl": {
+    "bytes": 74116,
+    "sha256": "e7d1613dff63f1d7aa380c6f1fe1ce9f5558ce027d0ff6713fa3dd0e6ade67ec"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-08508b30bcb2fe0b.done": {
+    "bytes": 2288,
+    "sha256": "bf3c0d261f92366e354704ddb6ecb56e3921211d9999439985a23937ddbff7c5"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-08508b30bcb2fe0b.jsonl": {
+    "bytes": 237948,
+    "sha256": "063d1203536287106172cfd4b946c2a472f720835d7fb2f0865a0352487fbf9e"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-09721f3ff6ef989c.done": {
+    "bytes": 2300,
+    "sha256": "f7c7a1c50d3aef9e713ff1e33bfc44f53f8f113f3cadc8905ba1748cd4166b44"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-09721f3ff6ef989c.jsonl": {
+    "bytes": 268681,
+    "sha256": "c7fd71594bca7d1171ff94b3a8bd2a5c62b14742f86b9c6a9a5b9f4651b77986"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-0a5139a5f906ee14.done": {
+    "bytes": 5632,
+    "sha256": "2b792a6888e0470f60d70d5ef09f69bfd198ee33fff9d5cf0b9fca38f77c04c0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-0a5139a5f906ee14.jsonl": {
+    "bytes": 583902,
+    "sha256": "4cbeaa20844580d1c7fddbd97069f91cf210d183754440d30c8fce36b5351aed"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-105e50ce8c2c4298.done": {
+    "bytes": 6400,
+    "sha256": "931e5ca13a892edf93004cb0d1457904843c645e65d1db22aeef9d3fe07ac5c7"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-105e50ce8c2c4298.jsonl": {
+    "bytes": 699296,
+    "sha256": "0b8c607180776e872598c32c9d098ddbac89369068c5d1c457411b9138b173c3"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-11da143a9fe75c2e.done": {
+    "bytes": 2024,
+    "sha256": "169f78e42b9ef9c51307e638141213cb613633ca718f16a2f870315efcce8caa"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-11da143a9fe75c2e.jsonl": {
+    "bytes": 255792,
+    "sha256": "79368124b75902da2ef947d614c28a8e03aba13c7ec2d1d546a33889410a2f77"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-11dcaf259ec6757b.done": {
+    "bytes": 5104,
+    "sha256": "71ffd5a0806975c9a9b2354dbbffed2202443e86b024e62241e9f92f5a83dc2c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-11dcaf259ec6757b.jsonl": {
+    "bytes": 633202,
+    "sha256": "362a20f1d3b4d3b19f7df9d2b3276fd92ed8ad6609024025ff0c35a8c9bf7786"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-131f259d6dded3a7.done": {
+    "bytes": 528,
+    "sha256": "4a7bdcd4eac2c4efae0565ad8b5724ad04ed8fe8671b627cd06d2ccd96ce2134"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-131f259d6dded3a7.jsonl": {
+    "bytes": 74984,
+    "sha256": "833fb0e8a90d9fdb436722e4b970e1d6c1bd8053dfa961e89aaf544522d620ed"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1992ab9dc08bc90a.done": {
+    "bytes": 2024,
+    "sha256": "c503a8bc4374a53fc127d95b9ad046a769fe70840e2c94495cd5be7dbd605688"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1992ab9dc08bc90a.jsonl": {
+    "bytes": 264377,
+    "sha256": "9c7f23aae5b090e844a05b5f7dd5a43c89203239da54d95742ba70c473538859"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1ad399b16f463b6a.done": {
+    "bytes": 408,
+    "sha256": "3c48d4e5248ec38ee16ea024594f5f71c123cc3f38fdb8b9b83c0c84d6de0673"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1ad399b16f463b6a.jsonl": {
+    "bytes": 36314,
+    "sha256": "c2271a61181c86209f0c43fe77be2b11f5fb3ada939253942b14af3aacfc43c0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1b59748369822cef.done": {
+    "bytes": 408,
+    "sha256": "ab7302d16a8c9c53afa5b341b5469ce3cd8ffb7fc05f659494131f768076f7b7"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1b59748369822cef.jsonl": {
+    "bytes": 36482,
+    "sha256": "b333b884af733efab5482864ccebf6db691a9f342e6d0d2be05c8eebf58a947e"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1b6a843a77011c55.done": {
+    "bytes": 5632,
+    "sha256": "c4d46b7255cb260611a956ea1bbcbceda11d30d0aaf667286892171e54db7e14"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1b6a843a77011c55.jsonl": {
+    "bytes": 609013,
+    "sha256": "59907314b1160c767a59392ada7f17c362f257e72c1863351e2492dd52598dc1"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1cf823182f5a3b39.done": {
+    "bytes": 5104,
+    "sha256": "4bc2477c92fba140a789405a93ad92921429fe47f121ab86411fccc1c0763fe1"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-1cf823182f5a3b39.jsonl": {
+    "bytes": 680798,
+    "sha256": "e8d34c9f0f16ef983c80d8475a75b3099095ad365b28ee97780476dc7c72d1e2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-28dbb1151d81d14f.done": {
+    "bytes": 5104,
+    "sha256": "718016f081bc5b146a2a24cef254a00e9a9aad4a6cfce0ae07c45e8377855260"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-28dbb1151d81d14f.jsonl": {
+    "bytes": 634218,
+    "sha256": "3d7f60cb4713bc7f6d5fdd1938ed541bda376cbd87c09d6bda47e94517020844"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2a27749e9b0dd9af.done": {
+    "bytes": 8704,
+    "sha256": "3d7065646fb745ff037a153375cdb57591a3a23c4300ef90b8b3b80834fb205a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2a27749e9b0dd9af.jsonl": {
+    "bytes": 636470,
+    "sha256": "615defae501b3dca30a013bb4548387899c08af67beca994188911ade65fde1c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2cb5dc1908e433b6.done": {
+    "bytes": 5104,
+    "sha256": "ccc4022d46e991d4e7347941e29dfaa349c2b1274c51a964e2d0d67850962f1a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2cb5dc1908e433b6.jsonl": {
+    "bytes": 617612,
+    "sha256": "d75ade24aaab4e23bf5f525be321fbd693069e2fdc9b438973339d76c80beae6"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2d4a5e9695a11d1b.done": {
+    "bytes": 6400,
+    "sha256": "615a36b7edd6bea84f8ef8ab67200f2a2679c7ebfe265a2d8029573ef6cf28bf"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2d4a5e9695a11d1b.jsonl": {
+    "bytes": 643159,
+    "sha256": "b8ab9f0e0863eb7da2b4af5c8869671c9a11e939959da2a285cc2ad512a48872"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2fe2eae29b190618.done": {
+    "bytes": 264,
+    "sha256": "de6459fd77b85bc7f5a26640079bf9e66f6860cd5143eaf5be4131b20c6e04bc"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-2fe2eae29b190618.jsonl": {
+    "bytes": 36050,
+    "sha256": "ff0528aebe4914ae237c71d5ea10484dce0515502f99eb403670f733ef06b02b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-307e4746ecc64213.done": {
+    "bytes": 300,
+    "sha256": "b1ea46a33b36721c7a09f47b4fa9b68cc820bac2b491aba039a9cd320b225970"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-307e4746ecc64213.jsonl": {
+    "bytes": 40226,
+    "sha256": "5b528412b8f034ce1b3a9c2908449d6e545516982fab5212fc18601db5dc3801"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-30cbfd0987fae4b6.done": {
+    "bytes": 2288,
+    "sha256": "fcd1f5fff7361a1ad7138b744b57eb59494d40e35f6c851a1d51d4c708e1dd89"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-30cbfd0987fae4b6.jsonl": {
+    "bytes": 236730,
+    "sha256": "fc4725a4421b4c6ec8e1eb9fa4dcfe42ef84893596fd311616c88acb4a2e436a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-32f9eb5fff37caff.done": {
+    "bytes": 2024,
+    "sha256": "3619e532130840202b776f5654fedb635e5a9fc1ffa1b630a3e4cd1d6b9a3364"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-32f9eb5fff37caff.jsonl": {
+    "bytes": 239196,
+    "sha256": "c09405d5a30755493e3a397962c4b9c74ca6dfc77aca61cec492627040929988"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-33b16d2cb6930788.done": {
+    "bytes": 3536,
+    "sha256": "4780b358f15af3d0b776a28598fc938ee4fe3cc3904f90ca0cf7d083255d9535"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-33b16d2cb6930788.jsonl": {
+    "bytes": 241742,
+    "sha256": "760725d2e80b9f04ee672f8d425e6d864c29850c399459211980d3dc167c3d68"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3861ed9d965afcc9.done": {
+    "bytes": 2600,
+    "sha256": "b855c0f4bef41b665d2414f9a1f1b88804422960de3790a08815fe4b771b71ed"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3861ed9d965afcc9.jsonl": {
+    "bytes": 252801,
+    "sha256": "77e5fe3367f83756506ed528d9da201b0ce530c0bd2d49bbe3a57748d5dd6aea"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3a874f18b3dfc17b.done": {
+    "bytes": 600,
+    "sha256": "e619f8478421f8926dde4ab0df84bf51c2ec4edd9d04ad6f98f6f540bf9450d4"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3a874f18b3dfc17b.jsonl": {
+    "bytes": 73552,
+    "sha256": "1e05db9c82828dde940415806f44bfcc486fbb091fafcb239eac623f86dd3d30"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3c8ec159c334955b.done": {
+    "bytes": 5800,
+    "sha256": "b777e4134a5896c656f98863abebb2d7f563f9f53382c27167905c63a0a82b7c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3c8ec159c334955b.jsonl": {
+    "bytes": 629600,
+    "sha256": "916041e5ce4d6da1358f3c56bd56110e50767f782e865a63c2de7f9afcdd11d4"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3ee489e809ba095e.done": {
+    "bytes": 2300,
+    "sha256": "5e70246f7a95e49af5a9236433352abd30ca0932d2f5f1db0be26cc3c994f3ab"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-3ee489e809ba095e.jsonl": {
+    "bytes": 276588,
+    "sha256": "12d70ed49b3a5b365a8d1bae0313be8361aab33065f4aa302e601c39d6ced9ba"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-430fe747c84b8b25.done": {
+    "bytes": 2288,
+    "sha256": "3c5bd322d5e6fb5ea33c34b037c55f4259eb6500aa1be562d1eb34f6a6d4b1b4"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-430fe747c84b8b25.jsonl": {
+    "bytes": 246197,
+    "sha256": "796ccecdc67ec266f9c0956814b36d3ed32ad1c16f153e71300de37909fa0a36"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-44e4e472f30e0301.done": {
+    "bytes": 7888,
+    "sha256": "8b66d74888304207c41dc23612b8ffbf214b5458d08c933c34b69b74e55ec4b2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-44e4e472f30e0301.jsonl": {
+    "bytes": 673914,
+    "sha256": "efcb95c570067c3b9d27795ebd332245a6ce2140af7ab76a8eed265dcbcb3779"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-4a4ea290af4049b2.done": {
+    "bytes": 5800,
+    "sha256": "7069be35e3cf7bc37ed3134e75c3938e4d5a5193497f50ce8b228da69c471588"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-4a4ea290af4049b2.jsonl": {
+    "bytes": 629294,
+    "sha256": "ddf55ef49e1f1ae6c7e4667a39045bc62fbf6dc3a8242329fe4680a45df89db2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-4cb2e4a5d1bb25bb.done": {
+    "bytes": 2288,
+    "sha256": "5d361cb2f90e546b6c276ea7b80cbc4852f86f8d0bc54ada7fa3f4a7cf06cc7f"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-4cb2e4a5d1bb25bb.jsonl": {
+    "bytes": 251150,
+    "sha256": "c818afb1bc4ba59cddd285a892a71cac24ff31d9aeaacc640aa852c3520481fd"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-4d30b9ea9a883de8.done": {
+    "bytes": 528,
+    "sha256": "6f1b3bb31b9c59d0013f95235cbbfebf00dab4db9cc54fea7e5fb635f1326dca"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-4d30b9ea9a883de8.jsonl": {
+    "bytes": 71392,
+    "sha256": "a91fffbddb2bb15634ff58bfe2e94032458c452ddc4f0bfcece5d78ac4261844"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-533dc926f4c35204.done": {
+    "bytes": 3128,
+    "sha256": "8523b2cb0879dc671aeea0a6065039be58af233b09c04962b899660b18a807f8"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-533dc926f4c35204.jsonl": {
+    "bytes": 250632,
+    "sha256": "cc4540c902f62eb2a0848a4a893269dbc21e39381aac45a886d8073ac71bedb2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5494cb1359ae2ac0.done": {
+    "bytes": 528,
+    "sha256": "d3d81d6fa1e7c47a3fd3b028bec5bffd822dead80e6f616aa570b977c3597f65"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5494cb1359ae2ac0.jsonl": {
+    "bytes": 72088,
+    "sha256": "f384ed7a31727217cfabe6fc2a2fb62478335b9290b4e22ce0429405fce0ad8e"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-55b6eb108f2c4d3b.done": {
+    "bytes": 264,
+    "sha256": "39c37f39affda0a5a67a6b4b17de2db6c4a54ad4a5345e3995e10b3bd5f14773"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-55b6eb108f2c4d3b.jsonl": {
+    "bytes": 37911,
+    "sha256": "6a19fa2e1f7489fb1d12255f4d2de0a67f58bdbcb94de17982c581c591e4c230"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5875dfc7a630b80f.done": {
+    "bytes": 3536,
+    "sha256": "4ff4a507ba15fc96cba92d92399fb43500a6e70d554cc423cef2a7179d582e86"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5875dfc7a630b80f.jsonl": {
+    "bytes": 255614,
+    "sha256": "5e2901306c9dae24c25e885f23b1b716a6b6777127cb1179a3c2b11404a59966"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5b3b9536de4a00e2.done": {
+    "bytes": 2024,
+    "sha256": "efb4c42731f66f91f1d176b4ad1ebd68c998b7d48e49517891e65741e7e2ecb2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5b3b9536de4a00e2.jsonl": {
+    "bytes": 260460,
+    "sha256": "fd4775bef1cdb5fb881ec60687fe27ab8db62bba7c347087a458e980e61863a0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5fa254f804be5f1f.done": {
+    "bytes": 300,
+    "sha256": "a55d05d99cd64746bd2459d72be3cebb300cba0799c66ef9eb3367656651aa23"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-5fa254f804be5f1f.jsonl": {
+    "bytes": 40734,
+    "sha256": "368266cd4a7b3bed03d72990f279c1862bd0bed3e9378a28669a9884cf26c2ef"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-60eab8619cfa9c58.done": {
+    "bytes": 264,
+    "sha256": "daf89f583dbf9c9f99327d9ea1b077fcade1022cfe6cb94fccc5cddf47d9630e"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-60eab8619cfa9c58.jsonl": {
+    "bytes": 37310,
+    "sha256": "99c95304d816211450891696ffbde282871503d5ed4508be929492a7ab4ad68d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-61d8dbc0d797b8c5.done": {
+    "bytes": 2024,
+    "sha256": "ef718eb06e9abb469c8fbbd00017804c7b93f119292ba50cd02098b8a1c82634"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-61d8dbc0d797b8c5.jsonl": {
+    "bytes": 272676,
+    "sha256": "1837418674164a0acea8821f630f7c926b165f87e9afb583d290dfe6c638ffff"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-62aba6aa94018e9a.done": {
+    "bytes": 3128,
+    "sha256": "b47d6a3a9cad243dd1eb3368f68306dc634d5e9c3b32904583430fb80e97df6d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-62aba6aa94018e9a.jsonl": {
+    "bytes": 248696,
+    "sha256": "b2f79fb860ec4639f72a38dbedbf014ed35f3e29cfbdaf4b9a2508e060a80c0b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-64e6a466b53b152c.done": {
+    "bytes": 528,
+    "sha256": "0e9d27d5d460bbd859f387b39ef8d7e888c42d7ae6663b4503ec1b3b880af56b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-64e6a466b53b152c.jsonl": {
+    "bytes": 72763,
+    "sha256": "5aa4429205dd9ca88ad47d57b266b388dfdd197fda551b49dcdb57a66dd883f0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-67bab11635b12b22.done": {
+    "bytes": 300,
+    "sha256": "921aa5568675b449736b13e3e103445c3fbb9cf7030c4fa76b27805a6b93455f"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-67bab11635b12b22.jsonl": {
+    "bytes": 37130,
+    "sha256": "67c0ce92e317add3477f7334e402b739bc288a0866ae55cfcc4599c3de21d9f7"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6a637b635ae4f7bc.done": {
+    "bytes": 2300,
+    "sha256": "d0f46a9171f3be421f96a9348461f1f7e2ad4db8d6470571aadd977d3566903b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6a637b635ae4f7bc.jsonl": {
+    "bytes": 250479,
+    "sha256": "e12f6e9e3a9afd8ff01148bf60ca4b5986539866eb4fdd3a789d79c0e8b989c2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6ace8e7aa1c79e04.done": {
+    "bytes": 528,
+    "sha256": "4a88578eded585e6a3e9779861a315f8297690b5cc0f25e84a1ef1bb22227208"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6ace8e7aa1c79e04.jsonl": {
+    "bytes": 74224,
+    "sha256": "f1b663f389a31a5fe68aae5012b3b55f21df399244af02438151db57fcc7e0f4"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6c0ec556fd56da62.done": {
+    "bytes": 5104,
+    "sha256": "f86015b1b4b02496b9e4ea81d05786b759594a890f1024dfffd0f381a11dff0f"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6c0ec556fd56da62.jsonl": {
+    "bytes": 638433,
+    "sha256": "35ad71b36b7a19681a93133c1ef0577e8d8408305deb1e53ab7b560926a43b1d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6d0be010ef100187.done": {
+    "bytes": 2288,
+    "sha256": "b96f20cd5d8eef5deb5d683c6cac099b18031dfd7bb6fc595f5e270a7a721de5"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-6d0be010ef100187.jsonl": {
+    "bytes": 254919,
+    "sha256": "da6e4442c920c27f6874b90da98d192f7e1d21eee302b4701c861e612c5aa624"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7480a41f95ed50b9.done": {
+    "bytes": 5104,
+    "sha256": "102765599e70429d26ca5babfbbb80358f78088de266e5591b933bb7785816ea"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7480a41f95ed50b9.jsonl": {
+    "bytes": 681029,
+    "sha256": "9b2b70302d4ee2346c934a785cd9755c45c34a1bb79de739d579e2ef756f6043"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7578990e1a111194.done": {
+    "bytes": 264,
+    "sha256": "de2228e34208a9eab3279e9ae1e28bf8a8c0ae6e6d762c3c61f79e40591b1436"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7578990e1a111194.jsonl": {
+    "bytes": 38982,
+    "sha256": "99d2481b98f7a069da59767dec878eea10f86dcf997701905915ac5ade4c876d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7597d4e969597e01.done": {
+    "bytes": 5104,
+    "sha256": "91369753b625e5a8ea070d8d7b10f6b4622efc8618fc857a8c144d4daede1093"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7597d4e969597e01.jsonl": {
+    "bytes": 661702,
+    "sha256": "c87e88105823eeee9fc84fd8d5648adf199a64b79aa0b4198725b21853a17bcb"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-77e0a0d9f0875d0f.done": {
+    "bytes": 300,
+    "sha256": "332b720f411faa83a2e7b2f3fce133e0552c10a8fc086187348afbb22e66f2c0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-77e0a0d9f0875d0f.jsonl": {
+    "bytes": 37298,
+    "sha256": "548b97aa3dd274b1314a5fe6a2475db271d2626d1102e1f2603a3d3101139066"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-797804287e562737.done": {
+    "bytes": 8704,
+    "sha256": "e3695ea281453edb0fa1be51b29fd7e85314e220b5c82911e1665a6cc6612b35"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-797804287e562737.jsonl": {
+    "bytes": 593390,
+    "sha256": "9d0e8a01dcee97408475f96a0d9473f46850df6db59b3cc0c3f843e1840e2b0f"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7bfab55f6b4038d6.done": {
+    "bytes": 3536,
+    "sha256": "cfc5c1ab7b273544c1742159fb25db118e583b760a778247d5cb9498c0d57b2d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7bfab55f6b4038d6.jsonl": {
+    "bytes": 258514,
+    "sha256": "8182295c5f3b34654761e0b96853217ff5d55b86dfdcf54e1479fea1b19711b2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7f0f250c1f83238d.done": {
+    "bytes": 5104,
+    "sha256": "e4236dd5ff9d676bbb91e0f397435786b0c65d40858af45315a248a3d16ed3e7"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-7f0f250c1f83238d.jsonl": {
+    "bytes": 600786,
+    "sha256": "eb73b059ac3f477bc0452bda41e9ef0ebc525dc6086431cb972bcf49774e0742"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-837ba677b9efb7a8.done": {
+    "bytes": 5104,
+    "sha256": "46714cf99a139685b9343a84f4bb2615c97f4039e9b7e5b38ff9ad50f414ad57"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-837ba677b9efb7a8.jsonl": {
+    "bytes": 653202,
+    "sha256": "b68c354a166e4d3bf469cc23d71ade9a89f644dd7284e934000f9c34fbd21f63"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-85b11bb9cf887195.done": {
+    "bytes": 5632,
+    "sha256": "7c847b979a791014388f03c7c81c7428f3cfcbd364891e0ef0b918b665a293ee"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-85b11bb9cf887195.jsonl": {
+    "bytes": 619486,
+    "sha256": "c00ddd818086d013291fe78e9130bbb14552d9761a5974a98feabf6b82ab851a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8a691b187d3c380e.done": {
+    "bytes": 5800,
+    "sha256": "d9aebb2ce68437fd165e35eac80117d3f2757092a848786e4e01f3a175897595"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8a691b187d3c380e.jsonl": {
+    "bytes": 700206,
+    "sha256": "fb6c9ad88556f0ec62b3e3c4893169d596cc0b22492466c9ad0134327401d79a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8d0a952688006211.done": {
+    "bytes": 5632,
+    "sha256": "ea459d371c9bfd3f53d3396c5a775c8aa03997f80fb4cb9c25b25c83b7387c96"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8d0a952688006211.jsonl": {
+    "bytes": 572130,
+    "sha256": "9cdeb603044ff1d7384ca614b1fe1b97605a309ae0a5a130706f2315cc675aa8"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8dd22fd3ca97696b.done": {
+    "bytes": 5800,
+    "sha256": "b0160a5cd808e1312c6ca97953810c8264b4a8a30a6421c7aa4d7fee2c2a4a88"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8dd22fd3ca97696b.jsonl": {
+    "bytes": 675287,
+    "sha256": "286abd1804df6873ee96ca6a544e313ae4e83abbb273347b97af4e205031c5d7"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8dff3891116b68ac.done": {
+    "bytes": 2024,
+    "sha256": "3aa8e776cc0b80e178f97062e5586fe41d41d83ec4269d9475c4bfaa857f5d6a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8dff3891116b68ac.jsonl": {
+    "bytes": 245692,
+    "sha256": "8ad7ad411013848cf215a71773ab6a240f5a261fc17733f37d4ee423b7c2951a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8f4685135bb682c5.done": {
+    "bytes": 2288,
+    "sha256": "80b66b9c4a829121bcc26efd70315d784103a58cc01aeef2fda50681db9d8787"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-8f4685135bb682c5.jsonl": {
+    "bytes": 263941,
+    "sha256": "cfe4b37e719954bd81dc583d0ded59d17bf19d4710281214b4e038a18548e2ba"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-905c0aa1cca1d4da.done": {
+    "bytes": 2024,
+    "sha256": "7a5f613fbafb6c0e768d2d3cfe2f23d0f0b5e6229e831adf34a5dc7887bcf3ab"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-905c0aa1cca1d4da.jsonl": {
+    "bytes": 253208,
+    "sha256": "df1d87ca3e7898d4539d04219ce05506639b6327da1354097053b715338359d7"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-92cd6b154612285f.done": {
+    "bytes": 528,
+    "sha256": "f80612321eff0d21c942b61d0f0a648d5ec508e68117e0a4cf45ab2b4d810609"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-92cd6b154612285f.jsonl": {
+    "bytes": 76797,
+    "sha256": "249ed3e503063def7dd1ced9c842fa742ef248124ca49b07731c621f1caddd40"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9367a8432f430297.done": {
+    "bytes": 8704,
+    "sha256": "08c626478259adfffb1f949266fe359f20a55520595472a322f5a62c57526709"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9367a8432f430297.jsonl": {
+    "bytes": 634474,
+    "sha256": "8ee345a39f8a13dfe8dc92907da78e88db9af43f5847fb2398c2403577f39165"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9482ce4fb5b6a2e9.done": {
+    "bytes": 5632,
+    "sha256": "af5a9f4cc138faf8cb03213a5dafa49523803fb553ad309b5aa5ae3145314cd3"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9482ce4fb5b6a2e9.jsonl": {
+    "bytes": 625478,
+    "sha256": "044a716ec10c8d863e95834aaeda657ae06601f57d674a10307905ab9c6a0d8d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-96a485c5a738ab03.done": {
+    "bytes": 2288,
+    "sha256": "e716fce72c441b90455b481d2de06f9963795ec8827ac4b849532ff7586b48d4"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-96a485c5a738ab03.jsonl": {
+    "bytes": 231786,
+    "sha256": "268d7297412b42f4a55cb24d15c05cd7cc0344510adb432908196540186cff3e"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-980c0f3f773410bf.done": {
+    "bytes": 264,
+    "sha256": "695cd5ddee189e4a010788220f612a6874945ecf285cc8df9e1ccc4ba721a563"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-980c0f3f773410bf.jsonl": {
+    "bytes": 36648,
+    "sha256": "2da8f07b3fada56b112d5ce1f29810bf439b99ba52589c00842d0a4c86d86b8e"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-990ce33d0d30175d.done": {
+    "bytes": 5632,
+    "sha256": "b95e80a2a06b047b47f6459b4cef926b20df33da93f263fbe778f2330a0afa3a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-990ce33d0d30175d.jsonl": {
+    "bytes": 651736,
+    "sha256": "e2b3d305eeeed47acd0a7e81712046ae6c259b1c3a28518fa92064a81b45def8"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-994e747df1df26bd.done": {
+    "bytes": 2600,
+    "sha256": "b943f59b8cabaa4116c9ad87a5e41332752621ffbeea66c147798a97220c7159"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-994e747df1df26bd.jsonl": {
+    "bytes": 282663,
+    "sha256": "8c34750e26bf50d607251a79ae1528eea21938c0f87c8f6ed9a23d01ad0912a9"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9bf84b62244c4343.done": {
+    "bytes": 600,
+    "sha256": "c2ca36f7c06f3b617e54231e78e8272943620a73d2d9b8980e380c7e7fcd2cbc"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9bf84b62244c4343.jsonl": {
+    "bytes": 79000,
+    "sha256": "51ef228d49071fbd898f13c564a03c8d059260ea3d5ad7302d705912879238ee"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9c3c503e05f62fc6.done": {
+    "bytes": 264,
+    "sha256": "4f8bd2d70deb0503a40bce96155d415d793a1125040358da8171465101f54aa8"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9c3c503e05f62fc6.jsonl": {
+    "bytes": 37466,
+    "sha256": "1a66d7df46678b3b2c7b1d56b434e2a0590d9493c7eec4e3d40c8770a0b84222"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9e3666fd472b0eb1.done": {
+    "bytes": 5104,
+    "sha256": "7422bb0be048b00ad79b4418b465226f4ee7b1614601d2bd17ed17ab25bdefe4"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9e3666fd472b0eb1.jsonl": {
+    "bytes": 613874,
+    "sha256": "012f02bb2ae041a01edf082e46f4ab424e3bf1bdcb821b28b30ee1d074b523ac"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9f4a312d822c19b0.done": {
+    "bytes": 7888,
+    "sha256": "b33f6fa821b0a3e28fe80f24635d99ee428b8d3b3aa87e3e8a9403e855a05913"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-9f4a312d822c19b0.jsonl": {
+    "bytes": 662246,
+    "sha256": "62c8e5402089b1203bcbf92c131525c72eb0e37e895c4d3c99c059cff88eb17d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-a41d8fc35d48564b.done": {
+    "bytes": 5632,
+    "sha256": "ce422764d9c816873ebeb5adb3f991a6cacd8c8e6ccf1294a1e30df498a63f0b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-a41d8fc35d48564b.jsonl": {
+    "bytes": 588588,
+    "sha256": "8ebc68a0f82175d1fd1e3a32bcd305b57696783d148c662d09e18b614e6b3d04"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-a7beaf6291fedae2.done": {
+    "bytes": 7888,
+    "sha256": "ef36c3df02050f5fd17bc9ac3b54cf68ca1b38c71679ccba2d122d07215bf090"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-a7beaf6291fedae2.jsonl": {
+    "bytes": 628098,
+    "sha256": "1af1ca35d7e6935bad8a93c699cbe8f1f9000afe84971c247c5e596d1afab108"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-a98b052d79fe53ca.done": {
+    "bytes": 8704,
+    "sha256": "42438776fd67b7643a952aa114f206a966574c7c7115cbbfc6d2659b66da1c03"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-a98b052d79fe53ca.jsonl": {
+    "bytes": 599218,
+    "sha256": "3b82bc25b44de08b1094d7fc9fbb290cbc197ee75a6431517633c0e5a345a84f"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ace3cd34d66ca821.done": {
+    "bytes": 3536,
+    "sha256": "2ff808ab4df1d0e782d634fa668346298ad13d4695b87ad62abbba3398f63a22"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ace3cd34d66ca821.jsonl": {
+    "bytes": 240562,
+    "sha256": "e2ef0768d25329b45b25d1e22bbaddc72698cf64c58a4108345180bd84b2dcdf"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ad4d70584cfad4a1.done": {
+    "bytes": 408,
+    "sha256": "a79280350debcd5421c296f6d5f90aaa831373a22534ca9bf0fa77461b3e2775"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ad4d70584cfad4a1.jsonl": {
+    "bytes": 39998,
+    "sha256": "4978a2836ab792c72967c410d0c8588fac7d99b05538b629804fba369f3b7122"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-aeac967eb7ebd13c.done": {
+    "bytes": 2288,
+    "sha256": "1d89164a9bdc3dd270d95833930c2b32d16fb04d2dd5b53fb4d46c6fac08d4e0"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-aeac967eb7ebd13c.jsonl": {
+    "bytes": 263077,
+    "sha256": "fc65370ab9d27a79f5f960b4bd094c1c9c569a984fda1723d0cd279f51cabff6"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-b3c663590fef9b12.done": {
+    "bytes": 5632,
+    "sha256": "16badc0030aa8dbf0f99449a8859c12c062205d792b05bec21d45a03e9f86e78"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-b3c663590fef9b12.jsonl": {
+    "bytes": 602942,
+    "sha256": "8f74341f7a964e2bffd8d3027388bb404beddf240668db28bd964511b7167a02"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-b4b1a7a53b17072a.done": {
+    "bytes": 600,
+    "sha256": "003c69bfe9b717440857367df5b4178fb194ee2017989533c597aec440c4a1fb"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-b4b1a7a53b17072a.jsonl": {
+    "bytes": 81576,
+    "sha256": "7ace956294cb15bbabc87b57f9692094b0330891737a20bb945de4c3216e9a20"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-b8ac48e38e497062.done": {
+    "bytes": 2600,
+    "sha256": "f9e8bb35034602998b0b75d21d3547d60ae0b1dc300116ecf0158e8e259745c1"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-b8ac48e38e497062.jsonl": {
+    "bytes": 243186,
+    "sha256": "67c723a0b6d53b1aa7dd88c334698cf8aa61fcae94dec2e8182428e2ceced09f"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-bee899b33f3dd8a0.done": {
+    "bytes": 3128,
+    "sha256": "c0cdcad697b3a1e6c296dc1ae46f2a23318954a41e18ed09cef37c3262a5ed90"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-bee899b33f3dd8a0.jsonl": {
+    "bytes": 265984,
+    "sha256": "b67e3eabdc2fbc0528cea6cd47952ced8f0d6835a931687c67cbe30b945c5d0d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c3d5a000ae4c517d.done": {
+    "bytes": 2288,
+    "sha256": "3a663c2fe8d3a0d9962d192d8528ee85cbda1ab5487ed761e6f1d16650a3c5ea"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c3d5a000ae4c517d.jsonl": {
+    "bytes": 244222,
+    "sha256": "7dd6be89db50b7bb2d666bf5621c80612f5fe4a57aeb11f602c98044c652b368"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c464803bbb3c2109.done": {
+    "bytes": 600,
+    "sha256": "c5e7427e93301992aa9e23da4ab93d342ac74340ad2fe51d674fc0ec57d2db36"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c464803bbb3c2109.jsonl": {
+    "bytes": 73888,
+    "sha256": "543064279c84c888b2166a56d07c94544ea1f8b016733889a9342b71e8ba8f9b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c46cfc261bf9aefb.done": {
+    "bytes": 2024,
+    "sha256": "1fef46a8900362276d54f6343554480ec4efd9337f550eb35669db2df46757e5"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c46cfc261bf9aefb.jsonl": {
+    "bytes": 245499,
+    "sha256": "543c915006789190bb5cb64b47a759d468884cf8ba54d9c17b04274a5604ac60"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c9785ace544140cf.done": {
+    "bytes": 2288,
+    "sha256": "855b0400b526fd5002547cd7fa7d31e5027946870cb7754e3e94baab2fc72f00"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-c9785ace544140cf.jsonl": {
+    "bytes": 251854,
+    "sha256": "3161abd38c465091ac0cf42f217cc103a1cb7bd234ccb89a28cc39092483c330"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-cf72ea0c1bed2d0d.done": {
+    "bytes": 7888,
+    "sha256": "cfdd4fa7004559c511f6c027ad95a0952969f7010d183cafe8e609900b0abf73"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-cf72ea0c1bed2d0d.jsonl": {
+    "bytes": 623974,
+    "sha256": "59d8eee4067558983662a01a33a06ab39e07ab46ec53b7f7033c66c386554ca1"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d0a61fac003399bd.done": {
+    "bytes": 264,
+    "sha256": "ddd0264b3b9e5c4d2862b6e88fe1b378336b92edc214f3429be48f92c2d0b162"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d0a61fac003399bd.jsonl": {
+    "bytes": 37599,
+    "sha256": "2f21b8a04b04eb38649821cf573094d6374854785a2d91e2d35277c28d364be3"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d1c09162a53cf833.done": {
+    "bytes": 528,
+    "sha256": "865db0a1ffd32e212f527a6e47b126d35da8cd348f73368b3daa4eb7b8f98595"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d1c09162a53cf833.jsonl": {
+    "bytes": 79048,
+    "sha256": "6443ede774e011530860891d1304198ba7a5bb085838bbd59c78e5c37f962cbb"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d1d35bd0b655cb10.done": {
+    "bytes": 816,
+    "sha256": "5b43fc7c6a2644a777667ab93568020e23353e8eefe1bf3b3f4b16d933910ddf"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d1d35bd0b655cb10.jsonl": {
+    "bytes": 79972,
+    "sha256": "8da1acc82778986a97c83183e9e70c811a8d1f2fe7e8543b6e757f151e5e0ac6"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d617ed976c489622.done": {
+    "bytes": 816,
+    "sha256": "9ad39e00e5676b5a0285a5924e28bfd15bc20e56ae73446bfae54925dab8a227"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-d617ed976c489622.jsonl": {
+    "bytes": 78652,
+    "sha256": "66faa09d5680c0a0820da870794585ee401cbce78f5e8fc7d69e57ac473463b3"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-da9c029084f70f7c.done": {
+    "bytes": 528,
+    "sha256": "f6e905443705b1f81677874415b54f4063c36d3af3f7c4bdebf51a92723928df"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-da9c029084f70f7c.jsonl": {
+    "bytes": 78910,
+    "sha256": "d4a3dfc77994ab709d0d5ac20d546fe36c9ae9f3ec007e1cc6493f351a3a3ad2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-df4ce397a475d6b6.done": {
+    "bytes": 408,
+    "sha256": "68cf4f7d6c52965a4f6e0b5449a7dea3062ef9fd5f716eafe57cb4de414b202c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-df4ce397a475d6b6.jsonl": {
+    "bytes": 38234,
+    "sha256": "7735aff11b22cf0baffbce4ab434b429f1188a60e0a684ac1f2c531082d5c03c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e08148c2f8aa0ad3.done": {
+    "bytes": 2024,
+    "sha256": "1f4a77c115be6dc4d1f292feddfccd98341c0f791ded4a1ebd01790b1c423b40"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e08148c2f8aa0ad3.jsonl": {
+    "bytes": 272392,
+    "sha256": "418fe72600ab6e422ca867b61cc7ab150d391537635a3ff05b004842de2a47ba"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e0c640089f6a9560.done": {
+    "bytes": 816,
+    "sha256": "d9e75d7fdace647b1c9254b0eafb5bd9a44e916380f1b67660e9214c24b85635"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e0c640089f6a9560.jsonl": {
+    "bytes": 72808,
+    "sha256": "0bb2f789289e9dd25a49a73e5ff493da64196885383c07a74796cb7a9523d165"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e1ec37ca141b1c2d.done": {
+    "bytes": 6400,
+    "sha256": "49d28a317650272ed3f58a7deb466467b0aac73bf2a6d464bafbd2b121d4fb00"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e1ec37ca141b1c2d.jsonl": {
+    "bytes": 624603,
+    "sha256": "19122b9946b04485d7528dd37765c846ae5facaffb20142b64925128f7df38d5"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e47fc615be6704f3.done": {
+    "bytes": 2300,
+    "sha256": "c76e12dda19af51caf1c4c7e27130ebe229644846fd1e99ee485d1854d140e87"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-e47fc615be6704f3.jsonl": {
+    "bytes": 250093,
+    "sha256": "80edb4a7270c3b627ac5e56c22d2648fe34a1f953ab537736fe8c55ce2716709"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ecadabbda097ff3e.done": {
+    "bytes": 2600,
+    "sha256": "eb2538441a48e6ecfdf42b343810e673de732f6192d314999ab55d6c871f1199"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ecadabbda097ff3e.jsonl": {
+    "bytes": 259182,
+    "sha256": "46132407bf2ff53ba48215438e866eb94fbe18e4ffcc62ab30b7bf4605f18f7a"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ee90cc47f1fbe7ff.done": {
+    "bytes": 264,
+    "sha256": "9c41137c2528a803b1ec9be3a05240ef64926e3736eec80501ab192e0909f496"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-ee90cc47f1fbe7ff.jsonl": {
+    "bytes": 38702,
+    "sha256": "9e36c8bdb0724aa98bec9f27cce1c07a3508c19f38dd2c03afa52302744d6590"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-efd1ba2e39449e51.done": {
+    "bytes": 264,
+    "sha256": "f022d3e53bcd7660b97c7af3d8e5e27b57dd97fd1bdf5775fc8e1e054694b8d2"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-efd1ba2e39449e51.jsonl": {
+    "bytes": 39410,
+    "sha256": "6b2409baeb2a460093bc7ced4d650604ba4d9c26afec9c0ea1744d6f6cc2ba92"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-efeed41027ffeb31.done": {
+    "bytes": 264,
+    "sha256": "81cfe31f6dadc5b6e416fb4d18b15a528fc4a612e7c04ce9c40f9a9b980d1702"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-efeed41027ffeb31.jsonl": {
+    "bytes": 36770,
+    "sha256": "1ef86f5b20939b8dc1344e2ba97f82808ef70c2543a25f927f1f2101f4c66980"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fbec872c4561c053.done": {
+    "bytes": 6400,
+    "sha256": "dcc11508fce433046f100a0e71a2cc7bd644cf2be2b42ee4835874ec577ab39c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fbec872c4561c053.jsonl": {
+    "bytes": 601376,
+    "sha256": "823923c8233009bcfe0a57a75208e4cff8271f63f2c3aee239f0d1f4a94b9553"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fd66702d6b93315c.done": {
+    "bytes": 528,
+    "sha256": "93688105bc1e3b86b13efda7296efe780ee684a11c9586e50f93fcdbed88541c"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fd66702d6b93315c.jsonl": {
+    "bytes": 77776,
+    "sha256": "57dd35975008b63246ccca1bc9cbcdb20067b50d6c96165fbc5417cdb09ba342"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fd801322497c3562.done": {
+    "bytes": 816,
+    "sha256": "de732d501b929e718b90626e3f589c03f8bf75577280db752e3df7442f428a7b"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fd801322497c3562.jsonl": {
+    "bytes": 73300,
+    "sha256": "b5bddc3fdac807862e41cde6bf9620ffca7bdd5d180f9d77970b00b3e395434d"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fdc684b9314fa830.done": {
+    "bytes": 5632,
+    "sha256": "ab1bcc30242c6ccf7cecff9cb031c488e4c2c71fa59252c8d4566fc32ea97dbd"
+  },
+  "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier/units/batch-fdc684b9314fa830.jsonl": {
+    "bytes": 649526,
+    "sha256": "182d4a97734356ddb2ef29cb1e9a299f14a029f6544966d4756beae3aebb995b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/EXTENSION_FREEZE.json": {
+    "bytes": 1074,
+    "sha256": "6f6fb21dbea890e96f305d422b25f7a482bee5a77ca8bc1bc4b59b62f7a34407"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/OBSERVABILITY_INTERFACE.json": {
+    "bytes": 24825,
+    "sha256": "1b775eee2f0477d46a7d4d4dc179eb2c51b58c4bac651f7bc8f1023609ee123e"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_calibration/thresholds.json": {
+    "bytes": 6886,
+    "sha256": "29f9717e8cfbb80b69956f7f8712f2569b51b9dc16bf6869cac7557e5ce94397"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/.launch.lock": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/manifest-2026-11-07T180125855961+0000.json": {
+    "bytes": 14545,
+    "sha256": "01ca5e77207f62579e0d8fa2eed75b074c363f7b0f8f67bfd7fe98462ebe6304"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/settings.json": {
+    "bytes": 3698,
+    "sha256": "b791b63cdf4f26f220167ee6846f33d4f3174c55744a570ae95fabb0cc9247a0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-027f233ad29fd2b5.done": {
+    "bytes": 2024,
+    "sha256": "fbbebfd34cfe2cffdc1151f7249372329c188be3361370d6a7487cf34fecf29d"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-027f233ad29fd2b5.jsonl": {
+    "bytes": 253469,
+    "sha256": "3a5d811495de048688ebc4eaef9ec73f6aae201d8c772a9b5433d65ce89ad8e3"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-06a014b3631a9193.done": {
+    "bytes": 3128,
+    "sha256": "7cb142a3a73ad45948025cea4a6c3f5ed8b09db117745584df5a99dca825c0a0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-06a014b3631a9193.jsonl": {
+    "bytes": 266372,
+    "sha256": "12c704f7409d7610b4093a1c688a4bdfacb9a0d1158bc5b345009b13e4fd0197"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-06fcf6d4064d36b4.done": {
+    "bytes": 5632,
+    "sha256": "f69be93744c044e95c0de237d734b358a89a8e890ad44781f6346407bed43e5c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-06fcf6d4064d36b4.jsonl": {
+    "bytes": 630102,
+    "sha256": "1c06193d07ae70c7125915e85a9aafa9145be257b0b354772aeca0756bf2844f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-070b830dd007d31f.done": {
+    "bytes": 528,
+    "sha256": "12a426ff09478b59cee02e505de90394f7a246639acc8f0add04b891ff9fdbc8"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-070b830dd007d31f.jsonl": {
+    "bytes": 73924,
+    "sha256": "c64bb93fb36b1c9e41f1f68c3d32b3f0195e8532268b356ddddad4655def7ad5"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-08508b30bcb2fe0b.done": {
+    "bytes": 2288,
+    "sha256": "bf3c0d261f92366e354704ddb6ecb56e3921211d9999439985a23937ddbff7c5"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-08508b30bcb2fe0b.jsonl": {
+    "bytes": 237532,
+    "sha256": "46bd965705602ea999cb00ff783ed4217773fd3b580a5f37a1d6bbd88c00185e"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-09721f3ff6ef989c.done": {
+    "bytes": 2300,
+    "sha256": "f7c7a1c50d3aef9e713ff1e33bfc44f53f8f113f3cadc8905ba1748cd4166b44"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-09721f3ff6ef989c.jsonl": {
+    "bytes": 266558,
+    "sha256": "a40ba16ec2a3c4131e22bd6eef41df447bfde72b925ec8982c59206e7e7db51f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-0a5139a5f906ee14.done": {
+    "bytes": 5632,
+    "sha256": "2b792a6888e0470f60d70d5ef09f69bfd198ee33fff9d5cf0b9fca38f77c04c0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-0a5139a5f906ee14.jsonl": {
+    "bytes": 582878,
+    "sha256": "ede126e1d45be6a181bf3bd73d98d53491acea822e4a14b0d2fe9859ef4fd66f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-105e50ce8c2c4298.done": {
+    "bytes": 6400,
+    "sha256": "931e5ca13a892edf93004cb0d1457904843c645e65d1db22aeef9d3fe07ac5c7"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-105e50ce8c2c4298.jsonl": {
+    "bytes": 661716,
+    "sha256": "c152233866058818a09061949619efaa8e3f0e87bbf68b98a18f947376d42753"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-11da143a9fe75c2e.done": {
+    "bytes": 2024,
+    "sha256": "169f78e42b9ef9c51307e638141213cb613633ca718f16a2f870315efcce8caa"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-11da143a9fe75c2e.jsonl": {
+    "bytes": 255240,
+    "sha256": "f791beebe28386cdb9d0d286219ea3e2b170269d268bb7bc48321b0cc59c7920"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-11dcaf259ec6757b.done": {
+    "bytes": 5104,
+    "sha256": "71ffd5a0806975c9a9b2354dbbffed2202443e86b024e62241e9f92f5a83dc2c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-11dcaf259ec6757b.jsonl": {
+    "bytes": 631810,
+    "sha256": "7d4387c98fbbef8137477c12d7bcc18b450f90c16e4e3ed31687ce3bdc30ab9d"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-131f259d6dded3a7.done": {
+    "bytes": 528,
+    "sha256": "4a7bdcd4eac2c4efae0565ad8b5724ad04ed8fe8671b627cd06d2ccd96ce2134"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-131f259d6dded3a7.jsonl": {
+    "bytes": 74792,
+    "sha256": "13850d6b21aae093f7f3826953fcf642218f4b286330669d57a2ae00b753b030"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1992ab9dc08bc90a.done": {
+    "bytes": 2024,
+    "sha256": "c503a8bc4374a53fc127d95b9ad046a769fe70840e2c94495cd5be7dbd605688"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1992ab9dc08bc90a.jsonl": {
+    "bytes": 263825,
+    "sha256": "ed2ad3dc61dacccc8ab5efcdf9c59b41d727a559151d7f4737ecb76aad2bf4d0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1ad399b16f463b6a.done": {
+    "bytes": 408,
+    "sha256": "3c48d4e5248ec38ee16ea024594f5f71c123cc3f38fdb8b9b83c0c84d6de0673"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1ad399b16f463b6a.jsonl": {
+    "bytes": 36698,
+    "sha256": "5d34d56c3e8ffaa99e5815348563cf803e32514daf3731e11aa27993f2110590"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1b59748369822cef.done": {
+    "bytes": 408,
+    "sha256": "ab7302d16a8c9c53afa5b341b5469ce3cd8ffb7fc05f659494131f768076f7b7"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1b59748369822cef.jsonl": {
+    "bytes": 36926,
+    "sha256": "461ed1578f23d6c4ee97d7b16608fe13ed7117960ae991d457f72dbbeeaae03f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1b6a843a77011c55.done": {
+    "bytes": 5632,
+    "sha256": "c4d46b7255cb260611a956ea1bbcbceda11d30d0aaf667286892171e54db7e14"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1b6a843a77011c55.jsonl": {
+    "bytes": 607989,
+    "sha256": "fd58aa788c510277ecda79c7177d6a0f66bfebabffb9dfda0b9cd56992677724"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1cf823182f5a3b39.done": {
+    "bytes": 5104,
+    "sha256": "4bc2477c92fba140a789405a93ad92921429fe47f121ab86411fccc1c0763fe1"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-1cf823182f5a3b39.jsonl": {
+    "bytes": 679406,
+    "sha256": "a5c73c8f1f596e17f2b717df7d10aac272cfef01591dbb8340aa55ad66800ca7"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-28dbb1151d81d14f.done": {
+    "bytes": 5104,
+    "sha256": "718016f081bc5b146a2a24cef254a00e9a9aad4a6cfce0ae07c45e8377855260"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-28dbb1151d81d14f.jsonl": {
+    "bytes": 632826,
+    "sha256": "7abc23b9ecfb309079614bac157c5719219b24c1aebb9bf01d267a96a82355a8"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2a27749e9b0dd9af.done": {
+    "bytes": 8704,
+    "sha256": "3d7065646fb745ff037a153375cdb57591a3a23c4300ef90b8b3b80834fb205a"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2a27749e9b0dd9af.jsonl": {
+    "bytes": 634614,
+    "sha256": "22052495f35c055d29ed0ac2b61dc4d1448d230a7e24dfddd2b38e4f512b7843"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2cb5dc1908e433b6.done": {
+    "bytes": 5104,
+    "sha256": "ccc4022d46e991d4e7347941e29dfaa349c2b1274c51a964e2d0d67850962f1a"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2cb5dc1908e433b6.jsonl": {
+    "bytes": 616220,
+    "sha256": "243d889a1711ef444f549d13cfd14ccb4736aaf43d1f08e487a5a0059a6d3729"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2d4a5e9695a11d1b.done": {
+    "bytes": 6400,
+    "sha256": "615a36b7edd6bea84f8ef8ab67200f2a2679c7ebfe265a2d8029573ef6cf28bf"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2d4a5e9695a11d1b.jsonl": {
+    "bytes": 633616,
+    "sha256": "fe22f4d431259b8f68f7a69dfa0a29eaa5ab2a6925a24150ebc45eea2cf16780"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2fe2eae29b190618.done": {
+    "bytes": 264,
+    "sha256": "de6459fd77b85bc7f5a26640079bf9e66f6860cd5143eaf5be4131b20c6e04bc"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-2fe2eae29b190618.jsonl": {
+    "bytes": 35954,
+    "sha256": "9ea279df137595d271e2768654e5bbba034eb4505e44cf6ba18c59d77c26efe4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-307e4746ecc64213.done": {
+    "bytes": 300,
+    "sha256": "b1ea46a33b36721c7a09f47b4fa9b68cc820bac2b491aba039a9cd320b225970"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-307e4746ecc64213.jsonl": {
+    "bytes": 38670,
+    "sha256": "ab7a5d240153f31a45be3022b25e8ae9de9ee8f41b7066dca7fc8e3b28f25f32"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-30cbfd0987fae4b6.done": {
+    "bytes": 2288,
+    "sha256": "fcd1f5fff7361a1ad7138b744b57eb59494d40e35f6c851a1d51d4c708e1dd89"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-30cbfd0987fae4b6.jsonl": {
+    "bytes": 236314,
+    "sha256": "7961b0e2f23e26ec7642e72c3bfdb9222e7c8e1b353befb00f0f30e9f5970dce"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-32f9eb5fff37caff.done": {
+    "bytes": 2024,
+    "sha256": "3619e532130840202b776f5654fedb635e5a9fc1ffa1b630a3e4cd1d6b9a3364"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-32f9eb5fff37caff.jsonl": {
+    "bytes": 238644,
+    "sha256": "420df4853399a477d75ee3811917fee888c501eb5ecfd4beb40e593f6e935a1f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-33b16d2cb6930788.done": {
+    "bytes": 3536,
+    "sha256": "4780b358f15af3d0b776a28598fc938ee4fe3cc3904f90ca0cf7d083255d9535"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-33b16d2cb6930788.jsonl": {
+    "bytes": 238642,
+    "sha256": "768c89c607823743af16114df0e2f8f674e4537a5fe079ba5b2404798ac2f3b4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3861ed9d965afcc9.done": {
+    "bytes": 2600,
+    "sha256": "b855c0f4bef41b665d2414f9a1f1b88804422960de3790a08815fe4b771b71ed"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3861ed9d965afcc9.jsonl": {
+    "bytes": 238057,
+    "sha256": "d27f1ecc16ea2e8311ee778c3f0471aa5c4484f608663691f4aab88d5c2ee27c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3a874f18b3dfc17b.done": {
+    "bytes": 600,
+    "sha256": "e619f8478421f8926dde4ab0df84bf51c2ec4edd9d04ad6f98f6f540bf9450d4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3a874f18b3dfc17b.jsonl": {
+    "bytes": 73685,
+    "sha256": "8d3eaee745d41488bed0bb8c7cb237d48631a61aa438eea0385e0a2de3ee3a9a"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3c8ec159c334955b.done": {
+    "bytes": 5800,
+    "sha256": "b777e4134a5896c656f98863abebb2d7f563f9f53382c27167905c63a0a82b7c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3c8ec159c334955b.jsonl": {
+    "bytes": 625552,
+    "sha256": "71221750b598127ca9bcc5d26d6f46d94182f1bc19834997ec4082dd80581196"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3ee489e809ba095e.done": {
+    "bytes": 2300,
+    "sha256": "5e70246f7a95e49af5a9236433352abd30ca0932d2f5f1db0be26cc3c994f3ab"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-3ee489e809ba095e.jsonl": {
+    "bytes": 271745,
+    "sha256": "1e594656feb66e29cd0266bbc789a988787308e0d78a44a058bcaa2e5531b1d6"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-430fe747c84b8b25.done": {
+    "bytes": 2288,
+    "sha256": "3c5bd322d5e6fb5ea33c34b037c55f4259eb6500aa1be562d1eb34f6a6d4b1b4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-430fe747c84b8b25.jsonl": {
+    "bytes": 245781,
+    "sha256": "80a265742025df7075054f67f42dd8c9cd37f154d26416fb8efceec3126d52c9"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-44e4e472f30e0301.done": {
+    "bytes": 7888,
+    "sha256": "8b66d74888304207c41dc23612b8ffbf214b5458d08c933c34b69b74e55ec4b2"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-44e4e472f30e0301.jsonl": {
+    "bytes": 665470,
+    "sha256": "6420d47520823b6a1aed40ccf7f6d39238c09e806f35356cf974468f60d94eab"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-4a4ea290af4049b2.done": {
+    "bytes": 5800,
+    "sha256": "7069be35e3cf7bc37ed3134e75c3938e4d5a5193497f50ce8b228da69c471588"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-4a4ea290af4049b2.jsonl": {
+    "bytes": 624904,
+    "sha256": "3ae67aaf0a9ce64fe761453e4edb5ad6febd0ee7558bc01d42fbc51ce522aa45"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-4cb2e4a5d1bb25bb.done": {
+    "bytes": 2288,
+    "sha256": "5d361cb2f90e546b6c276ea7b80cbc4852f86f8d0bc54ada7fa3f4a7cf06cc7f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-4cb2e4a5d1bb25bb.jsonl": {
+    "bytes": 250734,
+    "sha256": "0c3dfeebf6d0c44062f9a0674a1cdf66cbe701c9ce362328a6fde10b19dbadfa"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-4d30b9ea9a883de8.done": {
+    "bytes": 528,
+    "sha256": "6f1b3bb31b9c59d0013f95235cbbfebf00dab4db9cc54fea7e5fb635f1326dca"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-4d30b9ea9a883de8.jsonl": {
+    "bytes": 71200,
+    "sha256": "6eda3f9b38cfbfcb3755243b8d7adb773f7d40495bdc56bfedd97051310555d8"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-533dc926f4c35204.done": {
+    "bytes": 3128,
+    "sha256": "8523b2cb0879dc671aeea0a6065039be58af233b09c04962b899660b18a807f8"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-533dc926f4c35204.jsonl": {
+    "bytes": 247168,
+    "sha256": "b11726476fd18e422848cf6d18dcf64bed035e3d22c4442b9621f017b76214d0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5494cb1359ae2ac0.done": {
+    "bytes": 528,
+    "sha256": "d3d81d6fa1e7c47a3fd3b028bec5bffd822dead80e6f616aa570b977c3597f65"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5494cb1359ae2ac0.jsonl": {
+    "bytes": 71896,
+    "sha256": "e19b710a16ac0f87ca6463468118f501bbe3101734a5bb5d9c8b8d185ce8a0d2"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-55b6eb108f2c4d3b.done": {
+    "bytes": 264,
+    "sha256": "39c37f39affda0a5a67a6b4b17de2db6c4a54ad4a5345e3995e10b3bd5f14773"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-55b6eb108f2c4d3b.jsonl": {
+    "bytes": 37815,
+    "sha256": "3f0fd456c895a4556524601724dd5437ab6e1defc4d5fd53d5770ce39740a2c0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5875dfc7a630b80f.done": {
+    "bytes": 3536,
+    "sha256": "4ff4a507ba15fc96cba92d92399fb43500a6e70d554cc423cef2a7179d582e86"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5875dfc7a630b80f.jsonl": {
+    "bytes": 255526,
+    "sha256": "2c1f52257405f041a34df83e4d4db859ece98775cbb932b3ea568f1a2f543101"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5b3b9536de4a00e2.done": {
+    "bytes": 2024,
+    "sha256": "efb4c42731f66f91f1d176b4ad1ebd68c998b7d48e49517891e65741e7e2ecb2"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5b3b9536de4a00e2.jsonl": {
+    "bytes": 259908,
+    "sha256": "63d37331d092bc24b4e8836915a0b5dfba57f271238120b821b4b40e9329aee4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5fa254f804be5f1f.done": {
+    "bytes": 300,
+    "sha256": "a55d05d99cd64746bd2459d72be3cebb300cba0799c66ef9eb3367656651aa23"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-5fa254f804be5f1f.jsonl": {
+    "bytes": 39340,
+    "sha256": "1c8eed95695fc53ad9f91c4b220cf58cfe817fdff6a1330eed4ef39837223331"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-60eab8619cfa9c58.done": {
+    "bytes": 264,
+    "sha256": "daf89f583dbf9c9f99327d9ea1b077fcade1022cfe6cb94fccc5cddf47d9630e"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-60eab8619cfa9c58.jsonl": {
+    "bytes": 37214,
+    "sha256": "6e2b25fe42c784df59edd49254e33403d09b6b6ecdcf02ee198210e446fe00e0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-61d8dbc0d797b8c5.done": {
+    "bytes": 2024,
+    "sha256": "ef718eb06e9abb469c8fbbd00017804c7b93f119292ba50cd02098b8a1c82634"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-61d8dbc0d797b8c5.jsonl": {
+    "bytes": 272124,
+    "sha256": "832fd6017876609b10e6cbd6a95e99ef3f7b81b29ad9b8f4731df086713547ae"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-62aba6aa94018e9a.done": {
+    "bytes": 3128,
+    "sha256": "b47d6a3a9cad243dd1eb3368f68306dc634d5e9c3b32904583430fb80e97df6d"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-62aba6aa94018e9a.jsonl": {
+    "bytes": 246696,
+    "sha256": "164bf4517915f235c48b2e72ee36104c40662a3c5c3d1fefb5d0e1ff922e84db"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-64e6a466b53b152c.done": {
+    "bytes": 528,
+    "sha256": "0e9d27d5d460bbd859f387b39ef8d7e888c42d7ae6663b4503ec1b3b880af56b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-64e6a466b53b152c.jsonl": {
+    "bytes": 72571,
+    "sha256": "d76321203cceb56e6c648e811d003ec9d6edb7647341ef3608aebcbb56fc07c8"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-67bab11635b12b22.done": {
+    "bytes": 300,
+    "sha256": "921aa5568675b449736b13e3e103445c3fbb9cf7030c4fa76b27805a6b93455f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-67bab11635b12b22.jsonl": {
+    "bytes": 37236,
+    "sha256": "b455d79939e0887bf78c815fb7de0061439cbcc2c6e56c1d807a69cde1fbf87a"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6a637b635ae4f7bc.done": {
+    "bytes": 2300,
+    "sha256": "d0f46a9171f3be421f96a9348461f1f7e2ad4db8d6470571aadd977d3566903b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6a637b635ae4f7bc.jsonl": {
+    "bytes": 248835,
+    "sha256": "a8062ff8c09608b86740bb4f2921bfed06ca20917cf4d3b57325c666de016fef"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6ace8e7aa1c79e04.done": {
+    "bytes": 528,
+    "sha256": "4a88578eded585e6a3e9779861a315f8297690b5cc0f25e84a1ef1bb22227208"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6ace8e7aa1c79e04.jsonl": {
+    "bytes": 74032,
+    "sha256": "96af13be647bf3d8c3b9dd7feab90639d18563f7448cbb9342340c91c4b27719"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6c0ec556fd56da62.done": {
+    "bytes": 5104,
+    "sha256": "f86015b1b4b02496b9e4ea81d05786b759594a890f1024dfffd0f381a11dff0f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6c0ec556fd56da62.jsonl": {
+    "bytes": 637041,
+    "sha256": "adb576cd7561f34aac4fbda317f223ea325987ed738b57dd3d7c3b52fb6023ae"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6d0be010ef100187.done": {
+    "bytes": 2288,
+    "sha256": "b96f20cd5d8eef5deb5d683c6cac099b18031dfd7bb6fc595f5e270a7a721de5"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-6d0be010ef100187.jsonl": {
+    "bytes": 254503,
+    "sha256": "ca7b1daab1fb512b02f38c9a2f30ee77879873f6cbffe1b7977ff627541302c1"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7480a41f95ed50b9.done": {
+    "bytes": 5104,
+    "sha256": "102765599e70429d26ca5babfbbb80358f78088de266e5591b933bb7785816ea"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7480a41f95ed50b9.jsonl": {
+    "bytes": 679637,
+    "sha256": "42b419e69d2e3d97dc0dabbf409fd790920274c2b383822126c78f61fa420b7d"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7578990e1a111194.done": {
+    "bytes": 264,
+    "sha256": "de2228e34208a9eab3279e9ae1e28bf8a8c0ae6e6d762c3c61f79e40591b1436"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7578990e1a111194.jsonl": {
+    "bytes": 38886,
+    "sha256": "2ab1298299ff53c0ea88c161fcc46711e3fabc920aa17894f3adb2e7b6d892f0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7597d4e969597e01.done": {
+    "bytes": 5104,
+    "sha256": "91369753b625e5a8ea070d8d7b10f6b4622efc8618fc857a8c144d4daede1093"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7597d4e969597e01.jsonl": {
+    "bytes": 660310,
+    "sha256": "32acb0e9593d88410ec5b000da95574cb490275f5b5429408d3a6bc61d1aa710"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-77e0a0d9f0875d0f.done": {
+    "bytes": 300,
+    "sha256": "332b720f411faa83a2e7b2f3fce133e0552c10a8fc086187348afbb22e66f2c0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-77e0a0d9f0875d0f.jsonl": {
+    "bytes": 36981,
+    "sha256": "747d1b5d79f84d0fb1956eb4dde03fad9ca402c943afffffd870c4c697d12d9f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-797804287e562737.done": {
+    "bytes": 8704,
+    "sha256": "e3695ea281453edb0fa1be51b29fd7e85314e220b5c82911e1665a6cc6612b35"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-797804287e562737.jsonl": {
+    "bytes": 591538,
+    "sha256": "1f8d0f96f7cace06737896fe63f99fe8784171a38f7f0b01e65e150bcd55f5a9"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7bfab55f6b4038d6.done": {
+    "bytes": 3536,
+    "sha256": "cfc5c1ab7b273544c1742159fb25db118e583b760a778247d5cb9498c0d57b2d"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7bfab55f6b4038d6.jsonl": {
+    "bytes": 257538,
+    "sha256": "fa35f4cdda0382ada9d9e466a67ccfebbc7f29872b661dc1f6a26815d1a69f22"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7f0f250c1f83238d.done": {
+    "bytes": 5104,
+    "sha256": "e4236dd5ff9d676bbb91e0f397435786b0c65d40858af45315a248a3d16ed3e7"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-7f0f250c1f83238d.jsonl": {
+    "bytes": 599394,
+    "sha256": "c912023219ea2823ef081da019e3ae4ab0e5592543a14fc7fb1b85a3bd2f6ba5"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-837ba677b9efb7a8.done": {
+    "bytes": 5104,
+    "sha256": "46714cf99a139685b9343a84f4bb2615c97f4039e9b7e5b38ff9ad50f414ad57"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-837ba677b9efb7a8.jsonl": {
+    "bytes": 651810,
+    "sha256": "947f07d0d5bfba2f56ab737bbb977dee9c16d4115add1abd4aa231baee344d4b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-85b11bb9cf887195.done": {
+    "bytes": 5632,
+    "sha256": "7c847b979a791014388f03c7c81c7428f3cfcbd364891e0ef0b918b665a293ee"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-85b11bb9cf887195.jsonl": {
+    "bytes": 618462,
+    "sha256": "83deaed62010b84f0fbb822e2b4e9ab26f80a71e6cb0f5c229efa82d32c6b884"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8a691b187d3c380e.done": {
+    "bytes": 5800,
+    "sha256": "d9aebb2ce68437fd165e35eac80117d3f2757092a848786e4e01f3a175897595"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8a691b187d3c380e.jsonl": {
+    "bytes": 680818,
+    "sha256": "388f594125ebf19ce379da39eb59d82b26deba0d98e1ef935f9bf183721c6801"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8d0a952688006211.done": {
+    "bytes": 5632,
+    "sha256": "ea459d371c9bfd3f53d3396c5a775c8aa03997f80fb4cb9c25b25c83b7387c96"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8d0a952688006211.jsonl": {
+    "bytes": 571106,
+    "sha256": "fff1b177bf801b5bf8563155a24350963e412bc6489aa04aabc78a12e67522b9"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8dd22fd3ca97696b.done": {
+    "bytes": 5800,
+    "sha256": "b0160a5cd808e1312c6ca97953810c8264b4a8a30a6421c7aa4d7fee2c2a4a88"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8dd22fd3ca97696b.jsonl": {
+    "bytes": 660426,
+    "sha256": "53c7da6ba8ce129e73e55f526bbe4410693bf0d582d06bbd652d5657858e5a50"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8dff3891116b68ac.done": {
+    "bytes": 2024,
+    "sha256": "3aa8e776cc0b80e178f97062e5586fe41d41d83ec4269d9475c4bfaa857f5d6a"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8dff3891116b68ac.jsonl": {
+    "bytes": 245140,
+    "sha256": "23c96c943caf21057054fd93d4baf6088add7f4567488fc1e8cb8b21f0bf0a58"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8f4685135bb682c5.done": {
+    "bytes": 2288,
+    "sha256": "80b66b9c4a829121bcc26efd70315d784103a58cc01aeef2fda50681db9d8787"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-8f4685135bb682c5.jsonl": {
+    "bytes": 263525,
+    "sha256": "2d8307658108bde0fefbab67fe3da1dbfad0b23ad0fff498ecc8eaad4745f89e"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-905c0aa1cca1d4da.done": {
+    "bytes": 2024,
+    "sha256": "7a5f613fbafb6c0e768d2d3cfe2f23d0f0b5e6229e831adf34a5dc7887bcf3ab"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-905c0aa1cca1d4da.jsonl": {
+    "bytes": 252656,
+    "sha256": "7c6c78c67d3f9b97ba65643c1390e101bb1d3004247bd76ac42fe7ff33a5f4a4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-92cd6b154612285f.done": {
+    "bytes": 528,
+    "sha256": "f80612321eff0d21c942b61d0f0a648d5ec508e68117e0a4cf45ab2b4d810609"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-92cd6b154612285f.jsonl": {
+    "bytes": 76605,
+    "sha256": "3e9f93551dff5cb871c2c7257cd4b587d2e02c3ed0de1def8eb0d3741aff51b0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9367a8432f430297.done": {
+    "bytes": 8704,
+    "sha256": "08c626478259adfffb1f949266fe359f20a55520595472a322f5a62c57526709"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9367a8432f430297.jsonl": {
+    "bytes": 634226,
+    "sha256": "d726c592492ea584aeb48a9d75cfbf76bdd0b86255774fd178b8edd7dc2070c6"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9482ce4fb5b6a2e9.done": {
+    "bytes": 5632,
+    "sha256": "af5a9f4cc138faf8cb03213a5dafa49523803fb553ad309b5aa5ae3145314cd3"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9482ce4fb5b6a2e9.jsonl": {
+    "bytes": 624454,
+    "sha256": "9fe3fccc43d0db1ce8d43b7ba769634ae90ca09053a05fce44312fcc0a750b67"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-96a485c5a738ab03.done": {
+    "bytes": 2288,
+    "sha256": "e716fce72c441b90455b481d2de06f9963795ec8827ac4b849532ff7586b48d4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-96a485c5a738ab03.jsonl": {
+    "bytes": 231370,
+    "sha256": "8c0ece22485d95f0f9d3e59689c96bd1e4e9296a0e7f53f537b90a629ac8f60d"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-980c0f3f773410bf.done": {
+    "bytes": 264,
+    "sha256": "695cd5ddee189e4a010788220f612a6874945ecf285cc8df9e1ccc4ba721a563"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-980c0f3f773410bf.jsonl": {
+    "bytes": 36552,
+    "sha256": "4894b2451f2c25bf828c97b989a30ad11b812cb2faf46dcab202ecdb588f0a73"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-990ce33d0d30175d.done": {
+    "bytes": 5632,
+    "sha256": "b95e80a2a06b047b47f6459b4cef926b20df33da93f263fbe778f2330a0afa3a"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-990ce33d0d30175d.jsonl": {
+    "bytes": 650712,
+    "sha256": "c965ef46d768cf1285afc595917e6463de0c53efca77971b40cc5f12c0aa4962"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-994e747df1df26bd.done": {
+    "bytes": 2600,
+    "sha256": "b943f59b8cabaa4116c9ad87a5e41332752621ffbeea66c147798a97220c7159"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-994e747df1df26bd.jsonl": {
+    "bytes": 268535,
+    "sha256": "0533d39ad2f96ec0b0c53580044f2a948099826212833d4cc0312b93ddaae215"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9bf84b62244c4343.done": {
+    "bytes": 600,
+    "sha256": "c2ca36f7c06f3b617e54231e78e8272943620a73d2d9b8980e380c7e7fcd2cbc"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9bf84b62244c4343.jsonl": {
+    "bytes": 79665,
+    "sha256": "654c53c0971cc1e3c57b7bd4a07a825a69e7553b4d6265890925104871a0fa6b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9c3c503e05f62fc6.done": {
+    "bytes": 264,
+    "sha256": "4f8bd2d70deb0503a40bce96155d415d793a1125040358da8171465101f54aa8"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9c3c503e05f62fc6.jsonl": {
+    "bytes": 37370,
+    "sha256": "802f709a6a700ccdb78133782469a59fb78979dea19fd7f2b059db7f0157fa91"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9e3666fd472b0eb1.done": {
+    "bytes": 5104,
+    "sha256": "7422bb0be048b00ad79b4418b465226f4ee7b1614601d2bd17ed17ab25bdefe4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9e3666fd472b0eb1.jsonl": {
+    "bytes": 612482,
+    "sha256": "cd9ea97585353e4d070575bc882dff2e8f025a451b5869f32507ff188586dbe3"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9f4a312d822c19b0.done": {
+    "bytes": 7888,
+    "sha256": "b33f6fa821b0a3e28fe80f24635d99ee428b8d3b3aa87e3e8a9403e855a05913"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-9f4a312d822c19b0.jsonl": {
+    "bytes": 659250,
+    "sha256": "4a7fdb4977e01bb6c8957185c2a148530a705991d37a54b46a090a7c7b1cc707"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-a41d8fc35d48564b.done": {
+    "bytes": 5632,
+    "sha256": "ce422764d9c816873ebeb5adb3f991a6cacd8c8e6ccf1294a1e30df498a63f0b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-a41d8fc35d48564b.jsonl": {
+    "bytes": 587564,
+    "sha256": "76b55442ca3c05d324ceb23fe75bbd4ba29ec538b8a4cfd1232308d4018b79b4"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-a7beaf6291fedae2.done": {
+    "bytes": 7888,
+    "sha256": "ef36c3df02050f5fd17bc9ac3b54cf68ca1b38c71679ccba2d122d07215bf090"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-a7beaf6291fedae2.jsonl": {
+    "bytes": 616802,
+    "sha256": "db1976a2137d51597babc5ca3ffb060aec689746f981573210379bc750bbc027"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-a98b052d79fe53ca.done": {
+    "bytes": 8704,
+    "sha256": "42438776fd67b7643a952aa114f206a966574c7c7115cbbfc6d2659b66da1c03"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-a98b052d79fe53ca.jsonl": {
+    "bytes": 588854,
+    "sha256": "89c72fa7a95bb1862c389dd2b9149644f4dcd5ac3d29c3e80aace95090a077bc"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ace3cd34d66ca821.done": {
+    "bytes": 3536,
+    "sha256": "2ff808ab4df1d0e782d634fa668346298ad13d4695b87ad62abbba3398f63a22"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ace3cd34d66ca821.jsonl": {
+    "bytes": 239378,
+    "sha256": "6d9a247d50a60ecabacb2e9a67eb39a51e12b488735c5d2c8d252c3e5ce30292"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ad4d70584cfad4a1.done": {
+    "bytes": 408,
+    "sha256": "a79280350debcd5421c296f6d5f90aaa831373a22534ca9bf0fa77461b3e2775"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ad4d70584cfad4a1.jsonl": {
+    "bytes": 39722,
+    "sha256": "8314b50f4ce47dd5d1428857967339afb7c854842312055334b0bd0f788e6612"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-aeac967eb7ebd13c.done": {
+    "bytes": 2288,
+    "sha256": "1d89164a9bdc3dd270d95833930c2b32d16fb04d2dd5b53fb4d46c6fac08d4e0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-aeac967eb7ebd13c.jsonl": {
+    "bytes": 262661,
+    "sha256": "cf5a1ae72efcb11bf2f9fa65e64f9a429924fcb3d4f86480055a12935d8d3381"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-b3c663590fef9b12.done": {
+    "bytes": 5632,
+    "sha256": "16badc0030aa8dbf0f99449a8859c12c062205d792b05bec21d45a03e9f86e78"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-b3c663590fef9b12.jsonl": {
+    "bytes": 601918,
+    "sha256": "91dea98638f4779ed8fe680975ec7442a00de7b31386abf8630d9b6b70a78b3b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-b4b1a7a53b17072a.done": {
+    "bytes": 600,
+    "sha256": "003c69bfe9b717440857367df5b4178fb194ee2017989533c597aec440c4a1fb"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-b4b1a7a53b17072a.jsonl": {
+    "bytes": 80591,
+    "sha256": "2122cfb32382d702fdc63316c39ced58566b4105b9296e5161b360c54b81fd45"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-b8ac48e38e497062.done": {
+    "bytes": 2600,
+    "sha256": "f9e8bb35034602998b0b75d21d3547d60ae0b1dc300116ecf0158e8e259745c1"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-b8ac48e38e497062.jsonl": {
+    "bytes": 240710,
+    "sha256": "b337da9c9afb551b1b0516c6759b1ed7593bbb04f2ac3e8a629b75352e39f9df"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-bee899b33f3dd8a0.done": {
+    "bytes": 3128,
+    "sha256": "c0cdcad697b3a1e6c296dc1ae46f2a23318954a41e18ed09cef37c3262a5ed90"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-bee899b33f3dd8a0.jsonl": {
+    "bytes": 264588,
+    "sha256": "7695abcb77f22a762c41d4ba1ba22bcda5b71f676cdefea625d030d64accbd19"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c3d5a000ae4c517d.done": {
+    "bytes": 2288,
+    "sha256": "3a663c2fe8d3a0d9962d192d8528ee85cbda1ab5487ed761e6f1d16650a3c5ea"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c3d5a000ae4c517d.jsonl": {
+    "bytes": 243806,
+    "sha256": "48def1da7b315b5737a1031c09f2e0ff505be8ee8cec4bf210b1c0ffd3dec422"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c464803bbb3c2109.done": {
+    "bytes": 600,
+    "sha256": "c5e7427e93301992aa9e23da4ab93d342ac74340ad2fe51d674fc0ec57d2db36"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c464803bbb3c2109.jsonl": {
+    "bytes": 73441,
+    "sha256": "6a678905074190e0b84dfee4bee7d42ca89afbb1c3b5e82df783d4cac256e617"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c46cfc261bf9aefb.done": {
+    "bytes": 2024,
+    "sha256": "1fef46a8900362276d54f6343554480ec4efd9337f550eb35669db2df46757e5"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c46cfc261bf9aefb.jsonl": {
+    "bytes": 244947,
+    "sha256": "aeeb369f82f6055bea42b57161acb84596f7047c5ced91b5d56a4b2e98d89556"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c9785ace544140cf.done": {
+    "bytes": 2288,
+    "sha256": "855b0400b526fd5002547cd7fa7d31e5027946870cb7754e3e94baab2fc72f00"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-c9785ace544140cf.jsonl": {
+    "bytes": 251438,
+    "sha256": "0dade12e1faa0d5f14aa99a0a8ec9fb1bdeff2e3b06793095d3c4df3fb4eed61"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-cf72ea0c1bed2d0d.done": {
+    "bytes": 7888,
+    "sha256": "cfdd4fa7004559c511f6c027ad95a0952969f7010d183cafe8e609900b0abf73"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-cf72ea0c1bed2d0d.jsonl": {
+    "bytes": 617142,
+    "sha256": "c21ba23a48067236c5b37a8217f57031169cebf2a883c2c76960fcb81981315c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d0a61fac003399bd.done": {
+    "bytes": 264,
+    "sha256": "ddd0264b3b9e5c4d2862b6e88fe1b378336b92edc214f3429be48f92c2d0b162"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d0a61fac003399bd.jsonl": {
+    "bytes": 37503,
+    "sha256": "aa7ea559c9860a8184cc363830660084a49128d6c438a9a7400d10a3849bde52"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d1c09162a53cf833.done": {
+    "bytes": 528,
+    "sha256": "865db0a1ffd32e212f527a6e47b126d35da8cd348f73368b3daa4eb7b8f98595"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d1c09162a53cf833.jsonl": {
+    "bytes": 78856,
+    "sha256": "ac2868208b7bf800ca4bd97fd1490fbe6de779b3b24b62d32d791cae2eb6cd4f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d1d35bd0b655cb10.done": {
+    "bytes": 816,
+    "sha256": "5b43fc7c6a2644a777667ab93568020e23353e8eefe1bf3b3f4b16d933910ddf"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d1d35bd0b655cb10.jsonl": {
+    "bytes": 77992,
+    "sha256": "b603b77cf0f0b2a7148a1ce47e4bd262464fe072b18d5c3376b294208b3834d0"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d617ed976c489622.done": {
+    "bytes": 816,
+    "sha256": "9ad39e00e5676b5a0285a5924e28bfd15bc20e56ae73446bfae54925dab8a227"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-d617ed976c489622.jsonl": {
+    "bytes": 75544,
+    "sha256": "300c44be9e06a62dfb023d87160d7bf1caeeb1b16d4aa979751b29f48ad92e25"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-da9c029084f70f7c.done": {
+    "bytes": 528,
+    "sha256": "f6e905443705b1f81677874415b54f4063c36d3af3f7c4bdebf51a92723928df"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-da9c029084f70f7c.jsonl": {
+    "bytes": 78718,
+    "sha256": "27678d8a31658123ace2a7807c633b303b7d10f744d36e5ac702c375928c886a"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-df4ce397a475d6b6.done": {
+    "bytes": 408,
+    "sha256": "68cf4f7d6c52965a4f6e0b5449a7dea3062ef9fd5f716eafe57cb4de414b202c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-df4ce397a475d6b6.jsonl": {
+    "bytes": 38822,
+    "sha256": "90650342c2f9045c66a193c5892bcab95a59510beb57b5b83498056cdfcbf3af"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e08148c2f8aa0ad3.done": {
+    "bytes": 2024,
+    "sha256": "1f4a77c115be6dc4d1f292feddfccd98341c0f791ded4a1ebd01790b1c423b40"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e08148c2f8aa0ad3.jsonl": {
+    "bytes": 271840,
+    "sha256": "d22e2f99c24260a2a535729bbac64ae40e76f1e53558f64a2bb589fb2614dd10"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e0c640089f6a9560.done": {
+    "bytes": 816,
+    "sha256": "d9e75d7fdace647b1c9254b0eafb5bd9a44e916380f1b67660e9214c24b85635"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e0c640089f6a9560.jsonl": {
+    "bytes": 72832,
+    "sha256": "9fc2322f3fe8b05973ea9bbfdf0c44662f20e110e11b2336d77265d1ae48f122"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e1ec37ca141b1c2d.done": {
+    "bytes": 6400,
+    "sha256": "49d28a317650272ed3f58a7deb466467b0aac73bf2a6d464bafbd2b121d4fb00"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e1ec37ca141b1c2d.jsonl": {
+    "bytes": 589335,
+    "sha256": "fc79729ebd24356bd1c19f0c1887c269fb512b12c2ca7e2a84a7aa5abbefa6ed"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e47fc615be6704f3.done": {
+    "bytes": 2300,
+    "sha256": "c76e12dda19af51caf1c4c7e27130ebe229644846fd1e99ee485d1854d140e87"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-e47fc615be6704f3.jsonl": {
+    "bytes": 248714,
+    "sha256": "3e88a2830048e992c3163a462e20ccbfa6de0025511d85027af3c19b034003fb"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ecadabbda097ff3e.done": {
+    "bytes": 2600,
+    "sha256": "eb2538441a48e6ecfdf42b343810e673de732f6192d314999ab55d6c871f1199"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ecadabbda097ff3e.jsonl": {
+    "bytes": 257046,
+    "sha256": "ead2725094e0cfbcdab993707c6faaede15aad77c1b8052233d181ff975b190d"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ee90cc47f1fbe7ff.done": {
+    "bytes": 264,
+    "sha256": "9c41137c2528a803b1ec9be3a05240ef64926e3736eec80501ab192e0909f496"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-ee90cc47f1fbe7ff.jsonl": {
+    "bytes": 38606,
+    "sha256": "84c51477821d55b3636f1656a090c0efb817705b51ff02d3324ac336f4869248"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-efd1ba2e39449e51.done": {
+    "bytes": 264,
+    "sha256": "f022d3e53bcd7660b97c7af3d8e5e27b57dd97fd1bdf5775fc8e1e054694b8d2"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-efd1ba2e39449e51.jsonl": {
+    "bytes": 39314,
+    "sha256": "ebeea8485267dccf2afa34607ff586c5d371bd91a8b38c427ef215fe60908e6f"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-efeed41027ffeb31.done": {
+    "bytes": 264,
+    "sha256": "81cfe31f6dadc5b6e416fb4d18b15a528fc4a612e7c04ce9c40f9a9b980d1702"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-efeed41027ffeb31.jsonl": {
+    "bytes": 36674,
+    "sha256": "7d3ec06d3502c362e22f958a97f9ae0fd9b96000380fa328d44168a2c81379ef"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fbec872c4561c053.done": {
+    "bytes": 6400,
+    "sha256": "dcc11508fce433046f100a0e71a2cc7bd644cf2be2b42ee4835874ec577ab39c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fbec872c4561c053.jsonl": {
+    "bytes": 596597,
+    "sha256": "24b1dd22e54148edc24e397e241e74a3cba7764fc7f95c80a36126e288a95e08"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fd66702d6b93315c.done": {
+    "bytes": 528,
+    "sha256": "93688105bc1e3b86b13efda7296efe780ee684a11c9586e50f93fcdbed88541c"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fd66702d6b93315c.jsonl": {
+    "bytes": 77584,
+    "sha256": "2cb41bff3167a1aa5f2c8b083fee07fbdaadb30b7c44e4d314fda991fc0cfc69"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fd801322497c3562.done": {
+    "bytes": 816,
+    "sha256": "de732d501b929e718b90626e3f589c03f8bf75577280db752e3df7442f428a7b"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fd801322497c3562.jsonl": {
+    "bytes": 72688,
+    "sha256": "ca4dcf202e7422f7e67fad0a41affc02159bc7aae3b2ad77ee5791c54b529bd2"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fdc684b9314fa830.done": {
+    "bytes": 5632,
+    "sha256": "ab1bcc30242c6ccf7cecff9cb031c488e4c2c71fa59252c8d4566fc32ea97dbd"
+  },
+  "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier/units/batch-fdc684b9314fa830.jsonl": {
+    "bytes": 648502,
+    "sha256": "fd1def59c0eee871f1639e785b875fab1dfbaf41286351ce4525e6371e0afe85"
+  },
+  "observability_extension/run_extension.py": {
+    "bytes": 8014,
+    "sha256": "35ccbde01214ccc0190b6b2ce2a26e4e560daa9c4c8b1904928fd427d271c924"
+  },
+  "observability_extension/test_extension.py": {
+    "bytes": 7590,
+    "sha256": "14bb2462aa36cdf4b2b57fb2f6c94b90754f7a3b2187799adc73c664ec2d72b8"
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "barabasi_albert": {
+    "bytes": 32328108,
+    "sha256": "dfd7554f018e18d917e908574eba59bbf52e72a4df44485f356a0c12054fda59",
+    "parts": [
+      {
+        "path": "primary/raw/bazt-headline-evaluation-barabasi_albert.zip.part00",
+        "bytes": 8388608,
+        "sha256": "a89982a4f3dd6a8d76daa10e4144fb0c4f15e32d9b985bc1453e14ddf8112509",
+        "git_blob_sha": "eafaa94acc41ab4c99d24c5bc5244f811d34ebeb"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-barabasi_albert.zip.part01",
+        "bytes": 8388608,
+        "sha256": "22997d62b6b02abb09e88cdaea228521a0adaa400177e627a03ed24754773ff5",
+        "git_blob_sha": "8e1c8cef86b0a251a0bc921cd5081ba9dbc9391a"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-barabasi_albert.zip.part02",
+        "bytes": 8388608,
+        "sha256": "d172a242451a808d501a676edc3f0970a20da98fcaade11a3bcbab470ca81f72",
+        "git_blob_sha": "ff5b4412ea0ade5c8a216364b0ef98ee2fdf10b2"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-barabasi_albert.zip.part03",
+        "bytes": 7162284,
+        "sha256": "e8158214dd8f70cecd3c231f3a191e620d871e482213333fc28032ad8faf5eb1",
+        "git_blob_sha": "d6a5a7deca7664e2dd00f58eb6038dc52209bf50"
+      }
+    ]
+  },
+  "chain": {
+    "bytes": 31364341,
+    "sha256": "4573777d6968b33cbc42a5e82cc00874698c17c3a31f9af035346ed69dacc1a6",
+    "parts": [
+      {
+        "path": "primary/raw/bazt-headline-evaluation-chain.zip.part00",
+        "bytes": 8388608,
+        "sha256": "7d452cfb924ce48bedfb56d33d1203e7563e54b9ce5918c8b53e3ef0e976494b",
+        "git_blob_sha": "f4e02493aff04c836ee023deba9454aaf2ef8df4"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-chain.zip.part01",
+        "bytes": 8388608,
+        "sha256": "14c6f664cb6c8c6fae979e13d24fc54fb60de0319249a94c1eb0dac316852966",
+        "git_blob_sha": "914f9009b430153753e01cefe5ff01b37d60f071"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-chain.zip.part02",
+        "bytes": 8388608,
+        "sha256": "1757e41c45a228254e1d44194a210736cd8351a9b8345f2975376f05c4518c61",
+        "git_blob_sha": "bcf63c125843a4a5f17fa9f9ddd1034de8dc6f2e"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-chain.zip.part03",
+        "bytes": 6198517,
+        "sha256": "ad1bc73c9f55fe8d9fc460675b154c96560c08180e49eff90e8448179d3f76a0",
+        "git_blob_sha": "9958a1cc2c3fc4ae520686fc855e7872822d2aa0"
+      }
+    ]
+  },
+  "small_world": {
+    "bytes": 32287732,
+    "sha256": "8c7ff654ed03d55eb9a6463059ed466514bd130a0196123cb96147fbfa560fd4",
+    "parts": [
+      {
+        "path": "primary/raw/bazt-headline-evaluation-small_world.zip.part00",
+        "bytes": 8388608,
+        "sha256": "78c0a3becd61e9e0ce8748fa20529357e3303a8e9a5f2d6e1c288ca0945b516b",
+        "git_blob_sha": "0d2af9a2fed19dfc9d770a61f9c21d46b5ebdb5c"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-small_world.zip.part01",
+        "bytes": 8388608,
+        "sha256": "7a36767aa3834f855e34fbfca1ea62a350a87cc3c38ff12a3e665fd528e776e1",
+        "git_blob_sha": "3cfcdefea68af4f6225732b2d55a448fe007a6e8"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-small_world.zip.part02",
+        "bytes": 8388608,
+        "sha256": "1cebff3973aac2c39c4cd2b8d6fb15108767cea523ade334381b851d1ee75f79",
+        "git_blob_sha": "49aaf46a4f49eed8f92753b4499f7d4bf096ddd9"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-small_world.zip.part03",
+        "bytes": 7121908,
+        "sha256": "e5fe621d42e2f2f4fd9106de6551f49968a6309c2ee7046f58b3c0bab763aaa7",
+        "git_blob_sha": "1a89846ae031ed0368babdae46287dd3c71c82ac"
+      }
+    ]
+  },
+  "star_hub": {
+    "bytes": 26778718,
+    "sha256": "2d7fdea4ffa713873785929a2c7e91dc3c244075e2e26d9b44c67e4b3f2db365",
+    "parts": [
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_hub.zip.part00",
+        "bytes": 8388608,
+        "sha256": "33fc6adbcd1b2726ab12d55be4d07e2259517656cbd5e9f0954570ba32f55bba",
+        "git_blob_sha": "aad3683d5e678a1bf188347de819da07773630a5"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_hub.zip.part01",
+        "bytes": 8388608,
+        "sha256": "af3916d35bcb4d12f99a3f4306971fb1e850c7813c079eb9f86a0b81dd1c0212",
+        "git_blob_sha": "b6e3046ccd05212bb9555394e16f9e51ff304a2d"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_hub.zip.part02",
+        "bytes": 8388608,
+        "sha256": "232e2e70ff34f3d5630264a161e651eb52a710cf16b6cdc4a00a307168514ed9",
+        "git_blob_sha": "b2ac92953da94fccc79b66f24807f4b204f857c9"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_hub.zip.part03",
+        "bytes": 1612894,
+        "sha256": "f881fc5e093957b74c3e6790d5e6643c3397a53349882ace731eb8f349caab07",
+        "git_blob_sha": "ac6cda73073c1bf5caa8ea2adc4843e2e4cae777"
+      }
+    ]
+  },
+  "star_leaf": {
+    "bytes": 26460164,
+    "sha256": "33508285dce80cb7009aaef89a56dbcf93dbadd15ece32a23f46f9820c276920",
+    "parts": [
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_leaf.zip.part00",
+        "bytes": 8388608,
+        "sha256": "ee7467fd414766108546f33dc9d1d7668d13ce151739476f02254a8f47030a47",
+        "git_blob_sha": "dd7833707251bb2e6f81194f62cf5929dc42ddc5"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_leaf.zip.part01",
+        "bytes": 8388608,
+        "sha256": "f1b18fed927230d4eca7ec5e967f725ea6e4e59f8f972b3e177b940a40695ba0",
+        "git_blob_sha": "e14326c05dff5d301c4b63b9430027c713343ad5"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_leaf.zip.part02",
+        "bytes": 8388608,
+        "sha256": "072a379c6882aa9f834313d4ef28bf7d2f64fee024bbfc97856cd0854935252a",
+        "git_blob_sha": "d7ab0ce04f2ce189e7f72c5bfd620c032e37680f"
+      },
+      {
+        "path": "primary/raw/bazt-headline-evaluation-star_leaf.zip.part03",
+        "bytes": 1294340,
+        "sha256": "fe46103ff27a80a38f26dabf7b64802c28222f05213ba398796ffc6994a2ab16",
+        "git_blob_sha": "c6a15360767d271350f8f11755cda8e9df592257"
+      }
+    ]
+  }
+}

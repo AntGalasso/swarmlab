@@ -1,0 +1,56 @@
+{
+  "BA_heldout_already_observed": true,
+  "analysis_sha256": "9b604814bb73cb1c0ba626b6b3f35f97e8a239a4b46fa671e04d8e5b6344669c",
+  "archive": "observability_extension_complete_20261107.tar.gz",
+  "archive_bytes": 1862569,
+  "archive_members": 535,
+  "archive_sha256": "b29e6684d21724ba6366f85d2ef7315a205fc18d0f686151ce92d21ebb006887",
+  "created_utc": "2026-11-07T18:04:49.051519+00:00",
+  "evaluation_started_utc": {
+    "native_mock": "2026-11-07T18:01:25.851616+00:00",
+    "paid_only": "2026-11-07T18:01:25.855961+00:00"
+  },
+  "file_manifest_sha256": "b03cefe0af406a0c2d1fb3cd3d262670b863a23e0940f3358fafc80acf8aa549",
+  "old_BA_heldout_raw_unchanged": {
+    "native_mock": true,
+    "paid_only": true
+  },
+  "old_BA_packages_read_only_sha256": {
+    "bazt_headline/observability_stage/release/observation_parity_exact_source_20261107.tar.gz": "f388a347df88c7b6f8868e4f36c2619e930001e98ea7074d62930b79b64b2072",
+    "bazt_headline/observability_stage/release/observation_parity_raw_results_20261107.tar.gz": "dfe57267ae3f1e21b2bd5f4d6660e83c2ef3f737b106dd84e11a01ca48100cc5"
+  },
+  "old_BA_source_checks": {
+    "DECISIONS.json": true,
+    "METRIC_CONTRACT.json": true,
+    "PROTOCOL.md": true,
+    "SEED_COLLISION_CHECK.json": true,
+    "analyze_mock.py": true,
+    "development.toml": true,
+    "heldout.toml": true,
+    "monitor_contract.py": true,
+    "run_observability.py": true,
+    "test_analysis_contract.py": true,
+    "test_monitor_contract.py": true,
+    "test_native_engine.py": true
+  },
+  "original_H_topology_confirmation": false,
+  "provider_calls": 0,
+  "public_source_commit_precedes_both_evaluations": true,
+  "published_code_blob_checks": {
+    "bazt_headline/observability_extension/DECISIONS.json": true,
+    "bazt_headline/observability_extension/PROTOCOL.md": true,
+    "bazt_headline/observability_extension/README.md": true,
+    "bazt_headline/observability_extension/analyze_extension.py": true,
+    "bazt_headline/observability_extension/extension.toml": true,
+    "bazt_headline/observability_extension/run_extension.py": true,
+    "bazt_headline/observability_extension/test_extension.py": true
+  },
+  "published_source_commit_before_evaluation": "385ebfb86f273731e154d637ab0e92d38e4f79b8",
+  "published_source_commit_url": "https://github.com/ricardofitas/swarm-adaption-hackathon/commit/385ebfb86f273731e154d637ab0e92d38e4f79b8",
+  "published_source_commit_utc": "2026-11-07T18:01:01Z",
+  "read_llm_performance_before_extension": true,
+  "source_files_unchanged_during_packaging": true,
+  "status": "packaged_verified_pending_parent_publication",
+  "uncompressed_bytes": 74828054,
+  "verified_all_archive_members_against_source": true
+}

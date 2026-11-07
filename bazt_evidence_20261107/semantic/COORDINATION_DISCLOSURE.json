@@ -1,0 +1,27 @@
+{
+  "utc": "2026-11-07T17:48:11.771382+00:00",
+  "user_instruction": "verify LLM results before advancing; then advance updated programme",
+  "llm_outcome_access": "unblinded by root and independent auditors before follow-up heldout",
+  "llm_run": 42391846181,
+  "llm_summary": "essentially tied; capped core benefit is one victim answer; no robust superiority; A targeted success0/20",
+  "supersedes_current_interpretation_of": [
+    "DECISIONS.json:no_LLM_data_opened",
+    "METRIC_CONTRACT.json:no_llm_outcomes_accessed",
+    "analysis:no_LLM_outcomes_accessed"
+  ],
+  "historical_files_preserved": true,
+  "current_transfer_claim": "exploratory only; no blinded-prediction validation",
+  "no_new_provider_inference": true,
+  "heldout_approved_after": [
+    "12 actual engine tests pass",
+    "both clean calibrations4/4inband",
+    "development A/B/C1440rows bit-identical",
+    "development gate promotion true"
+  ],
+  "heldout_seeds": "742001-742030,all30completeonce, no prefix selection",
+  "owner": "root local native runner; do not launch duplicate phase",
+  "correction": "Team-level access predates the worker-local prediction lock. All cross-platform comparisons are exploratory. The optional two-graph extension DID run and complete under a separate root-owned protocol; prior worker-local not-run statements are superseded.",
+  "reviewed_BA_commit": "2ff8168ed29208f24bbf0ca1871cced348bed373",
+  "extension_commit": "0bc8b1c4837c0a9624c7a395322372b850b13ff8",
+  "historical_prediction_lock_preserved": true
+}

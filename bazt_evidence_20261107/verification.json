@@ -1,0 +1,30 @@
+{
+  "original_primary_archives_preserved": 5,
+  "observation_parity_raw_results_20261107.tar.gz": {
+    "committed_pairs": 240,
+    "raw_rows_including_calibration": 19344,
+    "record_groups": {
+      "results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration": 600,
+      "results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration": 600,
+      "results_20261107/development/native_mock/cpu_mock_proposed/mock_frontier": 2592,
+      "results_20261107/development/paid_only/cpu_mock_proposed/mock_frontier": 2592,
+      "results_20261107/heldout/native_mock/cpu_mock_proposed/mock_frontier": 6480,
+      "results_20261107/heldout/paid_only/cpu_mock_proposed/mock_frontier": 6480
+    }
+  },
+  "observability_extension_complete_20261107.tar.gz": {
+    "committed_pairs": 240,
+    "raw_rows_including_calibration": 28320,
+    "record_groups": {
+      "observability_extension/results_20261107/calibration/native_mock/cpu_mock_proposed/mock_calibration": 1200,
+      "observability_extension/results_20261107/calibration/paid_only/cpu_mock_proposed/mock_calibration": 1200,
+      "observability_extension/results_20261107/evaluation/native_mock/cpu_mock_proposed/mock_frontier": 12960,
+      "observability_extension/results_20261107/evaluation/paid_only/cpu_mock_proposed/mock_frontier": 12960
+    }
+  },
+  "files_hashed": 67,
+  "semantic_rows": 320,
+  "semantic_seeds": 10,
+  "provider_requests": 0,
+  "team_level_blinded_validation": false
+}

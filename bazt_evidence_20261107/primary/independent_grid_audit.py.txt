@@ -1,0 +1,87 @@
+"""Read-only independent streaming audit; does not merge or re-run the primary analysis."""
+import collections
+import hashlib
+import json
+import math
+from pathlib import Path
+import sys
+import time
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+sys.path.insert(0, str(ROOT / "source"))
+from bazt_lab.core import public as core
+from bazt_lab.features.runner.private.blocks import BLOCKS
+
+PROFILE = ROOT / "merged_42381690293/cpu_mock_proposed"
+SETTINGS = ROOT / "headline_cpu_proposed.toml"
+s = core.load_settings(SETTINGS)
+grid = BLOCKS["mock_frontier"].units(s, True)
+files, orphans = core.committed_row_files(PROFILE / "mock_frontier")
+expected_keys = {(arm, top, family, audit, intervention)
+                 for arm, (audit, intervention) in grid.arms_cells for top in grid.topologies for family in grid.families}
+full_mask = (1 << 360)-1
+masks, counts, by_arm, by_top = {}, collections.Counter(), collections.Counter(), collections.Counter()
+means = {}
+selected = {}
+violations = bad_coordinates = duplicates = bad_primary = 0
+started = time.monotonic()
+for file in files:
+    with file.open() as stream:
+        for line in stream:
+            row = json.loads(line)
+            key = (row["arm"], row["topology"], row["attack"], row["audit"], row["intervention"])
+            seed, sink = row["seed"], row["sink"]
+            if key not in expected_keys or row["agents"] != 12 or not 1 <= seed <= 30 or not 0 <= sink < 12:
+                bad_coordinates += 1
+                continue
+            bit = 1 << ((seed-1)*12+sink)
+            mask = masks.get(key, 0)
+            duplicates += bool(mask & bit)
+            masks[key] = mask | bit
+            counts[key] += 1
+            by_arm[row["arm"]] += 1
+            by_top[row["topology"]] += 1
+            violations += row["violations"]
+            metric = "accuracy_clean" if row["attack"] == "none" else "asr_final"
+            value = row[metric]
+            if not isinstance(value, (int,float)) or not math.isfinite(value) or not 0 <= value <= 1:
+                bad_primary += 1
+            bucket = means.setdefault(key, [[0.0]*30, [0]*30])
+            bucket[0][seed-1] += value
+            bucket[1][seed-1] += 1
+            cap = (row["audit"], row["intervention"])
+            if cap in (("uncapped", "uncapped"), (.1, .1)):
+                q = selected.setdefault(key, {})
+                for field in ("asr_final", "accuracy_clean", "targeted_asr", "protected_sink_harm", "agents_reached_auc",
+                              "spend_audit_total", "spend_intervention_total", "benign_delivery_rate"):
+                    v = row[field]
+                    if isinstance(v,(int,float)) and math.isfinite(v):
+                        pair = q.setdefault(field,[0.,0]);pair[0] += v;pair[1] += 1
+missing_coordinates = sum(360-mask.bit_count() for mask in masks.values()) +360*len(expected_keys-set(masks))
+means = {k: [a/b if b else None for a,b in zip(v[0],v[1])] for k,v in means.items()}
+equivalence = collections.Counter()
+max_differences = collections.defaultdict(float)
+for key, values in means.items():
+    arm, top, family, au, iv = key
+    if family != "insider_pi":continue
+    for other in ("insider_ta", "insider_ma"):
+        paired = means[(arm,top,other,au,iv)]
+        maximum = max(abs(a-b) for a,b in zip(values,paired))
+        equivalence[(arm,other,"exact_equal_seed_means" if maximum == 0 else "different_seed_means")] += 1
+        max_differences[(arm,other)] = max(max_differences[(arm,other)],maximum)
+summary = {"run_id":42381690293,"status":"PASS" if not any((orphans,violations,bad_coordinates,duplicates,bad_primary,missing_coordinates)) else "FAIL",
+           "expected_rows":len(grid),"observed_rows":sum(counts.values()),"cells":len(counts),"expected_cells":len(expected_keys),
+           "rows_per_cell":sorted(set(counts.values())),"independent_seeds_per_cell":30,"sinks_per_seed":12,
+           "by_arm":dict(by_arm),"by_topology":dict(by_top),"committed_files":len(files),"uncommitted_files":orphans,
+           "budget_violations":violations,"duplicate_seed_sink_coordinates":duplicates,"bad_coordinates":bad_coordinates,
+           "bad_primary_values":bad_primary,"missing_seed_sink_coordinates":missing_coordinates,
+           "settings_sha256":hashlib.sha256(SETTINGS.read_bytes()).hexdigest(),
+           "calibration_sha256":hashlib.sha256((PROFILE/'mock_calibration/thresholds.json').read_bytes()).hexdigest(),
+           "insider_seed_mean_equivalence":[{"arm":k[0],"other":k[1],"case":k[2],"cells":v} for k,v in equivalence.items()],
+           "insider_maximum_seed_mean_asr_difference":[{"arm":k[0],"other":k[1],"difference":v} for k,v in max_differences.items()],
+           "seconds":time.monotonic()-started,
+           "selected_cells":[{"arm":k[0],"topology":k[1],"family":k[2],"audit":k[3],"intervention":k[4],
+                               "means":{f:v[0]/v[1] for f,v in m.items()}} for k,m in selected.items()]}
+(HERE/'independent_grid_audit.json').write_text(json.dumps(summary,indent=2)+'\n')
+print(json.dumps({k:v for k,v in summary.items() if k!='selected_cells'},indent=2))
