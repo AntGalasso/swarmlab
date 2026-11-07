@@ -1,0 +1,17 @@
+{
+  "credential_storage": "process_memory_only",
+  "execution_environment": "github_actions",
+  "github_attempt": 1,
+  "heldout_completed": 120,
+  "heldout_total": 120,
+  "main_completed": 240,
+  "main_total": 240,
+  "note": "Both frozen phases and separate analyses are complete; manuscript review follows.",
+  "phase": "heldout",
+  "run_attempt": "1",
+  "run_id": "42316134013",
+  "source_frozen": true,
+  "started_utc": "2026-11-07T00:06:33.684615+00:00",
+  "status": "completed",
+  "updated_utc": "2026-11-07T01:00:12.676710+00:00"
+}

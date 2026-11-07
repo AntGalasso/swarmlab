@@ -1,0 +1,20 @@
+{
+  "analysis_sha256": "938eef647d3bcd1fd210863d4bb53b6859b73ed8b53403fcf22898fcf77f7b78",
+  "archive_sha256": "a98619fbec952afff474fbd1636e9ac1ffa8a07c221d5a6965b6ee19205fe580",
+  "heldout_episodes": 120,
+  "main_episodes": 240,
+  "model": "gemma-4-26b-a4b-it",
+  "source_sha256": {
+    "bazt/arms.py": "e560ba39802ac5f411704656e5ad8c21238e0d9874ef2509d055ef9347fb5c96",
+    "bazt/config.py": "491476b68cd5688b7c120c56486be2f3fbf280c60bf4e12b25f71e6939c7fe75",
+    "bazt/gateway.py": "5c5efff4b86d3cfc293eb1419c9b1b28df11e0736d8069a1ce58150e3f45f236",
+    "bazt/metrics.py": "7639065a7d5eed5781acd4e792325e7c0170dc86ff5cfbda44a0ef620bce7b56",
+    "bazt/optimizer.py": "42f7e9b87e0dfe69ef90a33ad6d3f5500287c9c295876da672fe2650b1f49ae8",
+    "budget_study.py": "b59d81e1f74b27d93404864487f3e90a697b2f1d51c42967e72a9d2a934f3535",
+    "llm_client.py": "33cee6dc4566979f48792b2f1acc8808a892a2d9f347a405981212f4c3104b7b",
+    "swarmlab.py": "c8b7b9b95788f634a7dee8ea0f62c6d3e288ff69c03fbc8a5bc4d3645cbf8efd",
+    "uv.lock": "60d5d13606be61283461174e52e2aba9442db80ec414712844a77af5780c3d96"
+  },
+  "status": "verified_complete",
+  "workflow_run": 42316134013
+}
