@@ -1,0 +1,27 @@
+{
+  "captured_utc": "2026-11-06T23:24:51.558012+00:00",
+  "frozen_source_verified": true,
+  "max_new_attempts_per_phase": 2,
+  "original_last_progress_utc": "2026-11-06T23:10:43.300062+00:00",
+  "phase_credit_cap": 5.0,
+  "phases": {
+    "heldout": {
+      "baseline_cache_credits": 0.0,
+      "episode_prefix_bytes": 0,
+      "episode_prefix_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "episodes": 0,
+      "interrupted_inflight_reserve": 0.0
+    },
+    "main": {
+      "baseline_cache_credits": 0.1257499605,
+      "cache_rows": 5582,
+      "cached_input_tokens": 1101157,
+      "cached_output_tokens": 162790,
+      "episode_prefix_bytes": 67145,
+      "episode_prefix_sha256": "055f1d48625009e8fe856d0bb581c3c91cff72a2789e614cae826e819ac304ce",
+      "episodes": 55,
+      "interrupted_inflight_reserve": 0.021881855999999998
+    }
+  },
+  "reason": "Prior writer interrupted without a final receipt."
+}

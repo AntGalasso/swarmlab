@@ -1,0 +1,21 @@
+{
+  "billing_note": "Standard token-rate calculation; actual account billing not verified.",
+  "cache": {
+    "cache_hits": 148,
+    "completion_tokens": 74627,
+    "live_calls": 2732,
+    "prompt_tokens": 492620
+  },
+  "calculated_credits": 0.05671531499999986,
+  "cancelled_pending_tasks": 0,
+  "episodes_completed": 20,
+  "fake": false,
+  "finished_utc": "2026-11-06T22:51:40.892215+00:00",
+  "input_tokens": 492620,
+  "output_tokens": 74627,
+  "phase": "challenge",
+  "requests_this_attempt": 2734,
+  "requests_without_usage": 2,
+  "started_utc": "2026-11-06T22:42:24.117933+00:00",
+  "status": "completed"
+}
