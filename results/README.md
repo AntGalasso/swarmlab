@@ -6,7 +6,7 @@ and their SHA-256 hashes are recorded in [`docs/LAUNCH_CHECKLIST_TOMORROW.md`](.
 
 | path | what produced it | status |
 |---|---|---|
-| `per_seed_main.csv`, `per_seed_heldout.csv`, `summary_clean*.csv`, `summary_decoy*.csv` | `swarmlab.py --mode mock` legacy arms (main 1-30 / held-out 31-60) | **frozen** legacy baseline, never overwritten |
+| `per_seed_main.csv`, `per_seed_heldout.csv`, `summary_clean*.csv`, `summary_decoy*.csv` | `swarmlab.py --mode mock` legacy arms (main 1-30 / held-out 31-60) | **frozen** legacy baseline, never overwritten (enforced: writers refuse to clobber existing outputs; override one run with `SWARMLAB_ALLOW_OVERWRITE=1`) |
 | `stats_report_main.json`, `stats_report_heldout.json` | `stats_check.py` on the legacy per-seed files | frozen |
 | `tuned_params.json`, `tuning_summary.json` | `swarmlab.py --tune` (tune split 9001-9030) | frozen thresholds for deployable arms |
 | `scaling_summary.csv`, `scaling_per_seed.csv` | `swarmlab.py --scaling-sweep` (N in 12/24/36) | frozen |

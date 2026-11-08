@@ -53,7 +53,8 @@ def test_h1_real_results_keep_frontier_rows():
     n_front = sum(1 for p in pairs if p["a"]["stage"] == "mock_frontier"
                   and p["a"]["scenario"] == "infection" and p["a"]["audit_pct"] is None
                   and p["a"]["topology"] == "barabasi_albert")
-    assert n_front == 2          # smoke seeds 1, 2; used to be overwritten by topology_scale
+    assert n_front == 30         # frozen main split, seeds 1-30 (full suite committed in 32e92f4);
+                                 # exact count still catches clobbering by other stages or reruns
 
 
 # ---------------------------------------------------------------------------------------------- H2

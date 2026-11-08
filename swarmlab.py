@@ -897,15 +897,36 @@ def _summarise(rows, path, meta_cols) -> None:
             wr.writerow(list(key) + [len(rs)] + vals)
 
 
+def _refuse_overwrite(paths) -> None:
+    """Freeze guard (Codex P3 on PR #14): rerunning into a directory that already
+    holds checked-in artefacts must fail loudly instead of silently replacing them.
+    Override a single deliberate run with SWARMLAB_ALLOW_OVERWRITE=1 or pick a
+    fresh --out directory."""
+    if os.environ.get("SWARMLAB_ALLOW_OVERWRITE") == "1":
+        return
+    clash = [p for p in paths if os.path.exists(p)]
+    if clash:
+        raise SystemExit(
+            "refusing to overwrite existing output(s):\n  " + "\n  ".join(clash)
+            + "\nRe-run with SWARMLAB_ALLOW_OVERWRITE=1 to replace them on purpose,"
+              " or point --out at a fresh directory.")
+
+
 def write_outputs(rows, episodes, out_dir: str, tag: str = "", split: Optional[str] = None) -> None:
     """Split-named artifacts so main and held-out runs can never overwrite each other.
 
     per_seed_<split>.csv / episodes_<split>.jsonl  (split = main | heldout | None)
     summary_<regime>.csv for the main split, summary_<regime>_heldout.csv for the held-out split.
     """
+    t = f"_{tag}" if tag else ""
+    suffix = (f"_{split}" if split == "heldout" else "") + t
+    _refuse_overwrite(
+        [os.path.join(out_dir, f"per_seed_{split}{t}.csv" if split else f"per_seed{t}.csv"),
+         os.path.join(out_dir, f"episodes_{split}{t}.jsonl" if split else f"episodes{t}.jsonl")]
+        + [os.path.join(out_dir, f"summary_{regime}{suffix}.csv")
+           for regime in sorted({row["regime"] for row in rows})])
     os.makedirs(out_dir, exist_ok=True)
     add_deltas(rows)
-    t = f"_{tag}" if tag else ""
     if split:
         per_seed = os.path.join(out_dir, f"per_seed_{split}{t}.csv")
         eps = os.path.join(out_dir, f"episodes_{split}{t}.jsonl")
@@ -921,7 +942,6 @@ def write_outputs(rows, episodes, out_dir: str, tag: str = "", split: Optional[s
         for e in episodes:
             f.write(json.dumps(e) + "\n")
     for regime in sorted({r["regime"] for r in rows}):
-        suffix = (f"_{split}" if split == "heldout" else "") + t
         _summarise([r for r in rows if r["regime"] == regime],
                    os.path.join(out_dir, f"summary_{regime}{suffix}.csv"),
                    ["topology", "regime", "policy"])
