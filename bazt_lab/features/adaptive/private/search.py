@@ -1,4 +1,4 @@
-"""The exact best-response search of the adaptive attacker (EXPERIMENT_PLAN.md section 3).
+"""The exact best-response search of the adaptive attacker (docs/EXPERIMENT_PLAN.md section 3).
 
 For one cell (arm, budget cell, topology, family, N, condition) the attacker's strategy space is the finite list of
 `attack_params` of `space.candidates`. Every candidate is simulated on the same search episodes (common random

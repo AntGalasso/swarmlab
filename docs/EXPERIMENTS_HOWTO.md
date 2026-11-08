@@ -1,6 +1,6 @@
 # Running the BAZT experiments
 
-The spec is `EXPERIMENT_PLAN.md`. The code layout is `docs/ARCHITECTURE_EXPERIMENTS.md`.
+The spec is `docs/EXPERIMENT_PLAN.md`. The code layout is `docs/ARCHITECTURE_EXPERIMENTS.md`.
 
 ## Quick start
 

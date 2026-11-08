@@ -1,6 +1,6 @@
 # adaptive: contract
 
-The mock adaptive attacker of `EXPERIMENT_PLAN.md` section 3. For every cell of the `mock_adaptive` block it finds, by
+The mock adaptive attacker of `docs/EXPERIMENT_PLAN.md` section 3. For every cell of the `mock_adaptive` block it finds, by
 exact search over a finite strategy space, the `attack_params` that maximise ASR at the final round against the cell's
 arm, and stores them so the block's units carry them. Its four conditions are D39; the one held-out LLM check (D38,
 D110) replays the gray-box best response. It reads no external service; `adapters/` is an empty package.
@@ -102,7 +102,7 @@ evaluated; gray-box must be `cell`); `seed` or `episode` = chosen per evaluated 
 
 ## Open questions
 
-1. The spec lists the best-response procedure as not specified (EXPERIMENT_PLAN.md, section 3). Implemented: exact
+1. The spec lists the best-response procedure as not specified (docs/EXPERIMENT_PLAN.md, section 3). Implemented: exact
    search over the grids above. The grid values, `evasion_cost`, `insider_sets`, the knowledge level of white-box (`seed` or
    `episode`) and the search seeds are the owner's values. Each is a commented key in profiles.toml, so unset.
 2. How "embedding-space evasion" maps onto the mock: modelled as lower detectability with a potency cost; the cost

@@ -1,7 +1,7 @@
 # mock_engine
 
 `MockPlatform` (core `Platform` contract): a torch engine implementing swarmlab's model plus the changes of
-EXPERIMENT_PLAN.md sections 3, 4.2, 5 and 6. Batch dimension B = episodes. The round loop is the only loop over time;
+docs/EXPERIMENT_PLAN.md sections 3, 4.2, 5 and 6. Batch dimension B = episodes. The round loop is the only loop over time;
 graph construction and unit checks loop once per batch over agents or units.
 
 ## public.py

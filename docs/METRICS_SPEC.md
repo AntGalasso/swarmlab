@@ -1,4 +1,4 @@
-# METRICS_SPEC.md — exact definitions of every reported quantity
+# docs/METRICS_SPEC.md — exact definitions of every reported quantity
 
 All quantities below are computed per episode by `swarmlab.py` and written to `results/per_seed_*.csv`
 (one row per `(topology, regime, policy, seed)`), then aggregated by `stats_check.py` / `make_figures.py`.

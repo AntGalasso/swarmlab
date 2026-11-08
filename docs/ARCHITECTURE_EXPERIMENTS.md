@@ -1,6 +1,6 @@
 # bazt_lab: architecture of the experiment code
 
-`bazt_lab` implements `EXPERIMENT_PLAN.md`. It is a modular monolith in the style of OhmBackend and lives beside the
+`bazt_lab` implements `docs/EXPERIMENT_PLAN.md`. It is a modular monolith in the style of OhmBackend and lives beside the
 architecture track's `bazt/` package and `swarmlab.py`, which it never modifies.
 
 ## Layout

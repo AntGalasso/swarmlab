@@ -1,4 +1,4 @@
-"""Arm-versus-arm comparisons (EXPERIMENT_PLAN.md section 7): pair the episodes of two arms in every cell, test the
+"""Arm-versus-arm comparisons (docs/EXPERIMENT_PLAN.md section 7): pair the episodes of two arms in every cell, test the
 safety and utility endpoints, adjust with Holm inside one family and label each comparison.
 
 A *family* is the comparisons of one hypothesis on one platform for one challenger; Holm runs separately for each

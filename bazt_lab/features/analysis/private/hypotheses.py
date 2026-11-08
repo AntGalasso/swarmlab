@@ -1,4 +1,4 @@
-"""The pre-registered hypotheses and secondary analyses of EXPERIMENT_PLAN.md section 7, one function each.
+"""The pre-registered hypotheses and secondary analyses of docs/EXPERIMENT_PLAN.md section 7, one function each.
 
 Every function takes a table loaded for one platform and returns a JSON-able dict:
   {"status": "not_configured"}                    no block is listed for it in analysis.blocks

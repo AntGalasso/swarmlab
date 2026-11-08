@@ -1,4 +1,4 @@
-"""Section-15 metrics: gateway cost, harm exposure, utility side effects (equations in METRICS_SPEC.md §15).
+"""Section-15 metrics: gateway cost, harm exposure, utility side effects (equations in docs/METRICS_SPEC.md §15).
 
 Ground truth (`infected_series`) is used ONLY here, after the last decision of the episode.
 """

@@ -15,6 +15,7 @@ force-exclude = true
 extend-exclude = [
     "swarmlab.py", "bazt", "env_ladder.py", "llm_client.py", "live_cot_adapter.py", "stats_check.py",
     "make_figures.py", "swarmtraces_fetch.py", "vendor",
+    "scripts/ops",                        # archived one-off status scripts, never linted (see scripts/ops/README.md)
     "tests/bazt_testkit.py", "tests/test_core.py", "tests/test_bazt_*.py", "tests/test_env_ladder.py",
     "tests/test_kunal_adapters.py",
 ]

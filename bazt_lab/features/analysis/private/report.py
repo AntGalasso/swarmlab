@@ -1,4 +1,4 @@
-"""The report: every analysis of EXPERIMENT_PLAN.md section 7 on both platforms, written as strict JSON.
+"""The report: every analysis of docs/EXPERIMENT_PLAN.md section 7 on both platforms, written as strict JSON.
 
     {"meta": ..., "hypotheses": {H-budget, H-efficiency, H-topology, H-adaptive}, "secondary": {ladder, ablations,
      rank_agreement}, "containment_per_cost": ..., "verdicts": ...}

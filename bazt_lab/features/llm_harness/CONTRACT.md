@@ -1,6 +1,6 @@
 # llm_harness: contract
 
-`LLMPlatform`, the `core.Platform` of the LLM side (`EXPERIMENT_PLAN.md` §3, §4.1, §5), over the G-Safeguard submodule
+`LLMPlatform`, the `core.Platform` of the LLM side (`docs/EXPERIMENT_PLAN.md` §3, §4.1, §5), over the G-Safeguard submodule
 `vendor/G-safeguard` (pinned at `890c99f1cbc864e9ff0c85859619a14f42bc9cab`, no licence, never copied into git).
 Our changes to it are the patch files in `patches/`, applied to a derived copy.
 
