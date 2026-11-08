@@ -1,4 +1,4 @@
-"""Paired tests and the seed-cluster bootstrap (EXPERIMENT_PLAN.md section 7).
+"""Paired tests and the seed-cluster bootstrap (docs/EXPERIMENT_PLAN.md section 7).
 
 Continuous metrics: paired Wilcoxon signed-rank (stats_check.wilcoxon_rrb) and a paired bootstrap CI.
 Yes/no metrics: McNemar's exact test (the exact two-sided binomial on the discordant pairs).

@@ -1,4 +1,4 @@
-# LAUNCH_CHECKLIST_TOMORROW.md
+# docs/LAUNCH_CHECKLIST_TOMORROW.md
 
 > **Copy-paste PowerShell for tomorrow morning (after `SWARMLAB_KICKOFF_UTC = 2026-11-06 20:00 UTC`).**
 > Everything below was already exercised offline today with `--platform mock` and a deterministic

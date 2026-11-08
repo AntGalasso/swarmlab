@@ -21,6 +21,25 @@ The frozen Gemma-26B campaign completed 240 main and 120 separately analyzed hel
 
 A separate original-budget Early H2 and accessible-model H4 extension is running on new seeds. No new result is claimed before completion. The old `results/experiments/paper_pack` outputs are [superseded pre-correction mock checks](results/experiments/paper_pack/STATUS.md).
 
+## Repository layout
+```
+swarmlab.py  experiments.py  run_experiments.py      pipeline entry points (root: CI and tests import them by name)
+stats_check.py  make_figures.py  env_ladder.py       confirmatory stats, publication figures, sandbox ladder
+llm_client.py  live_cot_adapter.py                   live providers (kickoff-guarded)
+budget_study.py  budget_study_analysis.py           cost study (CI-pinned) + its analysis library
+overnight_frozen_study.py  continue_frozen_study.py  frozen-study drivers (digest-checked recovery procedure)
+validate_integration.py                              CI validation entry point
+bazt/            BAZT gateway package (13 modules + channel.py); python -m bazt.runner
+bazt_lab/        modular-monolith experiment stack: features/<type>/<feature>/ with public.py + CONTRACT.md
+configs/         frozen run configurations (sprint_preregistered.json, tier1_slice.json)
+experiments/     profiles.toml for run_experiments.py
+scripts/         check_static.py, run_adaption_pilot.py, swarmtraces_fetch.py, ops/ (archived one-offs), tests/
+tests/           offline pytest suite (root-level)
+docs/            every specification and status document; docs/archive/ holds superseded pre-integration drafts
+vendor/          pinned G-Safeguard submodule (patch files only, no copied code)
+results/         all artifacts — read results/README.md before touching anything (freeze rules per subtree)
+```
+
 ## Compliance guardrail
 * Before kickoff the ONLY live API call allowed is the READY smoke test (`python llm_client.py`).
 * `--mode llm` needs `--allow-live-llm` AND is refused before the kickoff time (`SWARMLAB_KICKOFF_UTC`
@@ -40,12 +59,19 @@ A separate original-budget Early H2 and accessible-model H4 extension is running
 | `stats_check.py` | pre-registered H1-H4 tests (paired Wilcoxon, Holm, bootstrap CI, Spearman) + strict Pareto / non-inferiority labels |
 | `make_figures.py` | publication `.pdf` figures (safety-utility frontier, budget exhaustion dynamics, scaling curve) |
 | `env_ladder.py` | Stage 1 fake-web corpus, Stage 2 difficulty ladder + breaking-point finder, Stage 3 hard constraints + `CoTPayloadAdapter` evasion sweep (mock-only, no live-LLM path) |
+| `experiments.py` + `run_experiments.py` | expanded experiment pipeline (`llm-pilot` / `llm-tier1` / `mock-frontier` / `paper-pack`) + TOML-profile launcher (`experiments/profiles.toml`); refuses to write the legacy `results/per_seed_*.csv` |
+| `budget_study.py`, `budget_study_analysis.py`, `overnight_frozen_study.py`, `continue_frozen_study.py` | budget cost study (run by CI) and the digest-checked frozen-study drivers behind the completed overnight campaigns |
 | `bazt/` | Budgeted Adaptive Zero-Trust gateway (13 modules + `channel.py`): `python -m bazt.runner`; writes only to `results/bazt/` |
+| `bazt_lab/` | modular-monolith experiment stack (mock engine, G-Safeguard llm_harness + patch set, analysis, judge, tracking, gnn); see `docs/ARCHITECTURE_EXPERIMENTS.md` |
+| `configs/` | frozen run configurations: `sprint_preregistered.json`, `tier1_slice.json` |
+| `scripts/` | `check_static.py` (ruff + compileall + import gate), `run_adaption_pilot.py`, `swarmtraces_fetch.py`, `ops/` archived one-off status scripts |
+| `docs/` | all specifications, experiment plans, metrics equations, integration and execution status; `docs/archive/` = superseded pre-integration drafts |
+| `results/` | artifact map and freeze rules: `results/README.md` |
 | `docs/BAZT_SPEC_v2.md`, `docs/ARCHITECTURE_BAZT_FOR_REPO.md` | BAZT specification with resolved decisions; module map and extension guide |
-| `METRICS_SPEC.md` | exact equations for every reported metric, monitor, risk score, tuning objective and label (§1-§13), the ladder/sandbox metrics (§14) and the BAZT gateway metrics (§15) |
-| `KUNAL_SANDBOX_GUIDE.md` | developer guide to the three stages: how to plug a live CoT payload adapter into Stage 3 after kickoff |
-| `ARCHITECTURE_MAP.md` | module map, seed splits, artifact list, per-teammate ownership |
-| `swarmtraces_fetch.py` | download + aggregate-only profile of the public Swarm Traces dataset |
+| `docs/METRICS_SPEC.md` | exact equations for every reported metric, monitor, risk score, tuning objective and label (§1-§13), the ladder/sandbox metrics (§14) and the BAZT gateway metrics (§15) |
+| `docs/KUNAL_SANDBOX_GUIDE.md` | developer guide to the three stages: how to plug a live CoT payload adapter into Stage 3 after kickoff |
+| `docs/ARCHITECTURE_MAP.md` | module map, seed splits, artifact list, per-teammate ownership |
+| `scripts/swarmtraces_fetch.py` | download + aggregate-only profile of the public Swarm Traces dataset |
 | `tests/test_core.py` | 46 offline tests (determinism, CRN prefix sharing, caps, guards, cache, decoy realism, arm divergence, metric formulas, Pareto labels, per-step tier-1 budgets, payloads) |
 | `tests/test_env_ladder.py` | 27 offline tests (corpus schema/determinism, ladder monotonicity + pinned breaking point, routing masks, channel filters, adapter contract, hook compatibility, LLM refusal) |
 | `tests/test_bazt_{core,gateway,integration}.py` | 92 offline tests: pricing, ledger, lineage, optimizer, gateway state machine, §15 equations, legacy bit-identity, ground-truth firewall, budgets, filtering cost, kickoff guard, dependency direction |
@@ -70,7 +96,7 @@ python swarmlab.py --mode mock --entry-source fake_web_jsonl --seeds 2 --topolog
 python stats_check.py --ladder results/ladder_breaking_point.csv                       --evasion results/ladder_constraint_evasion.csv --out results/ladder_stats_report.json
 python make_figures.py                                       # fig1..fig5 (fig4/fig5 need the ladder outputs)
 python swarmlab.py --budget --seeds 30 --price-in <usd/Mtok> --price-out <usd/Mtok>   # you supply real prices
-python swarmtraces_fetch.py download && python swarmtraces_fetch.py profile
+python scripts/swarmtraces_fetch.py download && python scripts/swarmtraces_fetch.py profile
 
 python -m bazt.runner --mode mock --split tune --seeds 12     # BAZT smoke check on tune seeds -> results/bazt/smoke_tune_check.csv
 python -m bazt.runner --mode mock --split tune --budget-sweep # cost-matched sweep of the pooled budget B
@@ -124,7 +150,7 @@ python make_figures.py --file results/per_seed_main_qwen.csv --episodes results/
 * Monitor is parametric, not a learned model. Decoy intensity (`--mu-dec`) is a controlled parameter.
 * Tier-1 sanitation preserves the numeric estimate, so its measured utility cost is only re-quantization +
   the `B_san` budget; the loss of qualitative coordination is not measured by this task (see
-  `METRICS_SPEC.md` §13).
+  `docs/METRICS_SPEC.md` §13).
 
 ## Sandbox ladder (`env_ladder.py`, mock only)
 A third question, upstream of the quarantine comparison: **at what difficulty does the swarm stop agreeing at
@@ -143,7 +169,7 @@ while a compressed stand-in is delivered 100 % of the time and alarms the monito
 lexical blacklist is beaten. `structured_kv_only` reduces delivery to 0.00 for both forms, because it removes
 the free-text channel instead of filtering strings: **architectural mediation beats lexical blacklisting**.
 `env_ladder.py` has no live-LLM code path (`--mode llm` is refused); the live adapter is a subclass, see
-`KUNAL_SANDBOX_GUIDE.md`. All numbers are pipeline checks, not findings.
+`docs/KUNAL_SANDBOX_GUIDE.md`. All numbers are pipeline checks, not findings.
 
 ## BAZT gateway (`bazt/`, branch `feat/bazt`)
 A budget-constrained enforcement layer between agents: it pays to *inspect* a node, *sanitize* its channel, *restrict* it,
@@ -153,7 +179,7 @@ inspection. Arms: `bazt` + six single-mechanism ablations, `static_zta`, and the
 (`--equalize-budget`). It attaches through `EpisodeHooks.gateway_factory`, so every legacy arm is bit-identical (SHA-256 test).
 
 * Filtering is not free: a calibration rationale (`sens=hp|lp`) rides on every message and a stripped message keeps only
-  `stripped_edge_weight = 0.35` of its consensus weight, so over-sanitising benign nodes raises `MAE` (METRICS_SPEC §15.6).
+  `stripped_edge_weight = 0.35` of its consensus weight, so over-sanitising benign nodes raises `MAE` (docs/METRICS_SPEC.md §15.6).
 * Seeds: tune `BaztConfig` on **9001-9030 only**; `--split main|heldout` needs `--confirm-frozen-config`.
-* Outputs live in `results/bazt/`; `results/per_seed_main.csv` / `per_seed_heldout.csv` are never written.
+* Outputs live in `results/bazt/`; `results/per_seed_main.csv` / `per_seed_heldout.csv` are never written (artifact map: `results/README.md`).
 * Known limit of the untuned defaults (docs/BAZT_SPEC_v2.md §10): the budget is spent almost entirely at step 1.

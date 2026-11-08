@@ -5,7 +5,7 @@ expanded experiment pipeline and Vittoria's `bazt_lab` in one checkout. The two
 experimental pipelines retain their own configurations, observation boundaries
 and result schemas; merging code does not pool their measurements.
 
-Sources are recorded in `INTEGRATION_SOURCE.json`. The original scaffold and
+Sources are recorded in `docs/INTEGRATION_SOURCE.json`. The original scaffold and
 pre-sprint mock artifacts remain pre-existing work. Transport corrections,
 integration checks and post-kickoff measurements are recorded separately.
 

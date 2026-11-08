@@ -1,4 +1,4 @@
-# KUNAL_SANDBOX_GUIDE.md — the three-stage sandbox ladder in `env_ladder.py`
+# docs/KUNAL_SANDBOX_GUIDE.md — the three-stage sandbox ladder in `env_ladder.py`
 
 One page. Everything here runs **`--mode mock`** (zero API calls) and is reproducible from a seed.
 `env_ladder.py` contains **no live-LLM code path**: `--mode llm` is refused unconditionally. The live

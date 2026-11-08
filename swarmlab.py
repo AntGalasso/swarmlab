@@ -88,7 +88,7 @@ EXPERIMENT_TOPOLOGIES = ("barabasi_albert", "watts_strogatz", "star_hub", "star_
 PAYLOADS = ["canary_tag", "consensus_drift"]
 SPLITS = {"main": (1, 30), "heldout": (31, 60), "tune": (9001, 9030)}  # inclusive seed ranges
 KICKOFF_UTC = _dt.datetime(2026, 11, 6, 20, 0, tzinfo=_dt.timezone.utc)  # approx.; override via env
-DEN_FLOOR = 0.01  # dRel denominator floor (see METRICS_SPEC.md)
+DEN_FLOOR = 0.01  # dRel denominator floor (see docs/METRICS_SPEC.md)
 
 
 # ============================================================================== configuration
@@ -846,7 +846,7 @@ def add_deltas(rows: List[dict], keys: Tuple[str, ...] = ("topology", "regime", 
     """delta_abs / delta_rel on auc_ever_infected, paired per `keys` against no_defense / offline_oracle.
 
     dRel = delta_abs / max(|base_auc - oracle_auc|, DEN_FLOOR) with the denominator's sign preserved
-    (see METRICS_SPEC.md); rows where the floor binds are flagged delta_rel_clamped = 1.
+    (see docs/METRICS_SPEC.md); rows where the floor binds are flagged delta_rel_clamped = 1.
     """
     idx = {tuple(r[k] for k in keys) + (r["policy"],): r for r in rows}
     for r in rows:

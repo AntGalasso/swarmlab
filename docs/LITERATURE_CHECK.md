@@ -1,4 +1,4 @@
-# LITERATURE_CHECK.md: what the cited sources actually support
+# docs/LITERATURE_CHECK.md: what the cited sources actually support
 
 Checked on 2026-11-04 against the primary texts (not summaries) for the BAZT experiment design.
 Tags: **[S]** the source states it, **[I]** our inference. Page and section locators refer to the version

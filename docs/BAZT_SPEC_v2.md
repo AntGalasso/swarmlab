@@ -99,7 +99,7 @@ the 7 BAZT arms (`bazt`, and `_no_prov`, `_no_topo`, `_no_pacing`, `_no_util`, `
 8. **`cost_per_prevented_compromise`** needs a counterfactual, so it is paired against the CRN `no_defense` run in the
    runner (`bazt.metrics.add_paired_metrics`), like `swarmlab.add_deltas`, not computed inside the episode.
 9. **Filtering cost** lives in `bazt/channel.py` (a 14th, small module beyond the 13 specified, to keep `arms.py` focused):
-   see `METRICS_SPEC.md` §15.6.
+   see `docs/METRICS_SPEC.md` §15.6.
 10. **Extra `BaztConfig` fields** (all defaulted): `own_decay=0.8, n_ingress=2, priv_bonus=0.5, precision_hp=1.0,
     precision_lp=0.6, noisy_frac=0.4`.
 11. **Pre-registration guard.** `--split main|heldout` requires `--confirm-frozen-config`; the default output name for the

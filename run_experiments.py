@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""run_experiments.py -- launcher for the BAZT experiments (EXPERIMENT_PLAN.md). Thin entry point: the code is in
+"""run_experiments.py -- launcher for the BAZT experiments (docs/EXPERIMENT_PLAN.md). Thin entry point: the code is in
 bazt_lab (bazt_lab/app.py wires it, bazt_lab/features/runner implements it). Every setting comes from
 experiments/profiles.toml; nothing has a default. Two profiles size the LLM grid (spec §1.1): `sprint` and `research`.
 

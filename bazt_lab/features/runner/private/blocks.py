@@ -1,4 +1,4 @@
-"""The registry of blocks (EXPERIMENT_PLAN.md): which units each runs, on which platform, and how."""
+"""The registry of blocks (docs/EXPERIMENT_PLAN.md): which units each runs, on which platform, and how."""
 from __future__ import annotations
 
 from dataclasses import dataclass

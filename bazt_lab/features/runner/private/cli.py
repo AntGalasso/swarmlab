@@ -16,7 +16,7 @@ from bazt_lab.features.runner.private.runtime import load_settings, missing_runt
 from bazt_lab.features.runner.private.sizing import dry_run
 from bazt_lab.features.runner.private.wiring import FeatureMissing, Wiring
 
-DESCRIPTION = ("BAZT experiment launcher (EXPERIMENT_PLAN.md). Every setting comes from experiments/profiles.toml. "
+DESCRIPTION = ("BAZT experiment launcher (docs/EXPERIMENT_PLAN.md). Every setting comes from experiments/profiles.toml. "
                "Simplest use: `run-all` runs every block in order (resumable), `status` shows where you are and what is "
                "still unset. Finer control: --list, --dry-run, --run --block NAME.")
 

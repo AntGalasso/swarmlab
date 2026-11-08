@@ -1,4 +1,4 @@
-"""live_cot_adapter.py -- KUNAL'S LIVE CoT PAYLOAD ADAPTER (the Stage-3 hook from KUNAL_SANDBOX_GUIDE.md).
+"""live_cot_adapter.py -- KUNAL'S LIVE CoT PAYLOAD ADAPTER (the Stage-3 hook from docs/KUNAL_SANDBOX_GUIDE.md).
 
 This is the adapter ant's guide assigns to Kunal: a `CoTPayloadAdapter` subclass whose payload is a
 terse compressed note token, written to be measured separately from what the m-step monitor can see.

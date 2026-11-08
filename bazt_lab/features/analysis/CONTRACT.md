@@ -1,6 +1,6 @@
 # analysis: contract
 
-The statistics of `EXPERIMENT_PLAN.md` section 7 over the rows the runner writes to
+The statistics of `docs/EXPERIMENT_PLAN.md` section 7 over the rows the runner writes to
 `results/experiments/<profile>/<block>/units/` and its worker shards `units/w<k>/` (worker k). It reads rows and
 writes one JSON report. It runs no episode, draws no experiment random number except the seeded bootstrap, and reads no
 external service.

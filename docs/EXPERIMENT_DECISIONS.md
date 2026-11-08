@@ -1,8 +1,8 @@
-# EXPERIMENT_DECISIONS.md: decisions taken by the experiment track
+# docs/EXPERIMENT_DECISIONS.md: decisions taken by the experiment track
 
 Owner: Vittoria (with Anirudh). Only decisions the owner has taken are recorded here. Everything else in
-`EXPERIMENT_PLAN.md` is an unreviewed draft until it is rewritten from this log. Evidence for each decision is in
-`LITERATURE_CHECK.md` (section numbers in brackets).
+`docs/EXPERIMENT_PLAN.md` is an unreviewed draft until it is rewritten from this log. Evidence for each decision is in
+`docs/LITERATURE_CHECK.md` (section numbers in brackets).
 
 | id | date | decision | evidence |
 |---|---|---|---|

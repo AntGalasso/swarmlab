@@ -380,4 +380,4 @@ These have no value in this spec and no default in the code. Every run must set 
 | the 2 backbones of the LLM grid, the DeepSeek snapshot (`deepseek-v4.1-flash` of 2026-09-10 or `deepseek-v4.1-flash-1017`) and the agents' thinking setting; decided outside the experiment track | 4.1 |
 | reduced grid for the robustness auditor presets, and how the binormal parameters are derived from the two false-positive classes | 5 |
 
-Full references are in `LITERATURE_CHECK.md`.
+Full references are in `docs/LITERATURE_CHECK.md`.

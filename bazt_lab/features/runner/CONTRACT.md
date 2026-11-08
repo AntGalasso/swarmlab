@@ -1,7 +1,7 @@
 # runner: contract
 
 Blocks, unit expansion, dry-run sizing, launch (batching, resume, calibration orchestration, threshold propagation),
-manifests, tracking and the CLI of `EXPERIMENT_PLAN.md` (§1.1, §2.8, §5, §8, §9.5). Entry point:
+manifests, tracking and the CLI of `docs/EXPERIMENT_PLAN.md` (§1.1, §2.8, §5, §8, §9.5). Entry point:
 `python run_experiments.py` calls `bazt_lab.app.main`; `bazt_lab/app.py` is the composition root and builds the
 `Wiring` this feature runs over.
 

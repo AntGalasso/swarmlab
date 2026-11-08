@@ -1,4 +1,4 @@
-# ARCHITECTURE_MAP.md — one page: modules, seeds, artifacts, ownership
+# docs/ARCHITECTURE_MAP.md — one page: modules, seeds, artifacts, ownership
 
 Branches: `feat/kunal-env-ladder`, `feat/bazt` (adds `bazt/`, see the BAZT rows below). Project: *When and Whom to Quarantine? Topology-aware risk control under
 alert-driven budget exhaustion in agent swarms.* Everything below runs offline in `--mode mock`.
@@ -33,14 +33,14 @@ kickoff and edit this table rather than guess later.
 |---|---|---|
 | `swarmlab.py` | simulator: N-agent swarm, contagion, m-step monitor, 10 policy arms, `risk_aware_tiered`, joint tuning `J`, scaling sweep, CLI. **Pre-existing scaffolding** — declare it as such. `feat/bazt` adds default-off hooks only (`gateway_factory`, `edge_weight_modifier`, `StepView`, `BAZT_POLICIES`, `Config.custom_adj`). | Antonio |
 | `env_ladder.py` | Stage 1 corpus, Stage 2 ladder + `BreakingPointFinder`, Stage 3 `HardConstraintSpec` / `CoTPayloadAdapter` / evasion sweep. Mock-only, no live-LLM path. | Kunal |
-| `KUNAL_SANDBOX_GUIDE.md` | how to plug a live CoT adapter into Stage 3 after kickoff | Kunal |
+| `docs/KUNAL_SANDBOX_GUIDE.md` | how to plug a live CoT adapter into Stage 3 after kickoff | Kunal |
 | `llm_client.py` | async OpenRouter client, SQLite WAL cache keyed by `SHA256(model, messages, round(temp,4), crn_salt)`, READY smoke test, pre-kickoff guard | Vittoria |
 | `stats_check.py` | pre-registered H1–H4 (paired Wilcoxon, Holm, bootstrap CI, Spearman), strict-Pareto labels, `--ladder` / `--evasion` reports | Ricardo |
 | `make_figures.py` | `fig1` frontier, `fig2` budget exhaustion, `fig3` scaling, `fig4` ladder, `fig5` constraint evasion | Ricardo |
 | `bazt/` | Budgeted Adaptive Zero-Trust gateway: 13 modules + `channel.py`, 7 BAZT arms + `static_zta`, `python -m bazt.runner`. **Pre-existing scaffolding** (written before kickoff), mock-only today, no experimental result. See `docs/ARCHITECTURE_BAZT_FOR_REPO.md`. | — |
 | `docs/BAZT_SPEC_v2.md` | BAZT specification + resolved decisions | — |
-| `swarmtraces_fetch.py` | download + aggregate-only profile of the public Swarm Traces dataset (no raw prompt dumps) | Anirudh |
-| `METRICS_SPEC.md` | exact equations §1–§13 (main pipeline), §14 (ladder/sandbox) and §15 (BAZT gateway) | Antonio + Ricardo |
+| `scripts/swarmtraces_fetch.py` | download + aggregate-only profile of the public Swarm Traces dataset (no raw prompt dumps) | Anirudh |
+| `docs/METRICS_SPEC.md` | exact equations §1–§13 (main pipeline), §14 (ladder/sandbox) and §15 (BAZT gateway) | Antonio + Ricardo |
 | `tests/test_core.py` | 46 pre-existing offline tests — the compatibility contract, do not edit | Antonio |
 | `tests/test_env_ladder.py` | 27 tests for corpus, ladder, masks, filters, adapter, guards | Kunal |
 | `tests/test_kunal_adapters.py` | 13 tests for the provider switch and `LiveCoTAdapter` | Kunal |

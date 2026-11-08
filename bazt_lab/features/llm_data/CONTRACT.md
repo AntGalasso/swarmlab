@@ -1,6 +1,6 @@
 # llm_data: contract
 
-Task items for the LLM side (`EXPERIMENT_PLAN.md` §3, §4.1): questions for MMLU, CommonsenseQA and GSM8K from the
+Task items for the LLM side (`docs/EXPERIMENT_PLAN.md` §3, §4.1): questions for MMLU, CommonsenseQA and GSM8K from the
 Hugging Face Hub at pinned revisions, and the InjecAgent and PoisonedRAG records vendored in the G-Safeguard
 submodule. Seeded sampling, a typed item, an answer checker per task, and the provenance of every item.
 Only `adapters/hf.py` imports `datasets`.
