@@ -1,0 +1,203 @@
+{
+  "format_version": 1,
+  "snapshot_date": "2026-11-08",
+  "archives": [
+    {
+      "name": "source-objects.tar.gz",
+      "bytes": 22659856,
+      "sha256": "733411288ff6d530ed3a70f82a1e09c492636838818248fa3572ef4ad81617a1",
+      "source": null,
+      "parts": [
+        {
+          "path": "parts/source-objects.tar.gz.part000",
+          "bytes": 8388608,
+          "sha256": "e23134b89a6ff333066c8d78e60741f70d098974539322d8947124570e7ad49b"
+        },
+        {
+          "path": "parts/source-objects.tar.gz.part001",
+          "bytes": 8388608,
+          "sha256": "87bf67d1aa9304f39c4a1916ea61b27aba8cb3340085764f800aaff9fb417a39"
+        },
+        {
+          "path": "parts/source-objects.tar.gz.part002",
+          "bytes": 5882640,
+          "sha256": "ae25c8d24e76f3aada18d7dc3a847aa1a6ee91f6eec0df935f6b9595ba055356"
+        }
+      ]
+    },
+    {
+      "name": "paired-targets-42487623419.zip",
+      "bytes": 28710404,
+      "sha256": "041c352aeb668140b5292e703974e432dd68f84816b2f408dfe46078b20ff3d2",
+      "source": {
+        "run": 42487623419,
+        "artifact": 13621845110
+      },
+      "parts": [
+        {
+          "path": "parts/paired-targets-42487623419.zip.part000",
+          "bytes": 8388608,
+          "sha256": "a86b11569e73d0dbeacc101bb5e3c0f4e1d11a6683f0adeeec83c86d1420c647"
+        },
+        {
+          "path": "parts/paired-targets-42487623419.zip.part001",
+          "bytes": 8388608,
+          "sha256": "3a7c33414362ad6f11cdb79a85b7394e8995f5135fd1254acc835cda0ec3c938"
+        },
+        {
+          "path": "parts/paired-targets-42487623419.zip.part002",
+          "bytes": 8388608,
+          "sha256": "ce7342e82ef3af97eaa9816f149737b186c65764504d854b66ee6dc99ce0999d"
+        },
+        {
+          "path": "parts/paired-targets-42487623419.zip.part003",
+          "bytes": 3544580,
+          "sha256": "e102ca4dacf34abd78a76434240d717172e22d01660dd9abd81110f468929c68"
+        }
+      ]
+    },
+    {
+      "name": "coordinated-capacity-42480306798.zip",
+      "bytes": 5208366,
+      "sha256": "fb494949fe361c4482c40276911a7157f0da7de6978b453c36a6a683c85addeb",
+      "source": {
+        "run": 42480306798,
+        "artifact": 13617935634
+      },
+      "parts": [
+        {
+          "path": "parts/coordinated-capacity-42480306798.zip.part000",
+          "bytes": 5208366,
+          "sha256": "fb494949fe361c4482c40276911a7157f0da7de6978b453c36a6a683c85addeb"
+        }
+      ]
+    },
+    {
+      "name": "readiness-corrected-42405955424.zip",
+      "bytes": 30740263,
+      "sha256": "fc51b4cd6840514cfb4db330af7e23f729b5030597faf0652ba5331ddb7660d3",
+      "source": {
+        "run": 42405955424,
+        "artifact": 13587994440
+      },
+      "parts": [
+        {
+          "path": "parts/readiness-corrected-42405955424.zip.part000",
+          "bytes": 8388608,
+          "sha256": "75f11bac484cae6033d5005750f08a33a2cc5e8c037e47c89bf99a7f73ad2c9f"
+        },
+        {
+          "path": "parts/readiness-corrected-42405955424.zip.part001",
+          "bytes": 8388608,
+          "sha256": "4b613804393d5643073a70e05da692f86834032a1697b7cc67df7bf069177ad5"
+        },
+        {
+          "path": "parts/readiness-corrected-42405955424.zip.part002",
+          "bytes": 8388608,
+          "sha256": "73d6b323fdfcdee945555b42007bfa8f1b06cc346bfd635f49cd495ed83ee9b2"
+        },
+        {
+          "path": "parts/readiness-corrected-42405955424.zip.part003",
+          "bytes": 5574439,
+          "sha256": "f2c1216205467a9e8287d867bd1a21ea9e7ba99eafd728b36b8bd65970ef5c54"
+        }
+      ]
+    }
+  ],
+  "object_count": 843,
+  "source_branch_count": 54,
+  "existing_object_count": 608,
+  "missing_exact_objects": [
+    {
+      "path": "results/ricardo/integrated_study_v6/main/messages.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "acfeaedaf32c2ddf3e7f6bda475422f5d520cc8e",
+      "size": 8719742,
+      "url": "https://api.github.com/repos/ricardofitas/swarm-adaption-hackathon/git/blobs/acfeaedaf32c2ddf3e7f6bda475422f5d520cc8e",
+      "branch": "analysis/failure-modes-20261107",
+      "commit": "ebe18047562309c0c6d54f17a2a74453f91cb10e",
+      "paths": [
+        "results/ricardo/integrated_study_v6/main/messages.jsonl"
+      ]
+    },
+    {
+      "path": "results/ricardo/h2h4_20261107/checkpoint.zip",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66cd2b9c1f2f9536c595c19062309151fa46c179",
+      "size": 11686998,
+      "url": "https://api.github.com/repos/ricardofitas/swarm-adaption-hackathon/git/blobs/66cd2b9c1f2f9536c595c19062309151fa46c179",
+      "branch": "ricardo/h4-continuation-20261107",
+      "commit": "a44871c8bb2dfdc470cc13b5d11001c1ec1851ce",
+      "paths": [
+        "results/ricardo/h2h4_20261107/checkpoint.zip"
+      ]
+    },
+    {
+      "path": "results/ricardo/observation_crossed_20261107/observation_crossed_complete_20261107.tar.gz",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60cd638e29d84dafa1af5188e3dec7fe870ab9d8",
+      "size": 1376577,
+      "url": "https://api.github.com/repos/ricardofitas/swarm-adaption-hackathon/git/blobs/60cd638e29d84dafa1af5188e3dec7fe870ab9d8",
+      "branch": "claims/bazt-llm-relay-protection-20261108",
+      "commit": "f40b0797ed7bb974a330312d81d7c0360481b231",
+      "paths": [
+        "results/ricardo/observation_crossed_20261107/observation_crossed_complete_20261107.tar.gz"
+      ]
+    },
+    {
+      "path": "results/ricardo/readiness_correction_20261107/actor_transcripts.jsonl.gz",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8fd1ebab7b20b8003962a1c1c36ff5b369186e48",
+      "size": 10732012,
+      "url": "https://api.github.com/repos/ricardofitas/swarm-adaption-hackathon/git/blobs/8fd1ebab7b20b8003962a1c1c36ff5b369186e48",
+      "branch": "claims/bazt-llm-relay-protection-20261108",
+      "commit": "f40b0797ed7bb974a330312d81d7c0360481b231",
+      "paths": [
+        "results/ricardo/readiness_correction_20261107/actor_transcripts.jsonl.gz"
+      ]
+    },
+    {
+      "path": "results/ricardo/readiness_correction_20261107/ledger_calls.jsonl.gz",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a2b97f7efeff5696ac79bec55c4ce98131c9a48",
+      "size": 1414270,
+      "url": "https://api.github.com/repos/ricardofitas/swarm-adaption-hackathon/git/blobs/1a2b97f7efeff5696ac79bec55c4ce98131c9a48",
+      "branch": "claims/bazt-llm-relay-protection-20261108",
+      "commit": "f40b0797ed7bb974a330312d81d7c0360481b231",
+      "paths": [
+        "results/ricardo/readiness_correction_20261107/ledger_calls.jsonl.gz"
+      ]
+    },
+    {
+      "path": "results/ricardo/readiness_correction_20261107/response_cache_index.jsonl.gz",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7195cb88d8a7e02be85bd266d91092f4f4ea4bb1",
+      "size": 1083576,
+      "url": "https://api.github.com/repos/ricardofitas/swarm-adaption-hackathon/git/blobs/7195cb88d8a7e02be85bd266d91092f4f4ea4bb1",
+      "branch": "claims/bazt-llm-relay-protection-20261108",
+      "commit": "f40b0797ed7bb974a330312d81d7c0360481b231",
+      "paths": [
+        "results/ricardo/readiness_correction_20261107/response_cache_index.jsonl.gz"
+      ]
+    },
+    {
+      "path": "bazt_headline/observability/OBSERVABILITY_RAW_AND_ANALYSIS_20261107.zip",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "177cdbab36886da65159910e60f81c7eee9cad8f",
+      "size": 1843853,
+      "url": "https://api.github.com/repos/ricardofitas/swarm-adaption-hackathon/git/blobs/177cdbab36886da65159910e60f81c7eee9cad8f",
+      "branch": "ricardo/observability-prediction-20261107",
+      "commit": "399d86c8bd52950951c78cc9b565760aa4f846eb",
+      "paths": [
+        "bazt_headline/observability/OBSERVABILITY_RAW_AND_ANALYSIS_20261107.zip"
+      ]
+    }
+  ]
+}

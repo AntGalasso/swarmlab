@@ -1,0 +1,46 @@
+{
+  "stats": {
+    "artifact-13621845110": {
+      "files": 57,
+      "bytes": 198673759
+    },
+    "artifact-13617935634": {
+      "files": 1494,
+      "bytes": 49298261
+    }
+  },
+  "findings": [
+    {
+      "path": "artifact-13621845110/results/ricardo/paired_targets_20261108/outcomes.jsonl",
+      "rule": "openai_style",
+      "count": 29
+    },
+    {
+      "path": "artifact-13621845110/results/ricardo/paired_targets_20261108/provider/resources.sqlite",
+      "rule": "openai_style",
+      "count": 34
+    },
+    {
+      "path": "artifact-13621845110/results/ricardo/paired_targets_20261108/provider/requests.jsonl",
+      "rule": "openai_style",
+      "count": 17
+    },
+    {
+      "path": "artifact-13621845110/bazt_headline/paired_targets/test_transport.py",
+      "rule": "credential_assignment",
+      "count": 1
+    }
+  ],
+  "method": "Pattern scan of every extracted file including SQLite bytes; archive path traversal check; filename review. No exhaustive guarantee.",
+  "resolved_matches": {
+    "response_id_substrings": {
+      "outcomes.jsonl/debate_trace/*/responses/*/request_id": 29,
+      "provider/requests.jsonl/response/id": 17,
+      "sqlite/cache/id": 17,
+      "sqlite/events/response/id": 17
+    },
+    "offline_test_fixture": "test_transport.py uses literal secret-offline-test with httpx.MockTransport",
+    "unexpected": []
+  },
+  "review": "No live credentials detected. All key-like data matches are substrings of provider resp_ identifiers; fixture literal is explicitly offline. Filenames limited to study sources, scientific inputs, runtime receipts, study outputs, model response caches and software fixtures. No manuscript or unrelated human-chat files found. Pattern scanning cannot guarantee absence of every secret."
+}

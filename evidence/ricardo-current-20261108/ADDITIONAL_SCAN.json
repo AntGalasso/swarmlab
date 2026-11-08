@@ -1,0 +1,23 @@
+{
+  "stats": {
+    "13587994440": {
+      "files_including_nested": 730,
+      "private_path_flags": []
+    },
+    "13575140802": {
+      "files_including_nested": 1323,
+      "private_path_flags": []
+    },
+    "13575784552": {
+      "files_including_nested": 1334,
+      "private_path_flags": []
+    },
+    "13576657233": {
+      "files_including_nested": 223,
+      "private_path_flags": []
+    }
+  },
+  "credential_findings": [],
+  "method": "Full byte scan of top-level and nested ZIP members for private-key, GitHub-token and literal Bearer patterns; filename exclusion check. Source/results/runtime artifacts, not human conversation archive. Does not certify absence of every possible secret.",
+  "additional_api_key_assignment_scan": []
+}
