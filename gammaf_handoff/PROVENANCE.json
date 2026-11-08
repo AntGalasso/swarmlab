@@ -1,0 +1,59 @@
+{
+  "public_repository": "pmateo-uc3m/GAMMAF",
+  "public_commit": "53be3249ebfa631d8e960c9fb1c931d526654697",
+  "authors": [
+    "Pablo Mateo-Torrejón",
+    "Alfonso Sánchez-Macián"
+  ],
+  "analysis_source_repository": "ricardofitas/swarm-adaption-hackathon",
+  "analysis_source_commit": "a8c0cb5f2c52ce858fd7cf47a6b3a3dfbbea2b72",
+  "analysis_source_files": [
+    {
+      "source_path": "bazt_headline/decision_quality_20261107/gamma_votes.py",
+      "git_blob": "6b70a403aa2c50af0f5d6d65e46ed358385aedff",
+      "sha256": "636f01f2ea98a2ba06812a0ccb0861de3268baca963edd7b34d5bd25bf842c51"
+    },
+    {
+      "source_path": "bazt_headline/decision_quality_20261107/gamma_sources.json",
+      "git_blob": "081b733bff3f795184f49b8c8509f08a5976cbbf",
+      "sha256": "a3e8798cd9d56892e0c8934d135794aecdc40f3ca67b3b5c0515f4a2101989b8"
+    },
+    {
+      "source_path": "bazt_headline/decision_quality_20261107/verify_votes.py",
+      "git_blob": "9a5cb6037cb7bd03b08285f6814458cd3c53df13",
+      "sha256": "52efe9bea09985a552d95dd99db4f1584bb288dd32b25337cb4c5bd9da2ef8b6"
+    },
+    {
+      "source_path": "results/ricardo/decision_quality_20261107/GAMMAF_RESULTS.json",
+      "git_blob": "c1c46ed61339af009346b9e3d017ce17758f9109",
+      "sha256": "8bba5d4ac44e9f9f1491b5d5456c3f0f7942a2f4ab72e44ddae3c137a5befa80"
+    },
+    {
+      "source_path": "results/ricardo/decision_quality_20261107/MMLU_SELECTION.json",
+      "git_blob": "52abf26701ccca816c2c0aea42840bfa4d30ef50",
+      "sha256": "f9b4136b5f998af747d68e202fd94651defe1689aba18b4090affd39df02d099"
+    },
+    {
+      "source_path": "results/ricardo/decision_quality_20261107/VOTE_VERIFICATION.json",
+      "git_blob": "bafac86ca0cbf95b87b109e8bd915f3977305886",
+      "sha256": "500173e18c7df466c72e37c62bc73e1afbfcc021c7d1a0d8f9410b94b70fc16d"
+    }
+  ],
+  "prior_detection_audit_archive": {
+    "name": "Swarm_GAMMAF_Audit.zip",
+    "sha256": "b805043ba31541ad6f1d9b8537f81b37c622a4639d827a0ee92d4695f0243f96"
+  },
+  "public_code_pins": {
+    "EvaluationDebateLoop.py": "623de146230bf6ec7b4835e62174b1bfc50b08fd",
+    "DatasetManager.py": "561bde7e78852688b249cb6d098d933b836f5a96"
+  },
+  "handoff_additions": [
+    "run.py",
+    "compact_check.py",
+    "CSQA A-E sensitivity check",
+    "checksums",
+    "paired per-question exports",
+    "team-facing instructions and report"
+  ],
+  "scope": "Offline replay; zero new model calls. No human-team reproduction claimed."
+}

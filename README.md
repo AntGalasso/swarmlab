@@ -21,6 +21,15 @@ The frozen Gemma-26B campaign completed 240 main and 120 separately analyzed hel
 
 A separate original-budget Early H2 and accessible-model H4 extension is running on new seeds. No new result is claimed before completion. The old `results/experiments/paper_pack` outputs are [superseded pre-correction mock checks](results/experiments/paper_pack/STATUS.md).
 
+## GAMMAF evaluation audit
+
+The sprint reanalysis now includes a separate [GAMMAF reproduction package](gammaf_handoff/README.md)
+with frozen results, public-source hashes and a one-command CPU replay:
+`python3 gammaf_handoff/run.py`. No API key, GPU or project dependency installation is
+needed for the quick check. The README also provides the full public-source rebuild
+and the archive a teammate should return. These external QA measurements are separate
+from the BAZT experiments; the defence-selection result is tie-sensitive and negative.
+
 ## Compliance guardrail
 * Before kickoff the ONLY live API call allowed is the READY smoke test (`python llm_client.py`).
 * `--mode llm` needs `--allow-live-llm` AND is refused before the kickoff time (`SWARMLAB_KICKOFF_UTC`

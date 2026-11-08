@@ -1,0 +1,15 @@
+{
+  "bootstrap_intervals_recomputed": true,
+  "detection_credit_matches_reference": true,
+  "frozen_source_results_match_reference": true,
+  "mode": "public_source_rebuild",
+  "no_new_model_calls": true,
+  "note": "Pre-publication local source replay; this is not a human teammate reproduction.",
+  "numpy": "2.3.5",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "public_commit": "53be3249ebfa631d8e960c9fb1c931d526654697",
+  "python": "3.12.14",
+  "source_files_verified": 31,
+  "status": "PASS",
+  "terminal_decisions_recomputed": 11200
+}

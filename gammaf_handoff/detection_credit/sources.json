@@ -1,0 +1,110 @@
+{
+  "repository": "pmateo-uc3m/GAMMAF",
+  "commit": "53be3249ebfa631d8e960c9fb1c931d526654697",
+  "experiment": 1,
+  "source_files": [
+    {
+      "dataset": "CSQA",
+      "method": "no_defense_baseline",
+      "file": "CSQA_no_defense_baseline.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/CSQA/no_defense_baseline.json",
+      "git_blob": "d3eb60d796db541c64e7d13a9e7a8e465d70ccf2",
+      "bytes": 3851886
+    },
+    {
+      "dataset": "GSM8K",
+      "method": "no_defense_baseline",
+      "file": "GSM8K_no_defense_baseline.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/GSM8K/no_defense_baseline.json",
+      "git_blob": "69c6a95027fcd3cc2fce9eea5d17fb182606e94e",
+      "bytes": 3880943
+    },
+    {
+      "dataset": "MA",
+      "method": "no_defense_baseline",
+      "file": "MA_no_defense_baseline.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MA/no_defense_baseline.json",
+      "git_blob": "38f0aabd04c87e555de5b1a056de20e28aa2a47b",
+      "bytes": 5749545
+    },
+    {
+      "dataset": "MMLU",
+      "method": "BlindGuard",
+      "file": "MMLU_BlindGuard.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/BlindGuard.json",
+      "git_blob": "12138bd80e0f7142bdc7e88e5ca520cae82728b0",
+      "bytes": 4053361
+    },
+    {
+      "dataset": "MMLU",
+      "method": "CASPIAN",
+      "file": "MMLU_CASPIAN.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/CASPIAN.json",
+      "git_blob": "685c3d6a6031ae4320be7feaa081a760e455924c",
+      "bytes": 3740086
+    },
+    {
+      "dataset": "MMLU",
+      "method": "DOMINANT",
+      "file": "MMLU_DOMINANT.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/DOMINANT.json",
+      "git_blob": "9918dcfd92bf715c0f09b375e223f92bfac1e67b",
+      "bytes": 4097848
+    },
+    {
+      "dataset": "MMLU",
+      "method": "PREM",
+      "file": "MMLU_PREM.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/PREM.json",
+      "git_blob": "c54b98870bbc690c3a4d03f35e3dd0283ce7d25f",
+      "bytes": 3906428
+    },
+    {
+      "dataset": "MMLU",
+      "method": "TAM",
+      "file": "MMLU_TAM.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/TAM.json",
+      "git_blob": "0376b80f7fc8ccdb8cba1b10ea9bcb87937e43b2",
+      "bytes": 3997551
+    },
+    {
+      "dataset": "MMLU",
+      "method": "XG-Guard",
+      "file": "MMLU_XG-Guard.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/XG-Guard.json",
+      "git_blob": "2c7ad2adb9c955501b604828ca0ade93f7f766d5",
+      "bytes": 3770857
+    },
+    {
+      "dataset": "MMLU",
+      "method": "no_defense_baseline",
+      "file": "MMLU_no_defense_baseline.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLU/no_defense_baseline.json",
+      "git_blob": "b32d2b87b25b6ab7c6cb2d63c831478bd4c3a840",
+      "bytes": 3830705
+    },
+    {
+      "dataset": "MMLUPRO",
+      "method": "no_defense_baseline",
+      "file": "MMLUPRO_no_defense_baseline.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/MMLUPRO/no_defense_baseline.json",
+      "git_blob": "489a7d31a82f47b9b9a09f27033591af8a0be5fa",
+      "bytes": 3841328
+    },
+    {
+      "dataset": "TA",
+      "method": "no_defense_baseline",
+      "file": "TA_no_defense_baseline.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1-scores/TA/no_defense_baseline.json",
+      "git_blob": "891b00bfc13b11675d21ec6d6fca5ee1fbbe34b5",
+      "bytes": 3974502
+    },
+    {
+      "file": "summary-exp1.json",
+      "path": "experiments-Information-Sciences/experiment1/results/summary-exp1.json",
+      "git_blob": "ecf2f4538797cb1b3a64f9e530e069003a97b2d5",
+      "bytes": 558664
+    }
+  ],
+  "scorer": "623de146230bf6ec7b4835e62174b1bfc50b08fd"
+}
