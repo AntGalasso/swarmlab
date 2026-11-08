@@ -21,6 +21,30 @@ The frozen Gemma-26B campaign completed 240 main and 120 separately analyzed hel
 
 A separate original-budget Early H2 and accessible-model H4 extension is running on new seeds. No new result is claimed before completion. The old `results/experiments/paper_pack` outputs are [superseded pre-correction mock checks](results/experiments/paper_pack/STATUS.md).
 
+## Papers & companion materials
+
+This repository is the code and evaluation-artefact companion for the team's three sprint papers
+(authors: Antonio Galasso, Vittoria Lanzo, Ricardo Fitas, Kunal Sharma — with Apart Research).
+
+1. **BAZT: Budgeted Agentic Zero-Trust Enforcement Against Prompt Contagion in LLM Agent Swarms** —
+   gateway control plane, 2,400-episode simulator hypothesis suite (H1–H3), live qwen3.8-27b sweep and
+   deepseek-v4-flash pilot. Code: `swarmlab.py`, `bazt/`, `stats_check.py`, `make_figures.py`.
+   Artefacts: `results/stats_report_main.json`, `results/tuning_summary.json`, frozen episode records
+   in `results/ricardo/integrated_study_v6/main/`, figures from `make_figures.py`. The pre-kickoff
+   scaffolding snapshot is tagged `pre-kickoff-20261106T2000Z` (last commit before the kickoff guard
+   2026-11-06T20:00:00Z).
+2. **When Inspection Outlives Intervention: Budget-aware monitoring in multi-agent systems** — the
+   `Stop` rule: skip inspection purchases once the intervention balance is below the smallest positive
+   unit price. The inspection-budget contracts, conventional arms and the decision log behind it live
+   in `bazt_lab/`, `budget_study.py` and `docs/EXPERIMENT_DECISIONS.md`.
+3. **Excluded Agents Still Change the Score: A causal audit of multi-agent safety evaluation** — a
+   causal audit of the public GAMMAF benchmark release (arXiv:2604.24477): editing one already-flagged
+   agent's terminal vote can flip the recorded grade while the delivered answer is unchanged.
+   Context: [docs/LITERATURE_CHECK.md](docs/LITERATURE_CHECK.md).
+
+Reading order for reviewers: this README → [docs/ARCHITECTURE_MAP.md](docs/ARCHITECTURE_MAP.md) →
+[results/README.md](results/README.md) (artifact map and freeze rules) → the papers.
+
 ## Repository layout
 ```
 swarmlab.py  experiments.py  run_experiments.py      pipeline entry points (root: CI and tests import them by name)
