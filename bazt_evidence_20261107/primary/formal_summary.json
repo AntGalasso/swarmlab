@@ -1,0 +1,110 @@
+{
+  "run_id": 42381690293,
+  "complete": true,
+  "rows": 2127600,
+  "llm_rows": 0,
+  "verdicts": {
+    "H-budget": {
+      "mock": {
+        "BAZT": false,
+        "BAZT_upstream": false
+      },
+      "llm": "not_configured"
+    },
+    "H-adaptive": {
+      "mock": "not_configured",
+      "llm": "not_configured"
+    },
+    "H-topology": {
+      "mock": "not_configured",
+      "llm": "not_configured"
+    }
+  },
+  "H_budget": {
+    "BAZT": {
+      "n_comparisons": 1200,
+      "label_counts": {
+        "STRICT_PARETO_WIN": 0,
+        "SAFETY_WIN_UTILITY_NONINFERIOR": 105,
+        "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 169,
+        "UTILITY_LOSS": 0,
+        "NO_SIGNIFICANT_DIFFERENCE": 926
+      },
+      "n_wins": 105,
+      "dominance_rate": 0.0875,
+      "n_utility_loss": 0,
+      "criterion": "supported when at least half of the comparisons are STRICT_PARETO_WIN or SAFETY_WIN_UTILITY_NONINFERIOR and none is UTILITY_LOSS",
+      "supported": false,
+      "complete": true
+    },
+    "BAZT_upstream": {
+      "n_comparisons": 1200,
+      "label_counts": {
+        "STRICT_PARETO_WIN": 0,
+        "SAFETY_WIN_UTILITY_NONINFERIOR": 0,
+        "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 28,
+        "UTILITY_LOSS": 255,
+        "NO_SIGNIFICANT_DIFFERENCE": 917
+      },
+      "n_wins": 0,
+      "dominance_rate": 0.0,
+      "n_utility_loss": 255,
+      "criterion": "supported when at least half of the comparisons are STRICT_PARETO_WIN or SAFETY_WIN_UTILITY_NONINFERIOR and none is UTILITY_LOSS",
+      "supported": false,
+      "complete": true
+    }
+  },
+  "H_efficiency": {
+    "BAZT": {
+      "frontiers": 25,
+      "finite_reaching": 25,
+      "minimum_p_reached": 0.686
+    },
+    "BAZT_upstream": {
+      "frontiers": 25,
+      "finite_reaching": 20,
+      "minimum_p_reached": 0.247
+    }
+  },
+  "sprint_labels": {
+    "BAZT": {
+      "barabasi_albert": {
+        "NO_SIGNIFICANT_DIFFERENCE": 4,
+        "SAFETY_WIN_UTILITY_NONINFERIOR": 1
+      },
+      "chain": {
+        "NO_SIGNIFICANT_DIFFERENCE": 1,
+        "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 4
+      },
+      "small_world": {
+        "NO_SIGNIFICANT_DIFFERENCE": 4,
+        "SAFETY_WIN_UTILITY_NONINFERIOR": 1
+      },
+      "star_hub": {
+        "NO_SIGNIFICANT_DIFFERENCE": 5
+      },
+      "star_leaf": {
+        "NO_SIGNIFICANT_DIFFERENCE": 5
+      }
+    },
+    "BAZT_upstream": {
+      "barabasi_albert": {
+        "NO_SIGNIFICANT_DIFFERENCE": 5
+      },
+      "chain": {
+        "NO_SIGNIFICANT_DIFFERENCE": 5
+      },
+      "small_world": {
+        "NO_SIGNIFICANT_DIFFERENCE": 5
+      },
+      "star_hub": {
+        "NO_SIGNIFICANT_DIFFERENCE": 5
+      },
+      "star_leaf": {
+        "NO_SIGNIFICANT_DIFFERENCE": 5
+      }
+    }
+  },
+  "NI_warning": "Holm controls zero-difference tests; noninferiority labels use pointwise bootstrap intervals, not simultaneous NI.",
+  "scope": "mock-only, free-information asymmetry, no broad semantic-safety validation"
+}

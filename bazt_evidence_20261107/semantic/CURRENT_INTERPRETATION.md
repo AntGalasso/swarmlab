@@ -1,0 +1,5 @@
+# Current interpretation superseding worker-local blind declarations
+
+Root and other auditors opened the LLM outcomes before this follow-up was fixed, at Ricardo’s explicit request. The later worker-local lock does not establish team-level blinding. ALL cross-platform comparisons are exploratory. Historical logs and source/lock files remain unchanged. The revised paper and team evidence package use this correction. The stronger transfer claim is unsupported even descriptively (.25 native versus .75 paid-only rank distance).
+
+The original BA paired effect remains +21.52 pp [12.25,31.06]. A separate, root-owned exploratory two-graph extension also completed: small-world +43.81 pp [33.13,54.09], Holm-2 p≈.000020; star-hub approximately zero [-.98,1.01], p=1. The old statement that this extension was not run is superseded. No new provider calls were used. Full audited packages live on the reviewed BA/extension branches recorded in COORDINATION_DISCLOSURE.json. Original H-budget remains unsupported; no manuscript or source inference should label the transfer comparison blinded.

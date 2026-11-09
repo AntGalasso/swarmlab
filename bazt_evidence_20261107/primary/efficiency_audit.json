@@ -1,0 +1,80 @@
+{
+  "BAZT": {
+    "frontiers": 25,
+    "reaches": 25,
+    "finite_reaches": 25,
+    "unbounded_reaches": 0,
+    "missing": [],
+    "p_reached_range": [
+      0.686,
+      1.0
+    ]
+  },
+  "BAZT_upstream": {
+    "frontiers": 25,
+    "reaches": 20,
+    "finite_reaches": 20,
+    "unbounded_reaches": 0,
+    "missing": [
+      {
+        "block": "mock_frontier",
+        "topology": "star_hub",
+        "agents": 12,
+        "condition": null,
+        "preset": null,
+        "cost_condition": null,
+        "sanitize_mode": null,
+        "ma_check": null,
+        "attack": "infection"
+      },
+      {
+        "block": "mock_frontier",
+        "topology": "star_leaf",
+        "agents": 12,
+        "condition": null,
+        "preset": null,
+        "cost_condition": null,
+        "sanitize_mode": null,
+        "ma_check": null,
+        "attack": "infection"
+      },
+      {
+        "block": "mock_frontier",
+        "topology": "star_leaf",
+        "agents": 12,
+        "condition": null,
+        "preset": null,
+        "cost_condition": null,
+        "sanitize_mode": null,
+        "ma_check": null,
+        "attack": "insider_ma"
+      },
+      {
+        "block": "mock_frontier",
+        "topology": "star_leaf",
+        "agents": 12,
+        "condition": null,
+        "preset": null,
+        "cost_condition": null,
+        "sanitize_mode": null,
+        "ma_check": null,
+        "attack": "insider_pi"
+      },
+      {
+        "block": "mock_frontier",
+        "topology": "star_leaf",
+        "agents": 12,
+        "condition": null,
+        "preset": null,
+        "cost_condition": null,
+        "sanitize_mode": null,
+        "ma_check": null,
+        "attack": "insider_ta"
+      }
+    ],
+    "p_reached_range": [
+      0.247,
+      1.0
+    ]
+  }
+}

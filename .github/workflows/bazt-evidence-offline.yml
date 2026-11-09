@@ -1,0 +1,22 @@
+name: Verify completed BAZT evidence
+on:
+  pull_request:
+    paths: ['bazt_evidence_20261107/**', '.github/workflows/bazt-evidence-offline.yml']
+  push:
+    branches: ['evidence/completed-bazt-benchmark-20261107']
+    paths: ['bazt_evidence_20261107/**', '.github/workflows/bazt-evidence-offline.yml']
+permissions:
+  contents: read
+jobs:
+  evidence-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11.17'
+      - name: Verify hashes, raw row/done records and corrected interpretation without inference
+        run: python bazt_evidence_20261107/verify_evidence.py

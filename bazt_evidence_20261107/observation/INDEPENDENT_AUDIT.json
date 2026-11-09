@@ -1,0 +1,76 @@
+{
+  "all_16_calibration_cells_within_band": true,
+  "all_raw_recomputed_contrasts_match_analysis": true,
+  "audited_utc": "2026-11-07T18:05:48.477984+00:00",
+  "bootstrap_draws": 20000,
+  "budget_violations": 0,
+  "calibration_cells_per_mode": 8,
+  "calibration_records_total": 2400,
+  "committed_jsonl_done_pairs_per_mode": 108,
+  "contrasts": [
+    {
+      "ci95_pointwise_pp": [
+        33.13131313131313,
+        54.09154040404035
+      ],
+      "mean_change_pp": 43.8131313131313,
+      "native_BAZT_minus_C_pp": -34.62121212121211,
+      "p_holm_two_graphs": 1.999980000199998e-05,
+      "p_two_sided": 9.99990000099999e-06,
+      "paid_BAZT_minus_C_ci95_pointwise_pp": [
+        -0.7077020202020236,
+        20.95959595959595
+      ],
+      "paid_BAZT_minus_C_pp": 9.191919191919188,
+      "topology": "small_world"
+    },
+    {
+      "ci95_pointwise_pp": [
+        -0.9848484848484844,
+        1.01010101010101
+      ],
+      "mean_change_pp": 1.3877787807814457e-16,
+      "native_BAZT_minus_C_pp": -1.262626262626262,
+      "p_holm_two_graphs": 1.0,
+      "p_two_sided": 1.0,
+      "paid_BAZT_minus_C_ci95_pointwise_pp": [
+        -2.979797979797977,
+        0.05050505050505073
+      ],
+      "paid_BAZT_minus_C_pp": -1.2626262626262619,
+      "topology": "star_hub"
+    }
+  ],
+  "duplicates": 0,
+  "endpoint": "asr_final - (1 - accuracy_clean_reference), same non-insider victims, unclamped",
+  "evaluation_records": 25920,
+  "evaluation_records_per_mode": 12960,
+  "exact_expected_unit_IDs": true,
+  "graphs": [
+    "small_world",
+    "star_hub"
+  ],
+  "holmmultiplicity": 2,
+  "independent_auditor": "/root/alternative_code_audit/extension_schema_review",
+  "independent_seeds_per_graph": 30,
+  "native_arm_budget_cells": 9,
+  "negative_control_arms": [
+    "A",
+    "B",
+    "C"
+  ],
+  "negative_control_difference_exclusion": "only declared observability_contract provenance events",
+  "negative_control_rows_identical": 7200,
+  "negative_control_thresholds_equal_per_graph": true,
+  "no_equal_heldout_FPR_claim": true,
+  "not_fixed_threshold_ablation": true,
+  "not_original_H_topology_confirmation": true,
+  "orphans": 0,
+  "post_LLM_unblinding_exploratory": true,
+  "primary_computation": "seed average over twelve sinks; core-minus-C paid-only minus native at10/10",
+  "provider_calls": 0,
+  "signflip_draws": 100000,
+  "sinks_per_seed": 12,
+  "source_freezes_and_calibration_evaluation_interfaces_valid": true,
+  "status": "PASS"
+}

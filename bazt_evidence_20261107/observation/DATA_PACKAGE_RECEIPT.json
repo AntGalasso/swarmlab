@@ -1,0 +1,32 @@
+{
+  "archive": "bazt_headline/observability_stage/release/observation_parity_raw_results_20261107.tar.gz",
+  "archive_sha256": "dfe57267ae3f1e21b2bd5f4d6660e83c2ef3f737b106dd84e11a01ca48100cc5",
+  "bytes": 1463629,
+  "members": 542,
+  "data_tree_sha256": "d0125ecc27cad909625d8ff874c24b5f9ab17ba9b5e2579f46eec94a5270a197",
+  "coverage": {
+    "development/native_mock": {
+      "committed_rows": 2592,
+      "committed_files": 36,
+      "negative_controls_passed": true
+    },
+    "development/paid_only": {
+      "committed_rows": 2592,
+      "committed_files": 36,
+      "negative_controls_passed": true
+    },
+    "heldout/native_mock": {
+      "committed_rows": 6480,
+      "committed_files": 72,
+      "negative_controls_passed": true
+    },
+    "heldout/paid_only": {
+      "committed_rows": 6480,
+      "committed_files": 72,
+      "negative_controls_passed": true
+    }
+  },
+  "source_package_sha256": "f388a347df88c7b6f8868e4f36c2619e930001e98ea7074d62930b79b64b2072",
+  "current_transfer_interpretation": "exploratory",
+  "provider_calls": 0
+}

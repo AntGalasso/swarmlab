@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "archive_sha256": "f388a347df88c7b6f8868e4f36c2619e930001e98ea7074d62930b79b64b2072",
+  "test_result": "12 tests passed on fresh extraction of code-identical prior archive",
+  "code_and_settings_members_compared": 222,
+  "code_and_settings_identical": true,
+  "changed_members": "additional provenance JSON and corrected reproduction README only",
+  "provider_calls": 0,
+  "new_scientific_phases": 0,
+  "exact_materialized_source": true,
+  "binary_identical_to_upstream": false
+}

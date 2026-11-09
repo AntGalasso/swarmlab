@@ -1,0 +1,10 @@
+{
+  "archive": "bazt_headline/observability_stage/release/observation_parity_exact_source_20261107.tar.gz",
+  "archive_sha256": "f388a347df88c7b6f8868e4f36c2619e930001e98ea7074d62930b79b64b2072",
+  "bytes": 437308,
+  "members": 240,
+  "source_tree_sha256": "58c290607e114644ab32d374537f25d66751432e965f6f5391196de31ff4c447",
+  "programme_tree_sha256": "f49300146344468dbc763a836c731841db97fe3131000b9e52b4226e6136935e",
+  "binary_identical_to_upstream": false,
+  "provider_inference": 0
+}

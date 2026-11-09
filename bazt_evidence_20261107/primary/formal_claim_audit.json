@@ -1,0 +1,173 @@
+{
+  "run_id": 42381690293,
+  "formal_report_sha256": "ba1ffa842935ea8602b3280a8eb4371a66cb2bfd0f883eb5272eb62dbb98930b",
+  "independent_grid_status": "PASS",
+  "challengers": {
+    "BAZT": {
+      "summary": {
+        "n_comparisons": 1200,
+        "label_counts": {
+          "STRICT_PARETO_WIN": 0,
+          "SAFETY_WIN_UTILITY_NONINFERIOR": 105,
+          "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 169,
+          "UTILITY_LOSS": 0,
+          "NO_SIGNIFICANT_DIFFERENCE": 926
+        },
+        "n_wins": 105,
+        "dominance_rate": 0.0875,
+        "n_utility_loss": 0,
+        "criterion": "supported when at least half of the comparisons are STRICT_PARETO_WIN or SAFETY_WIN_UTILITY_NONINFERIOR and none is UTILITY_LOSS",
+        "supported": false,
+        "complete": true
+      },
+      "by_topology": {
+        "barabasi_albert": {
+          "NO_SIGNIFICANT_DIFFERENCE": 167,
+          "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 71,
+          "SAFETY_WIN_UTILITY_NONINFERIOR": 2
+        },
+        "chain": {
+          "NO_SIGNIFICANT_DIFFERENCE": 116,
+          "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 85,
+          "SAFETY_WIN_UTILITY_NONINFERIOR": 39
+        },
+        "small_world": {
+          "NO_SIGNIFICANT_DIFFERENCE": 163,
+          "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 13,
+          "SAFETY_WIN_UTILITY_NONINFERIOR": 64
+        },
+        "star_hub": {
+          "NO_SIGNIFICANT_DIFFERENCE": 240
+        },
+        "star_leaf": {
+          "NO_SIGNIFICANT_DIFFERENCE": 240
+        }
+      },
+      "all_comparisons_have_30_seed_pairs": true
+    },
+    "BAZT_upstream": {
+      "summary": {
+        "n_comparisons": 1200,
+        "label_counts": {
+          "STRICT_PARETO_WIN": 0,
+          "SAFETY_WIN_UTILITY_NONINFERIOR": 0,
+          "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 28,
+          "UTILITY_LOSS": 255,
+          "NO_SIGNIFICANT_DIFFERENCE": 917
+        },
+        "n_wins": 0,
+        "dominance_rate": 0.0,
+        "n_utility_loss": 255,
+        "criterion": "supported when at least half of the comparisons are STRICT_PARETO_WIN or SAFETY_WIN_UTILITY_NONINFERIOR and none is UTILITY_LOSS",
+        "supported": false,
+        "complete": true
+      },
+      "by_topology": {
+        "barabasi_albert": {
+          "NO_SIGNIFICANT_DIFFERENCE": 140,
+          "UTILITY_LOSS": 100
+        },
+        "chain": {
+          "NO_SIGNIFICANT_DIFFERENCE": 177,
+          "UTILITY_LOSS": 35,
+          "CONTAINMENT_GAIN_UTILITY_UNBOUNDED": 28
+        },
+        "small_world": {
+          "NO_SIGNIFICANT_DIFFERENCE": 140,
+          "UTILITY_LOSS": 100
+        },
+        "star_hub": {
+          "NO_SIGNIFICANT_DIFFERENCE": 240
+        },
+        "star_leaf": {
+          "NO_SIGNIFICANT_DIFFERENCE": 220,
+          "UTILITY_LOSS": 20
+        }
+      },
+      "all_comparisons_have_30_seed_pairs": true
+    }
+  },
+  "efficiency": {
+    "BAZT": {
+      "frontiers": 25,
+      "reaches": 25,
+      "finite_reaches": 25,
+      "unbounded_reaches": 0,
+      "missing": [],
+      "p_reached_range": [
+        0.686,
+        1.0
+      ]
+    },
+    "BAZT_upstream": {
+      "frontiers": 25,
+      "reaches": 20,
+      "finite_reaches": 20,
+      "unbounded_reaches": 0,
+      "missing": [
+        {
+          "block": "mock_frontier",
+          "topology": "star_hub",
+          "agents": 12,
+          "condition": null,
+          "preset": null,
+          "cost_condition": null,
+          "sanitize_mode": null,
+          "ma_check": null,
+          "attack": "infection"
+        },
+        {
+          "block": "mock_frontier",
+          "topology": "star_leaf",
+          "agents": 12,
+          "condition": null,
+          "preset": null,
+          "cost_condition": null,
+          "sanitize_mode": null,
+          "ma_check": null,
+          "attack": "infection"
+        },
+        {
+          "block": "mock_frontier",
+          "topology": "star_leaf",
+          "agents": 12,
+          "condition": null,
+          "preset": null,
+          "cost_condition": null,
+          "sanitize_mode": null,
+          "ma_check": null,
+          "attack": "insider_ma"
+        },
+        {
+          "block": "mock_frontier",
+          "topology": "star_leaf",
+          "agents": 12,
+          "condition": null,
+          "preset": null,
+          "cost_condition": null,
+          "sanitize_mode": null,
+          "ma_check": null,
+          "attack": "insider_pi"
+        },
+        {
+          "block": "mock_frontier",
+          "topology": "star_leaf",
+          "agents": 12,
+          "condition": null,
+          "preset": null,
+          "cost_condition": null,
+          "sanitize_mode": null,
+          "ma_check": null,
+          "attack": "insider_ta"
+        }
+      ],
+      "p_reached_range": [
+        0.247,
+        1.0
+      ]
+    }
+  },
+  "ladder_ordered_cells": 0,
+  "ladder_cells": 25,
+  "no_llm_scope_changes_from_results": true
+}

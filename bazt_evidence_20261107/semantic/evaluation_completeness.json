@@ -1,0 +1,1 @@
+{"attacked_rows": 160, "clean_rows": 160, "committed_rows": 320, "committed_units": 160, "complete": true, "duplicates": 0, "expected_rows": 320, "expected_units": 160, "missing_units": [], "shared_seed_cap_check": "passed", "unfinished_units": [], "violations": 0}
