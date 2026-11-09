@@ -1,159 +1,133 @@
-# swarmlab -- PRE-EXISTING SCAFFOLDING (declared for Apart Research compliance)
+# BAZT: Budgeted Agentic Zero-Trust Enforcement Against Prompt Contagion in LLM Agent Swarms
 
-The original scaffolding was written **before** the Swarm Alignment Hackathon kickoff (Nov 6, 2026). Its original artifacts contain no live-model experimental result. **This includes the `bazt/` package, its tests and `docs/BAZT_SPEC_v2.md` / `docs/ARCHITECTURE_BAZT_FOR_REPO.md`
-(branch `feat/bazt`, written Nov 4-5, 2026, before kickoff): every pre-sprint BAZT number comes from
-`--mode mock` on tune seeds 9001-9012 and is a pipeline check, not a finding.** Organisers confirmed (Kamil, Apart) that pre-existing code is fine if marked as such in the
-README and in the report. Everything measured with it during the sprint is sprint work.
+**Apart Research — Swarm Alignment Hackathon (November 2026)**  
+**Authors:** Antonio Galasso, Kunal Sharma, Vittoria Lanzo, Ricardo Fitas  
+*Swarm Alignment Research Team*  
+**Post-Pilot Configuration SHA-256:** `f8b616b2...5079` | **Pre-Kickoff Tag:** `2026-11-06T20:00:00Z`
 
-Project: *When and Whom to Quarantine? Topology-aware risk control under alert-driven budget exhaustion in agent swarms.*
+---
 
-## Current team integration
+## Overview
 
-The integration checkout includes `swarmlab` / `bazt`, the expanded `experiments.py` pipeline,
-and Vittoria's `bazt_lab`. Use Python 3.11, initialize the pinned G-Safeguard submodule, and
-run `uv sync --frozen` for the full project. See [docs/TEAM_INTEGRATION.md](docs/TEAM_INTEGRATION.md)
-for source provenance, validation and the H2/H3 experiment gates. The pipelines keep separate
-result semantics. CI is offline; inference is explicit and credentials are never committed.
+Multi-agent LLM systems can propagate a single malicious instruction from agent to agent along their communication graph. Defending such a swarm at runtime is a resource-allocation problem under uncertainty: judge compute, human review capacity, and intervention budgets are finite, while every defensive intervention removes legitimate collaboration and degrades task consensus.
 
-## Completed evaluation and current extension
+This repository contains the complete research suite developed during the **Swarm Alignment Hackathon**:
+1. **Primary Architecture — BAZT & SwarmLab (`bazt/`, `swarmlab.py`):** A runtime Zero-Trust gateway control plane that mediates inter-agent communications outside the agents' authority, coupled with a 10-policy containment benchmark suite, an asynchronous live-LLM harness integrated with **Adaption Labs** (`qwen3.8-27b`, `deepseek-v4-flash`, `gemma-4-26b-a4b-it`), content-addressed SQLite Common Random Numbers (CRN) caching, and the **`Stop`** budget-aware inspection stopping rule.
+2. **Companion Metrological Audit — GAMMAF Causal Audit (`gammaf_handoff/`):** A zero-dependency causal audit and verification suite for the external GAMMAF benchmark (pinned commit `53be3249`, 11,200 debates), isolating post-filter excluded-voter grade leakage (227/9,600 discrepant verdicts), padded-round phantom detection credit (8.00% on disabled controls), and attack-generator target seeding bugs (64/300 gold targets).
 
-The frozen Gemma-26B campaign completed 240 main and 120 separately analyzed heldout episodes. H2 was unsupported and H3 was mixed; see [the verified status](docs/RICARDO_EXECUTION_STATUS.md) and [frozen results](results/ricardo/integrated_study_v6/analysis/). These are controlled simulator endpoints with live status messages, not general LLM safety measures.
+---
 
-A separate original-budget Early H2 and accessible-model H4 extension is running on new seeds. No new result is claimed before completion. The old `results/experiments/paper_pack` outputs are [superseded pre-correction mock checks](results/experiments/paper_pack/STATUS.md).
+## Part I: BAZT Architecture & SwarmLab Containment Suite (Primary Focus)
 
-## Compliance guardrail
-* Before kickoff the ONLY live API call allowed is the READY smoke test (`python llm_client.py`).
-* `--mode llm` needs `--allow-live-llm` AND is refused before the kickoff time (`SWARMLAB_KICKOFF_UTC`
-  overrides the default 2026-11-06 20:00 UTC if the official start differs).
-* Mock mode makes zero API calls. **Mock numbers are never findings.**
-* Dual live payloads (`--payload canary_tag | consensus_drift`) exist only as templates in `swarmlab.py`;
-  nothing containing `[REF-7]`, `[DOC-2]` or a decoy message is sent before kickoff.
-* `python -m bazt.runner --mode llm` uses swarmlab's own kickoff guard: before kickoff it exits unconditionally (with or
-  without `--allow-live-llm`); after kickoff it needs `--allow-live-llm` and works with `SWARMLAB_PROVIDER=openrouter|adaption`
-  and `--evasion-adapter live_cot`, with no code edit. Its tests use a fake backend: zero live calls.
+### 1. Core Architectural Mechanisms
+BAZT sits at the delivery boundary of a directed communication graph $G=(V,E)$ ($N=12$ agents, scaling up to $N=100$; horizon $T=12$) and enforces five structural principles:
 
-## Files
-| file | role |
-|---|---|
-| `llm_client.py` | async OpenRouter client, SQLite WAL cache keyed by (model, messages, temperature, CRN salt), READY smoke test |
-| `swarmlab.py` | simulator, 10 policy arms (incl. two-tier `risk_aware_tiered`), metrics, joint tuning, scaling sweep, LLM budget estimator, CLI |
-| `stats_check.py` | pre-registered H1-H4 tests (paired Wilcoxon, Holm, bootstrap CI, Spearman) + strict Pareto / non-inferiority labels |
-| `make_figures.py` | publication `.pdf` figures (safety-utility frontier, budget exhaustion dynamics, scaling curve) |
-| `env_ladder.py` | Stage 1 fake-web corpus, Stage 2 difficulty ladder + breaking-point finder, Stage 3 hard constraints + `CoTPayloadAdapter` evasion sweep (mock-only, no live-LLM path) |
-| `bazt/` | Budgeted Adaptive Zero-Trust gateway (13 modules + `channel.py`): `python -m bazt.runner`; writes only to `results/bazt/` |
-| `docs/BAZT_SPEC_v2.md`, `docs/ARCHITECTURE_BAZT_FOR_REPO.md` | BAZT specification with resolved decisions; module map and extension guide |
-| `METRICS_SPEC.md` | exact equations for every reported metric, monitor, risk score, tuning objective and label (§1-§13), the ladder/sandbox metrics (§14) and the BAZT gateway metrics (§15) |
-| `KUNAL_SANDBOX_GUIDE.md` | developer guide to the three stages: how to plug a live CoT payload adapter into Stage 3 after kickoff |
-| `ARCHITECTURE_MAP.md` | module map, seed splits, artifact list, per-teammate ownership |
-| `swarmtraces_fetch.py` | download + aggregate-only profile of the public Swarm Traces dataset |
-| `tests/test_core.py` | 46 offline tests (determinism, CRN prefix sharing, caps, guards, cache, decoy realism, arm divergence, metric formulas, Pareto labels, per-step tier-1 budgets, payloads) |
-| `tests/test_env_ladder.py` | 27 offline tests (corpus schema/determinism, ladder monotonicity + pinned breaking point, routing masks, channel filters, adapter contract, hook compatibility, LLM refusal) |
-| `tests/test_bazt_{core,gateway,integration}.py` | 92 offline tests: pricing, ledger, lineage, optimizer, gateway state machine, §15 equations, legacy bit-identity, ground-truth firewall, budgets, filtering cost, kickoff guard, dependency direction |
+* **Ground-Truth Firewall & Sender-Memory Preservation:** The controller never reads hidden infection states; a paid `inspect(i)` call (cost = 1 audit unit) is its only channel to ground truth. Blocking, sanitizing, or restricting an outgoing edge $(i \to j)$ modifies what recipient $j$ receives without altering the internal state of sender $i$.
+* **Evidence Fusion & Provenance Taint:** At round $t$, BAZT fuses the $m=2$ rolling judge score $\rho(i,t)$ with a content-agnostic structural provenance taint $\tau(i,t) \in [0,1]$ (initialized at 1 at ingress nodes, attenuated by $\delta=0.7$ per hop, decaying by $0.8$ per step, and reset to $0$ upon a clean paid inspection):
+  $$p'(i,t) = \sigma\!\big(a\,\rho(i,t) - b + w\,\tau(i,t)\big), \qquad a=2.5,\; b=2.0,\; w=1.0$$
+* **Finite-Horizon Contagion Reachability:** Expected downstream contagion over remaining horizon $h = T - t$ is estimated via path-decayed reachability on the active subgraph:
+  $$H(i) = \sum_{j \in V \setminus \{i\}} (1 - p'_j)\,\gamma^{d(i,j)-1}\,\mathbb{I}\big[1 \le d(i,j) \le \min(h, d_{\max})\big], \qquad \gamma=0.7,\; d_{\max}=3$$
+* **Graduated Action Space & Exponential Pacing:** Separate audit and intervention ledgers price five actions by net value $v(a) = b(a) - \lambda(1 - p'_i)u(a)$ and value density $d(a) = v(a)/\mathrm{cost}(a)$:
+  1. `inspect` (Cost: 1 audit unit | Utility cost: $0$ | Verdict lifetime: 2 steps, overrides $p'$ to $0.98/0.02$).
+  2. `sanitize` (Cost: 1 intervention unit | Strips free-text payload, preserves numeric sensor estimate; $\rho_{\mathrm{san}}=0.1$).
+  3. `restrict` (Cost: 2 intervention units | Enforces schema-only output and denies tools for 3 steps; $\rho_{\mathrm{res}}=0.3$).
+  4. `block_edge` (Cost: 2 intervention units | Drops delivery along single directed edge $(i \to j)$).
+  5. `isolate` (Cost: 3 intervention units | Permanently severs all outgoing edges from node $i$).
+  
+  To prevent benign early false alarms (*decoys*, such as administrative headers `[DOC-2]`) from exhausting the intervention ledger $B$, candidate actions must clear an exponentially rising density threshold:
+  $$d(a) \ge \theta(z) = \theta_0 \exp(\kappa z), \qquad z = \frac{\text{spent}}{B},\quad \theta_0 = 0.150,\; \kappa = 1.5$$
+* **Budget-Aware Inspection Stopping (`Stop`) & Terminal Planning Clock:** Once the remaining intervention balance $B_I(t)$ falls below the smallest positive action cost $c_{\min}^+ > 0$, paid inspections on active senders cannot fund any positive-cost intervention. The `Stop` rule suppresses active-sender audits below the price floor unless a zero-cost action (e.g., free redaction $c=0$) is eligible:
+  $$M_t^{\mathrm{Stop}} = \begin{cases} M_t & \text{if } B_I(t) \ge c_{\min}^+ \text{ or free redaction } (c=0) \text{ is eligible,} \\ \emptyset & \text{if } B_I(t) < c_{\min}^+ \text{ and all eligible actions have } c > 0. \end{cases}$$
+  For live LLM tasks where the receiver reads the final round's incoming delivery before emitting its answer, the planning horizon is set to $h_{\mathrm{LLM}} = \max(T - t + 1, 0)$.
 
-## Quickstart
-```bash
-pip install -r requirements.txt && cp .env.example .env     # add OPENROUTER_API_KEY
-pytest -q                                                    # offline, no key needed
-python llm_client.py                                         # only live call allowed before kickoff
+---
 
-python swarmlab.py --mode mock --tune                        # full tune split 9001-9030, joint objective J
-python swarmlab.py --mode mock --split main    --params results/tuned_params.json
-python swarmlab.py --mode mock --split heldout --params results/tuned_params.json
-python swarmlab.py --mode mock --scaling-sweep --seeds 20    # N in {12,24,36} on small_world
-python stats_check.py --file results/per_seed_main.csv
-python stats_check.py --file results/per_seed_heldout.csv
-python make_figures.py                                       # fig1..fig3
+### 2. Key Experimental Results (BAZT & SwarmLab)
 
-python env_ladder.py --all                                   # corpus + ladder + Stage-3 sweep (~20 s, mock)
-python env_ladder.py --build-corpus                          # only data/fake_web_corpus.jsonl
-python swarmlab.py --mode mock --entry-source fake_web_jsonl --seeds 2 --topologies chain        --policies no_defense risk_aware_tiered --out results/entry_demo
-python stats_check.py --ladder results/ladder_breaking_point.csv                       --evasion results/ladder_constraint_evasion.csv --out results/ladder_stats_report.json
-python make_figures.py                                       # fig1..fig5 (fig4/fig5 need the ladder outputs)
-python swarmlab.py --budget --seeds 30 --price-in <usd/Mtok> --price-out <usd/Mtok>   # you supply real prices
-python swarmtraces_fetch.py download && python swarmtraces_fetch.py profile
+#### A. Pre-Registered Threshold Calibration (`tune` split: Seeds `9001..9030`, 2,400 episodes)
+Thresholds were calibrated on 30 tune seeds by minimizing $J = \mathrm{AUC}_{\mathrm{ever}} + 0.25 \cdot (\mathrm{MAE} / \mathrm{MAE}_{\mathrm{base}})$ and frozen prior to main-split evaluation (`results/tuning_summary.json`):
 
-python -m bazt.runner --mode mock --split tune --seeds 12     # BAZT smoke check on tune seeds -> results/bazt/smoke_tune_check.csv
-python -m bazt.runner --mode mock --split tune --budget-sweep # cost-matched sweep of the pooled budget B
-```
-Seed splits: **tune** 9001-9030 (always all 30 for tuning), **main** 1-30, **heldout** 31-60, **ladder calibration**
-9401-9440 (freezes the ladder's success bar, never graded), **ladder/scaling** 9001-9020. `--tune` refuses other splits.
-All deployable arms are tuned on the same tune seeds, optimising
-`J = AUC_ever + alpha * (MAE / MAE_baseline)` (`--alpha`, default 0.25) so a candidate cannot buy containment
-by wrecking consensus accuracy. Artifacts: `results/tuning_summary.json`, `results/tuned_params.json`.
+| Policy Arm | Code Name | Frozen Tuned Parameters | Tune $J \downarrow$ | Tune $\mathrm{AUC}_{\mathrm{ever}}$ | Tune $\mathrm{MAE}$ | Main H3 Dominance Rate |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **Two-Tier Graduated Defence** | `risk_aware_tiered` | $\tau_{\mathrm{quar}}=2.0, \lambda=0.25, \tau_{\mathrm{san}}=0.35$ | **0.2810** | **0.1609** | **7.03** | **67.9% (19/28, 0 losses — Supported)** |
+| Degree-Centrality Quarantine | `centrality_only` | top-$K$ by degree ($K=3$) | 0.3255 | 0.1663 | 9.67 | — |
+| Single-Tier Hard Quarantine | `risk_aware` | $\tau_R=0.50, \lambda=0.25$ | 0.3451 | 0.2094 | 8.59 | 41.7% (10/24, 1 loss — Failed) |
+| Fixed Early Window | `fixed_early` | $\tau_p=0.50$ | 0.3968 | 0.2510 | 9.30 | — |
+| Topology-Blind Score Monitor | `score_only` | $\tau_p=0.50$ | 0.4761 | 0.3425 | 8.61 | — |
+| Fixed Mid Window | `fixed_mid` | $\tau_p=0.50$ | 0.6871 | 0.5394 | 10.43 | — |
+| Fixed Late Window | `fixed_late` | $\tau_p=0.50$ | 0.8051 | 0.6031 | 15.23 | — |
 
-Outputs never overwrite each other: `per_seed_main.csv` / `per_seed_heldout.csv`,
-`episodes_main.jsonl` / `episodes_heldout.jsonl`, `summary_clean.csv` + `summary_decoy.csv` (main) and
-`summary_*_heldout.csv` (held-out).
+#### B. Confirmatory Hypothesis Suite (`main` split: Seeds `1..30`, 2,400 episodes) & Gateway Endpoints
+* **H1 (Window Timing under Decoys) — `SUPPORTED` (4/4 topologies):** Early intervention beats mid and late windows across all 12 pairwise comparisons (`chain`, `small_world`, `star_hub`, `star_leaf`; Wilcoxon $p_{\mathrm{Holm}} \in [5.16 \times 10^{-6}, 0.00488]$, rank-biserial $r_{\mathrm{rb}} \in [0.68, 1.00]$).
+* **H2 (Alert-Driven Decoy Degradation) — `SUPPORTED` (5/8 pairs):** Benign decoy bursts significantly degrade $\mathrm{AUC}_{\mathrm{ever}}$ in 5 of 8 topology–policy pairs ($p_{\mathrm{Holm}} \in [0.0064, 0.0256]$).
+* **H3 (Pareto Safety–Utility Dominance, $\mathrm{margin}_{\mathrm{MAE}}=0.05$):**
+  * `risk_aware` (Single-Tier Hard Quarantine) **fails H3** ($41.7\%$ dominance, $10/24$ wins, suffering an explicit `UTILITY_LOSS` in `star_hub` vs. `score_only`, $\Delta\mathrm{MAE} = +0.803, p_{\mathrm{Holm}} = 0.0057$).
+  * `risk_aware_tiered` (Two-Tier Graduated Defence) **passes H3** ($67.9\%$ dominance, $19/28$ wins: **17 `STRICT_PARETO_WIN`**, 2 `SAFETY_WIN_UTILITY_NONINFERIOR`, and **0 `UTILITY_LOSS` cells**). In `small_world`, it wins 7/7 comparisons (`STRICT_PARETO_WIN`), directly dominating `risk_aware` ($\Delta\mathrm{AUC}_{\mathrm{ever}} = -0.096, p_{\mathrm{Holm}} = 0.00131$; $\Delta\mathrm{MAE} = -5.13, p_{\mathrm{Holm}} = 0.00068$).
+* **BAZT Gateway vs. Contextual Zero Trust (Arm C) & Ablations:** Over 24 paired confirmatory cells, BAZT reduces final ASR by **18.40 pp** (95% CI $[+9.72, +28.13]$, paired Wilcoxon $p = 0.0024$) and increases consensus accuracy by **10.56 pp** (95% CI $[+0.69, +11.46]$, non-inferiority $p = 0.0088$). Removing graduated actions (`bazt_binary`: allow or isolate only) reaches the same $16.67\%$ ASR floor but costs **33.33 pp**, **12.50 pp**, and **4.17 pp** of accuracy on Barabási–Albert, Watts–Strogatz, and Star topologies.
 
-## Two-tier protocol (`risk_aware_tiered`)
-A graduated response separates *contagion neutralisation* from *information destruction*:
+#### C. Full-Grid Live LLM Sweep on Adaption Labs (2,400 episodes, `qwen3.8-27b`)
+Executed across all 30 main seeds, 4 topologies, 2 regimes (`clean`, `decoy`), and 10 policies (`results/episodes_main.jsonl`):
 
-* **Tier 1 (soft, `B_san = 6` actions/episode, PER STEP)** -- `trusted_sanitize()`: strict numeric-schema
-  extraction keeps `est=<number>` (so the node still informs consensus) and drops every tag/free-text token
-  (so `[REF-7]` stops propagating for that step), with success probability `p_strip = 0.90` in mock mode.
-  A node that stays risky must be re-selected and spends another action; nothing is silenced permanently.
-* **Tier 2 (hard, `K = 3`/episode)** -- `R >= tau_quar`: permanent outgoing-edge isolation.
-* A tier-2 candidate that no longer fits in `K` **degrades to tier 1** instead of being dropped.
-* H3 is `supported` when `risk_aware*` reaches a strict Pareto or bounded-utility win on >=50% of the
-  pre-registered comparisons with zero significant MAE losses (`dominance_rate` is reported per split).
+| Topology (`decoy` regime) | `no_defense` MAE | `score_only` MAE | `risk_aware` MAE (Collat / DecoyW) | `risk_aware_tiered` MAE (Collat / DecoyW) | Hub $\mathrm{AUC}_{\mathrm{ever}}$ (`dRel`) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **`chain`** | 6.39 | 6.51 | 6.88 (3.00 / 0.27) | **6.09** (**1.20** / **0.12**) | 0.003 (0.00) |
+| **`small_world`** | 6.72 | 6.82 | 7.26 (2.97 / 0.31) | **6.65** (2.97 / **0.27**) | 0.003 (0.00) |
+| **`star_hub`** | 7.98 | 8.03 | 8.15 (3.00 / 0.26) | **7.92** (**2.67** / **0.24**) | **0.000 (+16% / +19%)** |
+| **`star_leaf`** | 6.74 | 6.78 | 6.83 (3.00 / 0.23) | **6.60** (**2.70** / **0.19**) | **0.000 (+2%)** |
 
-## Sprint-day LLM run (after kickoff)
-```bash
-python swarmlab.py --mode llm --allow-live-llm --model qwen/qwen-2.5-7b-instruct --split main \
-    --payload canary_tag --topologies star_hub star_leaf small_world --params results/tuned_params.json --tag qwen
-python swarmlab.py --mode llm --allow-live-llm --model openai/gpt-4o-mini --split main \
-    --payload consensus_drift ... --tag gpt4omini   # H4
-python stats_check.py --file results/per_seed_main_qwen.csv --h4 results/per_seed_qwen.csv results/per_seed_gpt4omini.csv
-python make_figures.py --file results/per_seed_main_qwen.csv --episodes results/episodes_main_qwen.jsonl
-```
+* **Live Outbreak Containment:** In `star_hub` Seed 6, where unmitigated infection erupts at $t=5$ ($\mathrm{AUC}_{\mathrm{ever}} = 0.0556$, final infection rate $8.33\%$), all topology-blind policies fail, whereas `risk_aware_tiered` isolates patient zero at $t=1$ ($\mathrm{AUC}_{\mathrm{ever}} = 0.000$), spending only 1 quarantine unit in `clean` vs. 3 for `risk_aware`.
+* **Consensus Preservation under Decoys:** Because natural contagion is sparse on `qwen3.8-27b`, hard quarantine (`risk_aware`) mostly isolates healthy nodes ($\mathrm{collat} \approx 3.00$), degrading MAE below `no_defense` in all topologies. By routing intermediate alarms to tier-1 sanitization ($\mathrm{san} \in [2.8, 4.0]$), `risk_aware_tiered` achieves the **lowest MAE across all four topologies**.
 
-## Design choices to state in the paper
-* Monitor score is computed from the OBSERVED (pre-filter) output (canary / decoy tag) plus CRN noise;
-  evidence is a zero-padded rolling mean over m steps, so a freshly infected agent's first-step evidence
-  equals a single decoy burst's.
-* Decoy realism: `[DOC-2]` headers arrive in a short (1-2 step) early work-cycle burst and then stop, so a
-  decoy is a *transient* spike (`mu_dec = 2.8 > mu_inf/2`) while contagion is persistent. Three such benign
-  alerts exhaust an early `K = 3` budget and let patient zero survive.
-* `fixed_*` arms are time-boxed snapshot audits (one threshold crossing fires them); `score_only` has no
-  window and needs `confirm_steps = m` consecutive crossings. These are different decision paths, so their
-  trajectories diverge under decoy pressure (tested).
-* Quarantine acts before delivery of the current step's message. `edge_isolation`: frozen estimate stays in
-  the readout; `node_removal`: dropped from readout.
-* Numeric consensus (Metropolis weights) is simulator-computed; infected agents report a shifted number
-  (`bias`). In LLM mode the model writes the status line, i.e. the contagion channel.
-* Monitor is parametric, not a learned model. Decoy intensity (`--mu-dec`) is a controlled parameter.
-* Tier-1 sanitation preserves the numeric estimate, so its measured utility cost is only re-quantization +
-  the `B_san` budget; the loss of qualitative coordination is not measured by this task (see
-  `METRICS_SPEC.md` §13).
+#### D. Multi-Conversation Live Gateway Pilot (`deepseek-v4-flash` + `qwen3.8-27b` judge)
+On Barabási–Albert graphs ($N=12$, 4 sequential conversations $\times$ 3 rounds per episode):
+* **Undefended (Arm A):** Reaches **79.17% final ASR** ($29.17\%$ accuracy).
+* **Capped (10% Audit, 10% Intervention):** BAZT lowers mean ASR from **70.83% (Arm C) to 52.08%** ($-18.8\text{ pp}$) and raises accuracy from **20.83% to 34.38%** ($+13.5\text{ pp}$) with zero budget violations.
+* **Uncapped:** BAZT reaches the **16.67% theoretical ASR floor** ($58.33\%$ accuracy) spending **13.5 audit units** vs. **192.0** for stateless judge Arm B.
 
-## Sandbox ladder (`env_ladder.py`, mock only)
-A third question, upstream of the quarantine comparison: **at what difficulty does the swarm stop agreeing at
-all?** Stage 1 seeds the episode from a deterministic 36-document fake-web corpus (28 clean, 4 benign
-`[DOC-2]` decoys, 4 benign entry payloads wrapped in `story_context` / `base64_stub` /
-`markdown_metadata`). Stage 2 tightens five orthogonal knobs over levels 1-8 and freezes
-`target_mae_threshold` on calibration seeds 9401-9440, then reports
-`breaking_level = min{l : pass_rate_l < 0.50}` and `critical_operating_level = max(1, breaking_level - 1)`.
-Stage 3 holds the ladder there and adds `HardConstraintSpec` (movement: `unrestricted`, `directed_dag`,
-`chokepoint_hub`, `ring_clockwise`; channel: `free_note`, `banned_brackets`, `length_clamped_32`,
-`structured_kv_only`) plus a `CoTPayloadAdapter` seam that reports **payload delivery** separately from what
-the m-step monitor can see.
+#### E. Prospective Evaluation of the `Stop` Rule (4,320 Simulator Pairs & 30 Live `gemma-4-26b-a4b-it` Worlds)
+* **Numerical Consensus Simulator (60 seeds, 4,320 clean/attacked pairs, 10% cap):** `Stop` reduces purchased inspections from $20.31$ to $17.89$ (**-11.91%**, 95% CI $[-14.70\%, -9.28\%]$) and total charged budget units from $37.98$ to $35.56$ (**-6.37%**, 95% CI $[-7.80\%, -5.01\%]$), with byte-identical excess error ($18.38\%$) and clean accuracy ($63.89\%$), capturing $91.5\%$ of the savings of oracle lookahead `Selective` while running $3.1\times$ faster ($0.230\text{ s}$ vs. $0.727\text{ s}$).
+* **Live Distributed Record Lookup (30 held-out worlds, 12 `gemma-4-26b-a4b-it` actors + `qwen3.8-27b` monitor):** Eliminates all $169$ ($1\%$ cap) and $379$ ($5\%$ cap) below-floor sender inspections, cutting total inspections by **16.52%** and **36.65%**, judge token cost by **12.09%** and **30.10%**, and total token cost by **0.203%** and **0.526%**, with **0/30 final-answer disagreements** ($29/30$ and $28/30$ correct).
 
-Result to quote (mock, level 4): a naive `[REF-7]` payload is destroyed by `banned_brackets` (delivery 0.00)
-while a compressed stand-in is delivered 100 % of the time and alarms the monitor on ~4 % of node-steps - the
-lexical blacklist is beaten. `structured_kv_only` reduces delivery to 0.00 for both forms, because it removes
-the free-text channel instead of filtering strings: **architectural mediation beats lexical blacklisting**.
-`env_ladder.py` has no live-LLM code path (`--mode llm` is refused); the live adapter is a subclass, see
-`KUNAL_SANDBOX_GUIDE.md`. All numbers are pipeline checks, not findings.
+---
 
-## BAZT gateway (`bazt/`, branch `feat/bazt`)
-A budget-constrained enforcement layer between agents: it pays to *inspect* a node, *sanitize* its channel, *restrict* it,
-*block* an edge or *isolate* it, ranked by `density = (benefit - lam*(1-p')*utility_cost) / cost` against a threshold that
-rises as the budget drains. Evidence fuses the monitor with lineage taint; ground truth is reachable only through a paid
-inspection. Arms: `bazt` + six single-mechanism ablations, `static_zta`, and the legacy arms priced in the same cost units
-(`--equalize-budget`). It attaches through `EpisodeHooks.gateway_factory`, so every legacy arm is bit-identical (SHA-256 test).
+## Part II: Companion Causal Audit of the GAMMAF Benchmark (`gammaf_handoff/`)
 
-* Filtering is not free: a calibration rationale (`sens=hp|lp`) rides on every message and a stripped message keeps only
-  `stripped_edge_weight = 0.35` of its consensus weight, so over-sanitising benign nodes raises `MAE` (METRICS_SPEC §15.6).
-* Seeds: tune `BaztConfig` on **9001-9030 only**; `--split main|heldout` needs `--confirm-frozen-config`.
-* Outputs live in `results/bazt/`; `results/per_seed_main.csv` / `per_seed_heldout.csv` are never written.
-* Known limit of the untuned defaults (docs/BAZT_SPEC_v2.md §10): the budget is spent almost entirely at step 1.
+During our empirical profiling of public graph-defense traces from **GAMMAF** (*Graph-Based Anomaly Monitoring Benchmarking in LLM Multi-Agent Systems*, pinned commit `53be3249`), we discovered that excluded insider agents can still flip the benchmark's published correctness score. We isolated three metrological defects across the **11,200 archived debates** ($9,600$ detector-enabled across `BlindGuard`, `CASPIAN`, `DOMINANT`, `PREM`, `TAM`, `XG-Guard` + $1,600$ disabled controls on `MMLU`, `MMLU-Pro`, `CSQA`, `GSM8K`):
+
+1. **Defect 1 — Post-Filter Vote Leakage (`227/9,600` Discrepant Verdicts, `2.36%`):**
+   While the answer delivered to the user $a_{\mathrm{del}} = \pi(v_U)$ aggregates only unflagged eligible voters $U = \{i : f_i = 0\}$, GAMMAF's released grading function $g_{\mathrm{release}} = \mathrm{check}(\pi(v), y)$ tallies all 10 terminal votes $v$ (including flagged insiders $\bar{U} = \{i : f_i = 1\}$).
+   * **156 False Credits:** The delivered answer is wrong ($g_{\mathrm{del}} = 0$), but excluded insiders' votes make the all-voter plurality match $y$ ($g_{\mathrm{release}} = 1$). `PREM` receives 62 false credits vs. 4 missed credits, inflating its accuracy by **+3.625 pp** ($1,363/1,600$ released vs. $1,305/1,600$ delivered).
+   * **71 Missed Credits:** The delivered answer is right ($g_{\mathrm{del}} = 1$, e.g., `MMLU-Pro` ID `6108` under `XG-Guard`), but excluded insiders swing the all-voter plurality to a wrong option ($g_{\mathrm{release}} = 0$).
+   * **Single-Vote Counterfactual Sensitivity:** Editing a single already-excluded insider's terminal vote flips $g_{\mathrm{release}}$ in **121 debates** (89 flagged in the prior round) while changing **0 delivered answers** across **33,025 valid substitutions**. Restricting to canonical answers with unique pluralities in both populations retains **41/4,301** discrepancies ($36/4,177$ on the 4-letter alphabet).
+   * **Detector Ranking Impact:** Switching $g_{\mathrm{release}} \to g_{\mathrm{del}}$ reverses the top-ranked detector in **2/16 task–topology cells** (`CSQA tree`: `TAM` $91\to 88$ vs. `XG-Guard` $88\to 89$; and `MMLU random`), and creates a development tie on `MMLU` ($328/400$) where alphabetical selection of `TAM` reduces reserved-task delivered accuracy by **1.75 pp** (95% CI $[0.33, 3.25]$).
+2. **Defect 2 — Phantom Detection Credit from Round Padding (`8.00%` on Disabled Controls):**
+   In detector-disabled controls on `MMLU`, zero flags were raised across $1,137$ executed rounds, yet post-consensus round imputation awarded an **8.00% detection credit** at round 3.
+3. **Defect 3 — Attack Generator Target-Seeding Bug (`64/300` Gold Targets, `21.3%`):**
+   Comparing integer indices ($0..3$) against character gold labels (`'A'..'D'`) and slicing only the first 4 options caused the attack generator to seed the **correct gold answer as the adversarial target in 64/300 multiple-choice questions** ($28/100$ `MMLU`, $21/100$ `CSQA`, $15/100$ `MMLU-Pro`). Our patch normalizes option letters, excludes $y_{\mathrm{gold}}$, and passes all 780 seed checks.
+
+---
+
+## Repository Structure
+
+```text
+swarmlab-bazt/
+├── bazt/                         # BAZT gateway control plane package (ledger, optimizer, taint, reachability)
+├── bazt_lab/                     # Multi-block experiment runner & GNN/judge calibration modules
+├── gammaf_handoff/               # Standalone zero-dependency GAMMAF causal audit & reproduction runner
+│   ├── run.py                    # Single-command verifier (31 public files, 11,200 debates, 33,025 edits)
+│   └── README.md                 # Handoff instructions & public-source rebuild guide
+├── results/                      # Committed experimental artifacts & statistical outputs
+│   ├── tuned_params.json         # Frozen thresholds calibrated on tune split (9001..9030)
+│   ├── tuning_summary.json       # Full grid search metrics for J = AUC_ever + 0.25 * (MAE / MAE_base)
+│   ├── stats_report_main.json    # Wilcoxon + Holm-Bonferroni + 10k bootstrap CIs for H1, H2, H3
+│   ├── episodes_main.jsonl       # Per-episode traces for the 2,400-episode live qwen3.8-27b sweep
+│   ├── per_seed_main.csv         # Per-seed metrics across topologies, regimes, and policies
+│   └── figures/                  # Vector PDF plots (fig1_pareto..fig5_constraint_evasion)
+├── scripts/
+│   ├── e2e_mock.py               # Fast end-to-end interrupt/resume & pipeline verification test
+│   └── e2e_common.py             # Test fixtures and runtime parameter definitions
+├── swarmlab.py                   # 10-policy containment simulator & live-LLM evaluation engine
+├── llm_client.py                 # Async OpenRouter / Adaption Labs client + WAL SQLite CRN cache
+├── stats_check.py                # Non-parametric hypothesis testing script (H1-H3)
+├── make_figures.py               # Publication figure generator
+└── requirements.txt              # Python dependencies
