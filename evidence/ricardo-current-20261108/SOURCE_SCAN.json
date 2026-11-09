@@ -1,0 +1,58 @@
+{
+  "objects": 843,
+  "scanned_members": 2155,
+  "bytes_including_nested": 158456206,
+  "candidate_hits": [
+    {
+      "path": "test_real_sdk_019_serialization.py",
+      "kind": "credential_assignment",
+      "offset": 1554,
+      "length": 42,
+      "hash": "828155f2901a0938aa1b6b5f527a3de7e626afd96aed5072b5f9161038be0541",
+      "context": "atch.dict(os.environ, {\n                \"ADAPTION_"
+    },
+    {
+      "path": "test_real_sdk_019_serialization.py",
+      "kind": "credential_assignment",
+      "offset": 3391,
+      "length": 35,
+      "hash": "9a597bdb97a5a115d381366796cfd14c578aa25c56c5c21eec05eac6a9779f9b",
+      "context": "atch.dict(os.environ, {\n                \"ADAPTION_"
+    },
+    {
+      "path": "test_adaption_response_capability_probe.py",
+      "kind": "credential_assignment",
+      "offset": 3794,
+      "length": 25,
+      "hash": "8970b37e7f2050398f9a1f737d60d61cc59b5e67a776a602e42a964c1f1f67cd",
+      "context": "() as tmp, mock.patch.dict(os.environ, {\"ADAPTION_"
+    },
+    {
+      "path": "bazt_transport_preflight.py",
+      "kind": "credential_assignment",
+      "offset": 2495,
+      "length": 40,
+      "hash": "915aba3f5827dae8d9eae79df6a7ad0cb55b37cb35e636c46ccc000ecb87540f",
+      "context": "is never sent anywhere.\n        client = Adaption("
+    },
+    {
+      "path": "research/budget_stop_report/direct_study/budget_stop_extension/runtime/source/bazt_lab/features/tracking/adapters/env.py|research/budget_stop_report/direct_study/runtime/source/bazt_lab/features/tracking/adapters/env.py",
+      "kind": "credential_assignment",
+      "offset": 615,
+      "length": 25,
+      "hash": "57b2fa9189095302c45b5d1999d0c63e83cf7277f4794ae4d32f2b072c45b61b",
+      "context": "TH = Path(__file__).resolve().parents[4] / \".env\"\n"
+    },
+    {
+      "path": "bazt_headline/paired_targets/test_transport.py",
+      "kind": "credential_assignment",
+      "offset": 1759,
+      "length": 29,
+      "hash": "f19cf83142276522f51f31bb46720194a56415a92bdb4e8c2e7ba9ed853aeaae",
+      "context": "ansport=httpx.MockTransport(default),\n            "
+    }
+  ],
+  "errors": [],
+  "reviewed_hits": "Six hits manually confirmed as offline test placeholders or environment-variable name, not credentials.",
+  "live_secrets_detected": false
+}
