@@ -433,6 +433,7 @@ def make_live_backend(model: Optional[str] = None, cache_path: Optional[str] = N
     provider = os.getenv('SWARMLAB_PROVIDER', 'openrouter').lower()
     default_model = 'gemma-4-31b-it' if provider == 'adaption' else 'qwen/qwen-2.5-7b-instruct'
     model = model or os.getenv("SWARMLAB_TIER1_MODEL", default_model)
+    concurrency = max(1, int(os.getenv("SWARMLAB_TIER1_CONCURRENCY", "40")))
     cache = SQLiteLLMCache(cache_path or os.getenv("SWARMLAB_TIER1_CACHE", "llm_cache.sqlite"))
     judge_model = os.getenv('SWARMLAB_TIER1_JUDGE_MODEL')
     if not judge_model or judge_model == model:
@@ -442,8 +443,10 @@ def make_live_backend(model: Optional[str] = None, cache_path: Optional[str] = N
     # A reasoning judge needs room for its private reasoning AND the JSON answer; 512 tokens was consumed
     # entirely by reasoning on suspicious messages, which produced an empty reply for exactly the messages
     # that matter. The terse retry in OutOfFamilyJudge is the second line of defence.
-    judge = LiveBackendAdapter(make_llm_policy(judge_model, judge_cache, temperature=0.0, max_tokens=2048))
-    return LiveBackendAdapter(make_llm_policy(model, cache, temperature=0.0, max_tokens=512),
+    judge = LiveBackendAdapter(make_llm_policy(judge_model, judge_cache, max_concurrency=concurrency,
+                                               temperature=0.0, max_tokens=2048))
+    return LiveBackendAdapter(make_llm_policy(model, cache, max_concurrency=concurrency,
+                                              temperature=0.0, max_tokens=512),
                               judge_backend=judge)
 
 

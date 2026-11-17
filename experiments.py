@@ -187,6 +187,7 @@ def run_episode_cell(cell: dict, config: dict, thresholds: dict,
     r = sl.run_episode(world, ep.policy, ep.cfg, ep.agent, decoys, hooks=ep.hooks)
     if ctx.sink:                                   # BAZT keeps section-15 metrics exact; telemetry is separate
         r.update(getattr(ctx.sink[-1], "telemetry", {}) or {})
+    decoy_schedule = ep.hooks.budget_visible_decoy_schedule
     est, x = captured.get("est"), captured.get("x")
     row = dict(cell)
     row.update({
@@ -203,6 +204,8 @@ def run_episode_cell(cell: dict, config: dict, thresholds: dict,
         "fallback_to_arm_a": int(r.get("fallback_to_arm_a", 0)),
         "benign_delivery_deny_rate": float(r.get("benign_delivery_deny_rate", 0.0)),
         "benign_deliveries": float(r.get("benign_deliveries", 0.0)),
+        "stop_trigger_steps": int(r.get("stop_trigger_steps", 0)),
+        "stop_candidates_suppressed": int(r.get("stop_candidates_suppressed", 0)),
         "benign_denied_deliveries": float(r.get("benign_denied_deliveries", 0.0)),
         "harm_exposure_auc": float(r.get("harm_exposure_auc", float("nan"))),
         "message_throughput": float(r.get("message_throughput", float("nan"))),
@@ -210,6 +213,8 @@ def run_episode_cell(cell: dict, config: dict, thresholds: dict,
         "total_deviated_messages": float(r.get("total_deviated_messages", 0.0)),
         "time_to_containment": float(r.get("time_to_containment", -1)),
         "identity_blocks": float(r.get("identity_blocks", 0)),
+        "decoy_trigger_round": int(getattr(decoy_schedule, "trigger_round", None) or -1),
+        "decoy_burst_steps": list(getattr(decoy_schedule, "active_steps", [])),
         "action_steps": ctx.sink[-1].action_steps() if ctx.sink else [],
         "episode_seconds": round(time.time() - t0, 5),
     })
@@ -299,6 +304,14 @@ def plan_adaptive(config: dict, split: str, smoke: bool) -> List[dict]:
                     out.append({"platform": "mock", "stage": "mock_adaptive", "split": split,
                                 "scenario": scenario, "topology": "barabasi_albert", "N": 12, "arm": arm,
                                 "audit_pct": a, "int_pct": i, "seed": seed})
+        if family == "infection":
+            for scenario in ("infection_budget_reactive_decoys", "infection_pressure_burst_decoys",
+                             "infection_stop_floor_burst_decoys", "infection_fixed_burst_decoys"):
+                for arm in arms:
+                    for seed in _seeds(config, split, smoke):
+                        out.append({"platform": "mock", "stage": "mock_adaptive", "split": split,
+                                    "scenario": scenario, "topology": "barabasi_albert", "N": 12, "arm": arm,
+                                    "audit_pct": a, "int_pct": i, "seed": seed})
     return out
 
 

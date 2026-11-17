@@ -5,6 +5,8 @@
 *Swarm Alignment Research Team*  
 **Post-Pilot Configuration SHA-256:** `f8b616b2...5079` | **Pre-Kickoff Tag:** `2026-11-06T20:00:00Z`
 
+> **Results status (16 November 2026):** All quantitative claims from the pre-PR #7 analysis in this README and paper are provisional pending recomputation with corrected code and pairing. [PR #7](https://github.com/AntGalasso/swarmlab/pull/7) found that the shipped `arm_C` threshold made the baseline too permissive to intervene and corrected statistical pairing; the paper-pack status says its previous gains and inferential labels are not findings. Do not cite the historical H1–H3, gateway, ablation, or live-comparison numbers as confirmatory evidence until each has been audited and rerun where affected. See [the review follow-up](docs/REVIEW_FEEDBACK.md) for a claim inventory and proposed rerun plan.
+
 ---
 
 ## Overview
@@ -12,7 +14,7 @@
 Multi-agent LLM systems can propagate a single malicious instruction from agent to agent along their communication graph. Defending such a swarm at runtime is a resource-allocation problem under uncertainty: judge compute, human review capacity, and intervention budgets are finite, while every defensive intervention removes legitimate collaboration and degrades task consensus.
 
 This repository contains the complete research suite developed during the **Swarm Alignment Hackathon**:
-1. **Primary Architecture — BAZT & SwarmLab (`bazt/`, `swarmlab.py`):** A runtime Zero-Trust gateway control plane that mediates inter-agent communications outside the agents' authority, coupled with a 10-policy containment benchmark suite, an asynchronous live-LLM harness integrated with **Adaption Labs** (`qwen3.8-27b`, `deepseek-v4-flash`, `gemma-4-26b-a4b-it`), content-addressed SQLite Common Random Numbers (CRN) caching, and the **`Stop`** budget-aware inspection stopping rule.
+1. **Primary Architecture — BAZT & SwarmLab (`bazt/`, `swarmlab.py`):** A runtime gateway that mediates inter-agent communications outside the agents' authority, coupled with a containment benchmark suite and live-LLM harness. The paper's budget-aware `Stop` rule is now implemented as an opt-in BAZT arm behavior, with a `bazt_no_stop` ablation; corrected evaluation is still outstanding.
 2. **Companion Metrological Audit — GAMMAF Causal Audit (`gammaf_handoff/`):** A zero-dependency causal audit and verification suite for the external GAMMAF benchmark (pinned commit `53be3249`, 11,200 debates), isolating post-filter excluded-voter grade leakage (227/9,600 discrepant verdicts), padded-round phantom detection credit (8.00% on disabled controls), and attack-generator target seeding bugs (64/300 gold targets).
 
 ---
@@ -22,12 +24,14 @@ This repository contains the complete research suite developed during the **Swar
 ### 1. Core Architectural Mechanisms
 BAZT sits at the delivery boundary of a directed communication graph $G=(V,E)$ ($N=12$ agents, scaling up to $N=100$; horizon $T=12$) and enforces five structural principles:
 
+The equations and numeric parameter values in this methods summary describe the submitted paper-v2 design. They are not a frozen description of every active repository default; consult the corrected run configuration before interpreting or reproducing results.
+
 * **Ground-Truth Firewall & Sender-Memory Preservation:** The controller never reads hidden infection states; a paid `inspect(i)` call (cost = 1 audit unit) is its only channel to ground truth. Blocking, sanitizing, or restricting an outgoing edge $(i \to j)$ modifies what recipient $j$ receives without altering the internal state of sender $i$.
 * **Evidence Fusion & Provenance Taint:** At round $t$, BAZT fuses the $m=2$ rolling judge score $\rho(i,t)$ with a content-agnostic structural provenance taint $\tau(i,t) \in [0,1]$ (initialized at 1 at ingress nodes, attenuated by $\delta=0.7$ per hop, decaying by $0.8$ per step, and reset to $0$ upon a clean paid inspection):
   $$p'(i,t) = \sigma\!\big(a\,\rho(i,t) - b + w\,\tau(i,t)\big), \qquad a=2.5,\; b=2.0,\; w=1.0$$
 * **Finite-Horizon Contagion Reachability:** Expected downstream contagion over remaining horizon $h = T - t$ is estimated via path-decayed reachability on the active subgraph:
   $$H(i) = \sum_{j \in V \setminus \{i\}} (1 - p'_j)\,\gamma^{d(i,j)-1}\,\mathbb{I}\big[1 \le d(i,j) \le \min(h, d_{\max})\big], \qquad \gamma=0.7,\; d_{\max}=3$$
-* **Graduated Action Space & Exponential Pacing:** Separate audit and intervention ledgers price five actions by net value $v(a) = b(a) - \lambda(1 - p'_i)u(a)$ and value density $d(a) = v(a)/\mathrm{cost}(a)$:
+* **Graduated Action Space & Exponential Pacing (submitted paper-v2 design and values):** The submitted paper prices five actions by net value $v(a) = b(a) - \lambda(1 - p'_i)u(a)$ and value density $d(a) = v(a)/\mathrm{cost}(a)$. These are historical paper settings; the active `BaztConfig` defaults differ for sanitize/restrict utility costs:
   1. `inspect` (Cost: 1 audit unit | Utility cost: $0$ | Verdict lifetime: 2 steps, overrides $p'$ to $0.98/0.02$).
   2. `sanitize` (Cost: 1 intervention unit | Strips free-text payload, preserves numeric sensor estimate; $\rho_{\mathrm{san}}=0.1$).
   3. `restrict` (Cost: 2 intervention units | Enforces schema-only output and denies tools for 3 steps; $\rho_{\mathrm{res}}=0.3$).
@@ -36,13 +40,13 @@ BAZT sits at the delivery boundary of a directed communication graph $G=(V,E)$ (
   
   To prevent benign early false alarms (*decoys*, such as administrative headers `[DOC-2]`) from exhausting the intervention ledger $B$, candidate actions must clear an exponentially rising density threshold:
   $$d(a) \ge \theta(z) = \theta_0 \exp(\kappa z), \qquad z = \frac{\text{spent}}{B},\quad \theta_0 = 0.150,\; \kappa = 1.5$$
-* **Budget-Aware Inspection Stopping (`Stop`) & Terminal Planning Clock:** Once the remaining intervention balance $B_I(t)$ falls below the smallest positive action cost $c_{\min}^+ > 0$, paid inspections on active senders cannot fund any positive-cost intervention. The `Stop` rule suppresses active-sender audits below the price floor unless a zero-cost action (e.g., free redaction $c=0$) is eligible:
+* **Budget-aware inspection stopping (`Stop`) & terminal planning clock:** The following equation is the submitted paper-v2 rule, which assumes a separate intervention balance and permits a free-action exception. The active optimizer instead checks whether an intervention remains fundable under the current ledger mode, reserving the inspection cost when it shares a pool; current config requires positive action costs, so it has no free-action case:
   $$M_t^{\mathrm{Stop}} = \begin{cases} M_t & \text{if } B_I(t) \ge c_{\min}^+ \text{ or free redaction } (c=0) \text{ is eligible,} \\ \emptyset & \text{if } B_I(t) < c_{\min}^+ \text{ and all eligible actions have } c > 0. \end{cases}$$
   For live LLM tasks where the receiver reads the final round's incoming delivery before emitting its answer, the planning horizon is set to $h_{\mathrm{LLM}} = \max(T - t + 1, 0)$.
 
 ---
 
-### 2. Key Experimental Results (BAZT & SwarmLab)
+### 2. Historical Experimental Results (pre-PR #7; provisional, not current findings)
 
 #### A. Pre-Registered Threshold Calibration (`tune` split: Seeds `9001..9030`, 2,400 episodes)
 Thresholds were calibrated on 30 tune seeds by minimizing $J = \mathrm{AUC}_{\mathrm{ever}} + 0.25 \cdot (\mathrm{MAE} / \mathrm{MAE}_{\mathrm{base}})$ and frozen prior to main-split evaluation (`results/tuning_summary.json`):
@@ -63,7 +67,7 @@ Thresholds were calibrated on 30 tune seeds by minimizing $J = \mathrm{AUC}_{\ma
 * **H3 (Pareto Safety–Utility Dominance, $\mathrm{margin}_{\mathrm{MAE}}=0.05$):**
   * `risk_aware` (Single-Tier Hard Quarantine) **fails H3** ($41.7\%$ dominance, $10/24$ wins, suffering an explicit `UTILITY_LOSS` in `star_hub` vs. `score_only`, $\Delta\mathrm{MAE} = +0.803, p_{\mathrm{Holm}} = 0.0057$).
   * `risk_aware_tiered` (Two-Tier Graduated Defence) **passes H3** ($67.9\%$ dominance, $19/28$ wins: **17 `STRICT_PARETO_WIN`**, 2 `SAFETY_WIN_UTILITY_NONINFERIOR`, and **0 `UTILITY_LOSS` cells**). In `small_world`, it wins 7/7 comparisons (`STRICT_PARETO_WIN`), directly dominating `risk_aware` ($\Delta\mathrm{AUC}_{\mathrm{ever}} = -0.096, p_{\mathrm{Holm}} = 0.00131$; $\Delta\mathrm{MAE} = -5.13, p_{\mathrm{Holm}} = 0.00068$).
-* **BAZT Gateway vs. Contextual Zero Trust (Arm C) & Ablations:** Over 24 paired confirmatory cells, BAZT reduces final ASR by **18.40 pp** (95% CI $[+9.72, +28.13]$, paired Wilcoxon $p = 0.0024$) and increases consensus accuracy by **10.56 pp** (95% CI $[+0.69, +11.46]$, non-inferiority $p = 0.0088$). Removing graduated actions (`bazt_binary`: allow or isolate only) reaches the same $16.67\%$ ASR floor but costs **33.33 pp**, **12.50 pp**, and **4.17 pp** of accuracy on Barabási–Albert, Watts–Strogatz, and Star topologies.
+* **Gateway comparison and ablations:** Historical BAZT-versus-`arm_C` estimates and intervals, along with the two-seed-per-cell binary-action ablation, require audit and corrected reruns before they support a scientific conclusion. Treat the ablation as exploratory; do not infer that graduated actions caused its observed differences.
 
 #### C. Full-Grid Live LLM Sweep on Adaption Labs (2,400 episodes, `qwen3.8-27b`)
 Executed across all 30 main seeds, 4 topologies, 2 regimes (`clean`, `decoy`), and 10 policies (`results/episodes_main.jsonl`):

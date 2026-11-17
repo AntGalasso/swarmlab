@@ -36,7 +36,9 @@ from bazt.metrics import BAZT_METRICS, add_paired_metrics, legacy_spend_columns
 DEFAULT_OUT = os.path.join("results", "bazt")
 META_COLS = ["topology", "regime", "policy", "seed", "N", "budget_mode", "B"]
 CONSTRAINT_COLS = ["constraint_blocked_sends", "message_drop_rate"]
-COLUMNS = META_COLS + list(sl.METRICS) + sl.EXTRA_COLS + BAZT_METRICS + CONSTRAINT_COLS   # sl.METRICS is NOT modified
+EXPERIMENT_TELEMETRY_COLS = ["stop_trigger_steps", "stop_candidates_suppressed"]
+COLUMNS = (META_COLS + list(sl.METRICS) + sl.EXTRA_COLS + BAZT_METRICS + CONSTRAINT_COLS
+           + EXPERIMENT_TELEMETRY_COLS)   # telemetry stays separate from the locked BAZT_METRICS contract
 EVASION_ADAPTERS = ("none", "naive", "compressed", "live_cot")
 SWEEP_B = (4, 8, 12, 16, 24)
 
@@ -106,6 +108,8 @@ def run_bazt_grid(topologies: Sequence[str], regimes: Sequence[str], arms: Seque
     audit_rows: List[dict] = []
     if collect_audit:
         ctx.sink = []
+    elif ctx.sink is None:
+        ctx.sink = []
     total = len(topologies) * len(seeds) * len(regimes) * len(arms)
     done, t0 = 0, time.time()
     for topo, seed in itertools.product(topologies, seeds):
@@ -115,15 +119,17 @@ def run_bazt_grid(topologies: Sequence[str], regimes: Sequence[str], arms: Seque
             for arm in arms:
                 setup = build_episode(arm, world, swarm_cfg, ctx)
                 r = sl.run_episode(world, setup.policy, setup.cfg, setup.agent, decoys, hooks=setup.hooks)
+                gw = ctx.sink.pop() if ctx.sink else None
                 for k in ("ever_curve", "cum_decoy_quarantines", "cum_true_quarantines"):
                     r.pop(k)
                 row = {"topology": topo, "regime": regime, "policy": arm, "seed": seed, "N": swarm_cfg.N,
                        "budget_mode": ctx.bcfg.budget_mode, "B": ctx.bcfg.B, **r}
                 if arm not in BAZT_ARMS:
                     legacy_spend_columns(row, ctx.bcfg.cost_isolate, ctx.bcfg.cost_sanitize)
+                telemetry = getattr(gw, "telemetry", {}) if gw is not None else {}
+                row.update({key: int(telemetry.get(key, 0)) for key in EXPERIMENT_TELEMETRY_COLS})
                 rows.append(row)
-                if ctx.sink:
-                    gw = ctx.sink.pop()
+                if gw is not None and collect_audit:
                     audit_rows += [{"topology": topo, "regime": regime, "arm": arm, "seed": seed, **a}
                                    for a in gw.audit.rows()]
                 done += 1

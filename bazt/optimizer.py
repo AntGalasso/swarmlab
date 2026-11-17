@@ -44,11 +44,51 @@ class Plan:
     block: List[Tuple[int, int]] = field(default_factory=list)
     inspected: Dict[int, Optional[float]] = field(default_factory=dict)
     decisions: List[Decision] = field(default_factory=list)
+    stop_triggered: bool = False
+    stop_suppressed_nodes: List[int] = field(default_factory=list)
 
 
 class BudgetedOptimizer:
     def __init__(self, cfg: BaztConfig, sl_cfg: sl.Config):
         self.cfg, self.sl_cfg = cfg, sl_cfg
+
+    def _eligible_interventions(self, sit: Situation) -> List[ActionKind]:
+        """Intervention kinds structurally available after this step's message deliveries."""
+        if not sit.active:
+            return []
+        kinds = [ActionKind.ISOLATE]
+        if not self.cfg.binary_actions:
+            if any(i not in sit.restricted for i in sit.active):
+                kinds.extend((ActionKind.SANITIZE, ActionKind.RESTRICT))
+            active = set(sit.active)
+            if any(j in active for i in sit.active for j in sit.out_adj[i]):
+                kinds.append(ActionKind.BLOCK_EDGE)
+        return kinds
+
+    def _can_fund_intervention_after_inspection(self, sit: Situation, ledger: BudgetLedger) -> bool:
+        """Whether an affordable inspection can still be followed by an affordable intervention.
+
+        The inspection cost is reserved in the same pool for pooled/tiered modes. In dual_pct mode the audit
+        and intervention pools are separate, so only the intervention balance is checked. All configured
+        intervention costs are positive; a future zero-cost action can be handled as an explicit exception.
+        """
+        kinds = self._eligible_interventions(sit)
+        if not kinds or not ledger.can_afford(ActionKind.INSPECT):
+            return False
+        inspect_cost = cost_of(self.cfg, ActionKind.INSPECT)
+        if self.cfg.budget_mode == "pooled":
+            remaining = ledger.remaining(ledger.pool_of(ActionKind.INSPECT)) - inspect_cost
+            return any(remaining >= cost_of(self.cfg, kind) for kind in kinds)
+        if self.cfg.budget_mode == "tiered":
+            hard = [kind for kind in kinds if ledger.pool_of(kind) == "hard"]
+            soft = [kind for kind in kinds if ledger.pool_of(kind) == "soft"]
+            hard_available = any(ledger.remaining("hard") >= cost_of(self.cfg, kind) for kind in hard)
+            soft_after_inspection = ledger.remaining("soft") - inspect_cost
+            soft_available = any(soft_after_inspection >= cost_of(self.cfg, kind) for kind in soft)
+            return hard_available or soft_available
+        # dual_pct: inspections cannot consume intervention capacity.
+        intervention_pool = ledger.pool_of(ActionKind.SANITIZE)
+        return any(ledger.remaining(intervention_pool) >= cost_of(self.cfg, kind) for kind in kinds)
 
     # ------------------------------------------------------------------------------------ phase 1
     def _inspect_phase(self, sit: Situation, ledger: BudgetLedger, plan: Plan) -> Optional[ContagionModel]:
@@ -64,12 +104,19 @@ class BudgetedOptimizer:
             if c.net > 0:
                 cands.append(c)
         changed = False
-        for c in sorted(cands, key=lambda c: c.sort_key):
+        ordered = sorted(cands, key=lambda c: c.sort_key)
+        for index, c in enumerate(ordered):
             theta = ledger.theta()
             if c.density < theta:
                 break                                   # sorted by density, theta never decreases
             if not ledger.can_afford(c.kind):
                 continue
+            if self.cfg.use_stop and not self._can_fund_intervention_after_inspection(sit, ledger):
+                plan.stop_triggered = True
+                plan.stop_suppressed_nodes.extend(
+                    candidate.node for candidate in ordered[index:] if candidate.density >= theta
+                )
+                break
             charge = ledger.charge(c.kind)
             new_p = sit.inspect(c.node)
             plan.inspected[c.node] = new_p

@@ -51,6 +51,8 @@ class EnforcementGateway:
         self.inspection = InspectionState(cfg.inspect_ttl)
         self.optimizer = BudgetedOptimizer(cfg, sl_cfg)
         self.audit = AuditLog()
+        self._stop_trigger_steps = 0
+        self._stop_suppressed_proposals = 0
         # CRN: one pre-drawn matrix, so WHICH nodes are inspected never shifts anyone's draw.
         self._u_inspect = sl.stream_rng("bazt-inspect", f"{topology}:{self.n}", seed).random((self.T, self.n))
         self._out_adj: List[List[int]] = [[] for _ in range(self.n)]       # open directed send lists
@@ -122,6 +124,8 @@ class EnforcementGateway:
                         verdict_active=self.inspection.active_nodes(t),
                         inspect=lambda i: self._inspect(i, t, truth))
         plan = self.optimizer.plan(sit, self.ledger)
+        self._stop_trigger_steps += int(plan.stop_triggered)
+        self._stop_suppressed_proposals += len(plan.stop_suppressed_nodes)
         self._apply(t, plan, s_mon, tau)
         for ev in self.ledger.mark_exhausted(t):
             self.budget_exhausted.append(ev)
@@ -162,6 +166,8 @@ class EnforcementGateway:
                 "budget_exhausted_pools": ",".join(sorted({e["pool"] for e in self.budget_exhausted})),
                 "audit_spend": self.ledger.audit_spend(),
                 "intervention_spend": self.ledger.intervention_spend(),
+                "stop_trigger_steps": self._stop_trigger_steps,
+                "stop_candidates_suppressed": self._stop_suppressed_proposals,
                 "identity_blocks": len(self._identity_blocks),
                 "fallback_to_arm_a": int(self.fallback_active)}
 

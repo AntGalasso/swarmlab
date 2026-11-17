@@ -475,7 +475,7 @@ def _one_sided(values: Sequence[float], strata: Sequence[tuple], shift: float = 
     return r
 
 
-def _did_adaptive(rows: Sequence[dict], static: str = "infection", adaptive: str = "adaptive") -> dict:
+def _did_adaptive(rows: Sequence[dict], static: str = "infection", adaptive: str = "infection_adaptive") -> dict:
     """Difference-in-differences for H-adaptive.
 
     delta_C = ASR(adaptive, C) - ASR(static, C);  delta_B = ASR(adaptive, BAZT) - ASR(static, BAZT)
@@ -485,7 +485,11 @@ def _did_adaptive(rows: Sequence[dict], static: str = "infection", adaptive: str
     seed), so topology, N and budget cancel and only the attacker's adaptation differs.
     """
     by: Dict[tuple, Dict[str, Dict[str, dict]]] = defaultdict(lambda: defaultdict(dict))
+    # Use the explicitly paired E3 mock-adaptive stage. The generic `adaptive` scenario in
+    # mock_frontier is a separate attack family, not the `<family>_adaptive` twin of infection.
     for r in rows:
+        if str(r.get("stage")) != "mock_adaptive":
+            continue
         cell = (str(r.get("platform")), str(r.get("split")), str(r.get("stage")), str(r.get("topology")),
                 int(r.get("N", 0)), r.get("audit_pct"), r.get("int_pct"), int(r.get("seed", 0)))
         by[cell][str(r.get("scenario"))][r["arm"]] = r

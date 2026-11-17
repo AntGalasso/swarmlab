@@ -124,6 +124,37 @@ class BudgetLedger:
             return 0.0
         return self.spent / cap
 
+    def public_state(self) -> dict:
+        """Read-only budget facts explicitly exposed to a budget-aware adversary scenario."""
+        intervention_kinds = ((ActionKind.ISOLATE,) if self.cfg.binary_actions else
+                              (ActionKind.SANITIZE, ActionKind.RESTRICT, ActionKind.BLOCK_EDGE,
+                               ActionKind.ISOLATE))
+        costs_by_pool: Dict[str, List[int]] = {}
+        for kind in intervention_kinds:
+            costs_by_pool.setdefault(self.pool_of(kind), []).append(cost_of(self.cfg, kind))
+        remaining_after_inspection = {pool: self.remaining(pool) for pool in self.pools}
+        inspect_pool = self.pool_of(ActionKind.INSPECT)
+        if self.cfg.budget_mode != "dual_pct":
+            remaining_after_inspection[inspect_pool] -= cost_of(self.cfg, ActionKind.INSPECT)
+        can_fund_intervention = any(
+            remaining_after_inspection[pool] >= min(costs)
+            for pool, costs in costs_by_pool.items()
+        )
+        return {
+            "mode": self.cfg.budget_mode,
+            "pressure": self.z(),
+            "binary_actions": bool(self.cfg.binary_actions),
+            "min_intervention_cost": float(min(min(costs) for costs in costs_by_pool.values())),
+            "intervention_remaining": (float(self.remaining("intervention"))
+                                        if self.cfg.budget_mode == "dual_pct" else None),
+            "can_fund_any_intervention_after_inspection": bool(can_fund_intervention),
+            "intervention_remaining_by_pool": {
+                pool: float(self.remaining(pool)) for pool in costs_by_pool
+            },
+            "pools": {name: {"remaining": self.remaining(name), "capacity": self.capacity(name)}
+                      for name in self.pools},
+        }
+
     def theta(self) -> float:
         """Density threshold: flat theta0, or pacing theta0 * exp(kappa * z) as the budget drains."""
         if not self.cfg.use_pacing:

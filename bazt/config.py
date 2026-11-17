@@ -57,6 +57,7 @@ class BaztConfig:
     use_provenance: bool = True
     use_utility: bool = True
     binary_actions: bool = False
+    use_stop: bool = False                 # skip paid inspections when none can still fund an intervention
 
     def __post_init__(self):
         if self.budget_mode not in BUDGET_MODES:

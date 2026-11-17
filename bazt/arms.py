@@ -3,7 +3,7 @@
 Arms
   legacy      no_defense, score_only, centrality_only, risk_aware, risk_aware_tiered (+ offline_oracle bound)
   static_zta  always-on role-based edge policy + schema-only channel (env_ladder.HardConstraintSpec), no adaptivity
-  BAZT        bazt and its six single-mechanism ablations (`swarmlab.BAZT_POLICIES`)
+  BAZT        bazt and its seven single-mechanism ablations (`swarmlab.BAZT_POLICIES`)
 
 Every arm of one run shares the same world, decoys, hooks base, edge-weight rule and rationale-carrying agent,
 so differences between arms come from the defence only.
@@ -25,15 +25,19 @@ REFERENCE_ARMS = ("offline_oracle",)                  # non-deployable upper bou
 STATIC_ARM = "static_zta"
 BAZT_ARMS = tuple(sl.BAZT_POLICIES)
 DEFAULT_ARMS = LEGACY_ARMS + REFERENCE_ARMS + (STATIC_ARM,) + BAZT_ARMS
-# Sprint experiment registry (additive; DEFAULT_ARMS is untouched so `bazt.runner` behaves exactly as before).
+# Sprint experiment registry (additive; conventional and matched-timing arms remain opt-in).
 from bazt.conventional_zta import (ALL_CONVENTIONAL_ARMS, BASELINE_ARMS, MATCHED_TIMING_ARMS,  # noqa: E402
                                    ZTA_ARMS)
 EXPERIMENT_ARMS = tuple(BAZT_ARMS) + ALL_CONVENTIONAL_ARMS
 
 _BAZT_OVERRIDES: Dict[str, dict] = {
-    "bazt": {}, "bazt_no_prov": {"use_provenance": False}, "bazt_no_topo": {"use_topology": False},
-    "bazt_no_pacing": {"use_pacing": False}, "bazt_no_util": {"use_utility": False},
-    "bazt_binary": {"binary_actions": True}, "bazt_unlimited": {"unlimited": True},
+    "bazt": {"use_stop": True}, "bazt_no_stop": {"use_stop": False},
+    "bazt_no_prov": {"use_provenance": False, "use_stop": True}, "bazt_no_topo": {"use_topology": False,
+                                                                                       "use_stop": True},
+    "bazt_no_pacing": {"use_pacing": False, "use_stop": True},
+    "bazt_no_util": {"use_utility": False, "use_stop": True},
+    "bazt_binary": {"binary_actions": True, "use_stop": True},
+    "bazt_unlimited": {"unlimited": True, "use_stop": True},
 }
 assert set(_BAZT_OVERRIDES) == set(BAZT_ARMS)
 

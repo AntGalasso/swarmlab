@@ -72,9 +72,9 @@ POLICIES = ["no_defense", "fixed_early", "fixed_mid", "fixed_late", "random_capp
 SCALING_POLICIES = ["no_defense", "score_only", "centrality_only", "risk_aware", "risk_aware_tiered"]
 # BAZT arms (package `bazt/`). Deliberately NOT part of POLICIES / SCALING_POLICIES / TUNABLE: they only run
 # through `run_episode` when `hooks.gateway_factory` is supplied, so every legacy grid stays unchanged.
-BAZT_POLICIES = ("bazt", "bazt_no_prov", "bazt_no_topo", "bazt_no_pacing", "bazt_no_util",
+BAZT_POLICIES = ("bazt", "bazt_no_stop", "bazt_no_prov", "bazt_no_topo", "bazt_no_pacing", "bazt_no_util",
                  "bazt_binary", "bazt_unlimited")
-# Extended gateway registry for the sprint experiment suite (`experiments.py`). Strictly additive: the seven
+# Extended gateway registry for the sprint experiment suite (`experiments.py`). Strictly additive: the eight
 # BAZT arms above, the conventional ZTA ladder (arm_A / arm_B / arm_C), the matched-timing legacy controls and
 # the reference baselines. Every legacy arm (POLICIES / SCALING_POLICIES) is in NEITHER tuple, so a run without
 # a gateway factory -- or of a legacy arm -- executes exactly the pre-existing statements.
@@ -151,6 +151,8 @@ class EpisodeHooks:
     blocked_sends: int = 0                    # directed sends dropped by a movement constraint
     total_sends: int = 0                      # ordered send attempts admitted by the base graph
     observer: Optional[Callable] = None       # f(t, active, infected_now, p, observed)
+    budget_visible_decoy_schedule: Optional[Callable[[int, int, Optional[dict]], bool]] = None
+                                                # f(t, node, public budget state) -> decoy is active
     # BAZT hooks (package `bazt/`). Both default to None = classic behaviour.
     gateway_factory: Optional[Callable] = None   # f(policy, world, cfg, base_adj, decoys, hooks) -> gateway
     edge_weight_modifier: Optional[Callable[[int, int, int, str], float]] = None   # f(j, i, t, msg_j) -> scale
@@ -535,6 +537,10 @@ def run_episode(world: World, policy: str, cfg: Config, agent, decoys: frozenset
                 quarantined.pop(q, None)
         active = [i for i in range(N) if i not in quarantined]
         aset = set(active)
+        # The schedule is an explicit threat-model hook: it receives only public ledger balances, never
+        # infection state, monitor scores, or controller beliefs.
+        budget_observation = (gw.ledger.public_state() if gw is not None and
+                              hooks is not None and hooks.budget_visible_decoy_schedule is not None else None)
         # 1) numeric consensus update from delivered messages (blocked weight stays with self)
         if t > 1:
             if open_edge is not None or ewm is not None:         # BAZT only: gated edges / weighted messages
@@ -561,9 +567,12 @@ def run_episode(world: World, policy: str, cfg: Config, agent, decoys: frozenset
             is_seed = (i == world.p0) and not (hooks is not None and hooks.suppress_patient_zero)
             if hooks is not None and i in hooks.seed_agents:
                 is_seed = True
+            decoy_active = bool(world.burst[t - 1, i])
+            if hooks is not None and hooks.budget_visible_decoy_schedule is not None and i in decoys:
+                decoy_active = bool(hooks.budget_visible_decoy_schedule(t, i, budget_observation))
             ctxs.append(AgentCtx(i, t, inbox, out_prev[i] or None if t > 1 else None, float(est[i]),
                                  is_seed=is_seed, is_decoy=(i in decoys),
-                                 decoy_active=bool(world.burst[t - 1, i]),
+                                 decoy_active=decoy_active,
                                  u_adopt=float(world.u_adopt[t - 1, i]), u_stay=float(world.u_stay[t - 1, i]),
                                  u_decoy=float(world.u_decoy[t - 1, i]), seed=world.seed, topology=world.topology))
         texts = agent.step(ctxs)

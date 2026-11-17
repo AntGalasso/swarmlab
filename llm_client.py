@@ -249,7 +249,25 @@ class LLMBackend:
                 except Exception as e:  # noqa: BLE001
                     last = e
                 if attempt < self.retries:          # bounded exponential backoff (+ jitter)
-                    await asyncio.sleep(min(10.0, (2 ** attempt) + random.random()))
+                    delay = min(10.0, (2 ** attempt) + random.random())
+                    response = getattr(last, "response", None)
+                    headers = getattr(response, "headers", {}) or {}
+                    retry_after = headers.get("retry-after") if hasattr(headers, "get") else None
+                    if retry_after is not None:
+                        try:
+                            delay = min(120.0, max(delay, float(retry_after)))
+                        except (TypeError, ValueError):
+                            pass
+                    elif last is not None:
+                        message = str(last).lower()
+                        marker = "retry after "
+                        if marker in message:
+                            try:
+                                seconds = float(message.split(marker, 1)[1].split()[0])
+                                delay = min(120.0, max(delay, seconds))
+                            except (IndexError, TypeError, ValueError):
+                                pass
+                    await asyncio.sleep(delay)
         raise RuntimeError(f"LLM call failed after {self.retries + 1} attempts: {last!r}")
 
     async def _batch(self, reqs: Sequence[Tuple[str, str, str]], temperature: Optional[float]) -> List[str]:

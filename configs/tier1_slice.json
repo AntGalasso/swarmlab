@@ -95,7 +95,8 @@
   ],
   "adaptive_arms": [
     "arm_C",
-    "bazt"
+    "bazt",
+    "bazt_no_stop"
   ],
   "matched_timing_baselines": [
     "mt_score_only",
@@ -111,6 +112,12 @@
     0.1,
     0.1
   ],
+  "budget_reactive_attack": {
+    "pressure_threshold": 0.5,
+    "burst_rounds": 2,
+    "fixed_round": 3,
+    "note": "Post-review exploratory schedule; pressure/floor/fixed triggers are evaluated separately."
+  },
   "splits": {
     "main": [
       1,
